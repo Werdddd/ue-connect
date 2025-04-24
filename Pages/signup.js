@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ScrollView,
+  Platform,
+  SafeAreaView,
+  StyleSheet
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 export default function SignUp() {
@@ -26,88 +39,109 @@ export default function SignUp() {
     console.log('Email:', email);
     console.log('Password:', password);
 
-    // Navigate to Login screen after successful signup
     navigation.navigate('Login');
   };
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require('../assets/logo.png')}
-        style={styles.logo}
-      />
-
-      <Text style={styles.title}>Create Your Account</Text>
-
-      <View style={styles.nameRow}>
-        <TextInput
-          style={[styles.input, styles.nameInput]}
-          placeholder="First Name"
-          value={firstName}
-          onChangeText={setFirstName}
-        />
-        <TextInput
-          style={[styles.input, styles.nameInput, styles.lastNameInput]}
-          placeholder="Last Name"
-          value={lastName}
-          onChangeText={setLastName}
-        />
-      </View>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Student Number"
-        value={studentNumber}
-        onChangeText={setStudentNumber}
-        keyboardType="numeric"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="UE Email Address"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry={!showConfirmPassword}
-        />
-        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-          <Text style={styles.toggleText}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleSignUp}>
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
-
-      <View style={styles.signInContainer}>
-        <Text style={styles.alreadyHaveAccount}>Already have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.signIn}>Log in</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.container}>
+              <Image
+                source={require('../assets/logo.png')}
+                style={styles.logo}
+              />
+  
+              <Text style={styles.title}>Create Your Account</Text>
+  
+              <View style={styles.nameRow}>
+                <TextInput
+                  style={[styles.input, styles.nameInput]}
+                  placeholder="First Name"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                />
+                <TextInput
+                  style={[styles.input, styles.nameInput, styles.lastNameInput]}
+                  placeholder="Last Name"
+                  value={lastName}
+                  onChangeText={setLastName}
+                />
+              </View>
+  
+              <TextInput
+                style={styles.input}
+                placeholder="Student Number"
+                value={studentNumber}
+                onChangeText={setStudentNumber}
+                keyboardType="numeric"
+              />
+  
+              <TextInput
+                style={styles.input}
+                placeholder="UE Email Address"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+  
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Text style={styles.toggleText}>
+                    {showPassword ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+  
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <Text style={styles.toggleText}>
+                    {showConfirmPassword ? 'Hide' : 'Show'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+  
+              <TouchableOpacity style={styles.button} onPress={handleSignUp}>
+                <Text style={styles.buttonText}>Sign Up</Text>
+              </TouchableOpacity>
+  
+              <View style={styles.signInContainer}>
+                <Text style={styles.alreadyHaveAccount}>
+                  Already have an account?{' '}
+                </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                  <Text style={styles.signIn}>Log in</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -115,7 +149,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    paddingHorizontal: 10,
     backgroundColor: '#fff',
   },
   title: {

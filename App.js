@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { StyleSheet, Text, View } from 'react-native';
 import Login from './Pages/login'; 
 import SignUp from './Pages/signup';
+import Tutorial from './Pages/tutorial.js';
 
 const Stack = createStackNavigator();
 
@@ -13,9 +14,10 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="SignUp" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="SignUp" component={SignUp} />
+        <Stack.Screen name="Tutorial" component={Tutorial} />
       </Stack.Navigator>
     </NavigationContainer>
   );
