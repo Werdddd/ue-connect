@@ -121,8 +121,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   logo: {
-    width: 300,
-    height: 300,
+    width: 220,
+    height: 220,
     marginBottom: 10,
     alignSelf: 'center',
   },
@@ -140,11 +140,11 @@ const styles = StyleSheet.create({
   },
   dontHaveAccount: {
     marginTop: 20,
-    color: 'black',  // Black color for "Don't have an account?"
+    color: 'black',  
   },
   signUp: {
     marginTop: 20,
-    color: '#FE070C', // Red color for "Sign up"
+    color: '#FE070C', 
     fontWeight: 'bold',
   },
 });
