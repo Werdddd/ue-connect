@@ -6,6 +6,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import Login from './Pages/login'; 
 import SignUp from './Pages/signup';
 import Tutorial from './Pages/tutorial.js';
+import Landing from './Pages/landing.js';
+import Start from './Pages/start.js';
 
 const Stack = createStackNavigator();
 
@@ -18,6 +20,8 @@ export default function App() {
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="SignUp" component={SignUp} />
         <Stack.Screen name="Tutorial" component={Tutorial} />
+        <Stack.Screen name="Landing" component={Landing} />
+        <Stack.Screen name="Start" component={Start} />
       </Stack.Navigator>
     </NavigationContainer>
   );
