@@ -3,7 +3,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StyleSheet, Text, View } from 'react-native';
-import Login from './Pages/login'; // Your login page component
+import Login from './Pages/login'; 
 
 const Stack = createStackNavigator();
 
