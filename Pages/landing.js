@@ -10,13 +10,13 @@ export default function Landing() {
       <Image source={require('../assets/logo.png')} style={styles.logo} />
       <Text style={styles.title}>Welcome to Our App</Text>
       <TouchableOpacity
-        style={styles.button}
+        style={styles.button1}
         onPress={() => navigation.navigate('Login')}
       >
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={styles.button}
+        style={styles.button2}
         onPress={() => navigation.navigate('SignUp')}
       >
         <Text style={styles.buttonText}>Sign Up</Text>
@@ -44,12 +44,19 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     textAlign: 'center',
   },
-  button: {
+  button1: {
     backgroundColor: '#FE070C',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 8,
     marginBottom: 20,
+  },
+  button2: {
+    backgroundColor: '#1C1C32',
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+    borderRadius: 8,
+    marginBottom: 20,    
   },
   buttonText: {
     color: '#fff',

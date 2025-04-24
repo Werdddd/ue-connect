@@ -18,7 +18,7 @@ export default function Start() {
         style={styles.button}
         onPress={handleStart}
       >
-        <Text style={styles.buttonText}>Start</Text>
+        <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>
     </View>
   );
