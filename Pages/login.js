@@ -22,8 +22,7 @@ export default function Login() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
+          <View
             keyboardShouldPersistTaps="handled"
           >
             <Image source={require('../assets/logo.png')} style={styles.logo} />
@@ -73,7 +72,7 @@ export default function Login() {
                 <Text style={styles.signUp}>Sign up</Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </TouchableWithoutFeedback>
@@ -86,7 +85,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
     backgroundColor: '#fff',
-    marginTop: "10%",
   },
   title: {
     fontSize: 20,

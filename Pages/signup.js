@@ -47,13 +47,12 @@ export default function SignUp() {
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
+          style={styles.container}
         >
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+          <View
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.container}>
+            
               <Image
                 source={require('../assets/logo.png')}
                 style={styles.logo}
@@ -138,7 +137,7 @@ export default function SignUp() {
                 </TouchableOpacity>
               </View>
             </View>
-          </ScrollView>
+
         </KeyboardAvoidingView>
       </SafeAreaView>
     </TouchableWithoutFeedback>
