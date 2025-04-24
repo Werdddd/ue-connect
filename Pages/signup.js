@@ -2,17 +2,32 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-export default function Login() {
+export default function SignUp() {
+  const navigation = useNavigation();
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [studentNumber, setStudentNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const navigation = useNavigation();  // Initialize navigation
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleLogin = () => {
+  const handleSignUp = () => {
+    if (password !== confirmPassword) {
+      console.log("Passwords don't match");
+      return;
+    }
+
+    console.log('First Name:', firstName);
+    console.log('Last Name:', lastName);
     console.log('Student Number:', studentNumber);
-    console.log('UE Email Address:', email);
+    console.log('Email:', email);
     console.log('Password:', password);
+
+    // Navigate to Login screen after successful signup
+    navigation.navigate('Login');
   };
 
   return (
@@ -22,7 +37,22 @@ export default function Login() {
         style={styles.logo}
       />
 
-      <Text style={styles.title}>Login to your Account</Text>
+      <Text style={styles.title}>Create Your Account</Text>
+
+      <View style={styles.nameRow}>
+        <TextInput
+          style={[styles.input, styles.nameInput]}
+          placeholder="First Name"
+          value={firstName}
+          onChangeText={setFirstName}
+        />
+        <TextInput
+          style={[styles.input, styles.nameInput, styles.lastNameInput]}
+          placeholder="Last Name"
+          value={lastName}
+          onChangeText={setLastName}
+        />
+      </View>
 
       <TextInput
         style={styles.input}
@@ -31,14 +61,14 @@ export default function Login() {
         onChangeText={setStudentNumber}
         keyboardType="numeric"
       />
-      
+
       <TextInput
         style={styles.input}
         placeholder="UE Email Address"
         value={email}
         onChangeText={setEmail}
-        autoCapitalize="none"
         keyboardType="email-address"
+        autoCapitalize="none"
       />
 
       <View style={styles.passwordContainer}>
@@ -54,18 +84,27 @@ export default function Login() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={() => console.log('Forgot Password pressed')}>
-        <Text style={styles.forgotPassword}>Forgot Password?</Text>
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Confirm Password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry={!showConfirmPassword}
+        />
+        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+          <Text style={styles.toggleText}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.button} onPress={handleSignUp}>
+        <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
-      </TouchableOpacity>
-
-      <View style={styles.signUpContainer}>
-        <Text style={styles.dontHaveAccount}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('SignUp')}> 
-          <Text style={styles.signUp}>Sign up</Text>
+      <View style={styles.signInContainer}>
+        <Text style={styles.alreadyHaveAccount}>Already have an account? </Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.signIn}>Log in</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -112,7 +151,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   button: {
-    marginTop: 20,
     backgroundColor: '#FE070C',
     paddingVertical: 15,
     borderRadius: 8,
@@ -128,25 +166,27 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignSelf: 'center',
   },
-  forgotPassword: {
-    textAlign: 'right',
-    color: '#FE070C',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  signUpContainer: {
-    marginTop: 10,
+  signInContainer: {
+    marginTop: 20,
     textAlign: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  dontHaveAccount: {
-    marginTop: 20,
-    color: 'black',  
+  alreadyHaveAccount: {
+    color: 'black',
   },
-  signUp: {
-    marginTop: 20,
-    color: '#FE070C', 
+  signIn: {
+    color: '#FE070C',
     fontWeight: 'bold',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  nameInput: {
+    flex: 1,
+  },
+  lastNameInput: {
+    marginLeft: 10,
   },
 });
