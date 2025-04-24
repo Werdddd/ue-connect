@@ -1,37 +1,71 @@
-// Pages/login.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
 
 export default function Login() {
+  const [studentNumber, setStudentNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = () => {
-    console.log('Email:', email);
+    console.log('Student Number:', studentNumber);
+    console.log('UE Email Address:', email);
     console.log('Password:', password);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Image
+        source={require('../assets/logo.png')}
+        style={styles.logo}
+      />
+
+      <Text style={styles.title}>Login to your Account</Text>
+
       <TextInput
         style={styles.input}
-        placeholder="Email"
+        placeholder="Student Number"
+        value={studentNumber}
+        onChangeText={setStudentNumber}
+        keyboardType="numeric"
+      />
+      
+      <TextInput
+        style={styles.input}
+        placeholder="UE Email Address"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Log In</Text>
+
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity onPress={() => console.log('Forgot Password pressed')}>
+        <Text style={styles.forgotPassword}>Forgot Password?</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttonText}>Login</Text>
+      </TouchableOpacity>
+
+      <View style={styles.signUpContainer}>
+        <Text style={styles.dontHaveAccount}>Don't have an account? </Text>
+        <TouchableOpacity onPress={() => console.log('Navigate to Sign Up')}>
+          <Text style={styles.signUp}>Sign up</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -44,10 +78,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 20,
     marginBottom: 40,
     textAlign: 'center',
+    fontWeight: 'bold',
   },
   input: {
     height: 50,
@@ -57,8 +91,27 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 8,
   },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 50,
+  },
+  toggleText: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
   button: {
-    backgroundColor: '#007AFF',
+    marginTop: 20,
+    backgroundColor: '#FE070C',
     paddingVertical: 15,
     borderRadius: 8,
   },
@@ -66,5 +119,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  logo: {
+    width: 300,
+    height: 300,
+    marginBottom: 10,
+    alignSelf: 'center',
+  },
+  forgotPassword: {
+    textAlign: 'right',
+    color: '#FE070C',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  signUpContainer: {
+    marginTop: 10,
+    textAlign: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  dontHaveAccount: {
+    marginTop: 20,
+    color: 'black',  // Black color for "Don't have an account?"
+  },
+  signUp: {
+    marginTop: 20,
+    color: '#FE070C', // Red color for "Sign up"
+    fontWeight: 'bold',
   },
 });
