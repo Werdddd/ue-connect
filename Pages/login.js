@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export default function Login() {
   const [studentNumber, setStudentNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const navigation = useNavigation();  // Initialize navigation
+  const navigation = useNavigation();  
 
   const handleLogin = () => {
     console.log('Student Number:', studentNumber);
@@ -68,7 +69,7 @@ export default function Login() {
 
             <View style={styles.signUpContainer}>
               <Text style={styles.dontHaveAccount}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => console.log('Navigate to Sign Up')}>
+              <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
                 <Text style={styles.signUp}>Sign up</Text>
               </TouchableOpacity>
             </View>
