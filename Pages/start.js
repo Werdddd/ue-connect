@@ -6,8 +6,7 @@ export default function Start() {
   const navigation = useNavigation();
 
   const handleStart = () => {
-    // Navigate to the desired screen, for example, "Landing" or any other screen
-    navigation.navigate('Landing');
+    navigation.navigate('Tutorial');
   };
 
   return (
