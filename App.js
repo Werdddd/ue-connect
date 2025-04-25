@@ -9,6 +9,7 @@ import Tutorial from './Pages/tutorial.js';
 import Landing from './Pages/landing.js';
 import Start from './Pages/start.js';
 import Home from './Pages/home.js';
+import Template from './Pages/templatePage.js';
 
 const Stack = createStackNavigator();
 
@@ -17,14 +18,14 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Start" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Template" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Landing" component={Landing} />
         <Stack.Screen name="Tutorial" component={Tutorial} />
         <Stack.Screen name="Start" component={Start} />
         <Stack.Screen name="SignUp" component={SignUp} />
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Home" component={Home} />
-        
+        <Stack.Screen name="Template" component={Template} />
         
         
       </Stack.Navigator>
