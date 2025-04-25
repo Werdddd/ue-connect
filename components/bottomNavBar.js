@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react'; 
 import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons'; // icons
+import { FontAwesome } from '@expo/vector-icons'; 
 
 const BottomNavBar = () => {
+    const [userProfileImage, setUserProfileImage] = useState(null);
   return (
     <View style={styles.navbar}>
       <TouchableOpacity>
@@ -15,10 +17,11 @@ const BottomNavBar = () => {
         <Ionicons name="calendar-outline" size={28} color="black" />
       </TouchableOpacity>
       <TouchableOpacity>
-        <Image
-          source={require('../assets/logo.png')} // replace with your profile picture path
-          style={styles.profilePic}
-        />
+      {userProfileImage ? (
+              <Image source={{ uri: userProfileImage }} style={styles.profileImage} />
+            ) : (
+              <FontAwesome name="user-circle-o" size={40} color="#999" style={styles.profileIcon} />
+            )}
       </TouchableOpacity>
     </View>
   );
@@ -34,10 +37,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#ddd',
   },
-  profilePic: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  profileImage: {
+    width: 30,       // 👈 increase or decrease as needed
+    height: 30,
+    borderRadius: 25,
+    marginRight: 10,
+  },
+  
+  profileIcon: {
+    fontSize: 30,    // 👈 matches the profileImage size
+    marginRight: 10,
   },
 });
 
