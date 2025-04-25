@@ -32,15 +32,15 @@ const slides = [
   },
   {
     key: 'slide3',
-    title: 'Simplifye',
+    title: 'Engage',
     description:
-      'Easily manage event proposals, approvals, and reports in one centralized platform for a hassle-free experience.',
+      'Discover and join RSOs, attend events, and stay connected with campus activities through real-time updates.',
   },
   {
     key: 'slide4',
-    title: 'Simplifyeee',
+    title: 'Collaborate',
     description:
-      'Easily manage event proposals, approvals, and reports in one centralized platform for a hassle-free experience.',
+      'Seamlessly communicate with RSOs, coordinate with SAO, and plan successful events with built-in tools.',
   },
 ];
 
