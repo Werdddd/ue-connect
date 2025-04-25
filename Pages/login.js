@@ -13,6 +13,7 @@ export default function Login() {
     console.log('Student Number:', studentNumber);
     console.log('UE Email Address:', email);
     console.log('Password:', password);
+    navigation.navigate('Home'); // Navigate to Home screen after login
   };
 
   return (
