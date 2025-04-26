@@ -14,6 +14,10 @@ import {
   StyleSheet
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { auth, firestore } from '../Firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { Alert } from 'react-native';
 
 export default function SignUp() {
   const navigation = useNavigation();
@@ -27,19 +31,40 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     if (password !== confirmPassword) {
       console.log("Passwords don't match");
       return;
     }
 
-    console.log('First Name:', firstName);
-    console.log('Last Name:', lastName);
-    console.log('Student Number:', studentNumber);
-    console.log('Email:', email);
-    console.log('Password:', password);
+    if (!email.endsWith("@ue.edu.ph")) {
+        console.log("Please use your UE email address.");
+        Alert.alert(
+            'SignUp Error',
+            'Please use your UE email address.', 
+            [
+              { text: 'I Understand' }
+            ]
+          );
+        return;
+      }
 
-    navigation.navigate('Login');
+    try {
+
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        await setDoc(doc(firestore, "Users", studentNumber), {
+            email: email,
+            studentNumber: studentNumber,
+            firstName: firstName,
+            lastName: lastName,
+            timestamp: new Date()
+        });
+        navigation.navigate('Login');
+        } catch (error) {
+        console.error("Error writing document: ", error);
+        }
   };
 
   return (

@@ -1,12 +1,20 @@
 import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+
+require('dotenv').config({ path: './justin.env' });
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBnbswPJogi8BHEemJ5dj-38KChGAzJFnM",
-  authDomain: "ue-connect.firebaseapp.com",
-  projectId: "ue-connect",
-  storageBucket: "ue-connect.firebasestorage.app",
-  messagingSenderId: "761554615717",
-  appId: "1:761554615717:web:2d1597a661824a8d577c4c"
+    apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+    authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+
+export { auth, firestore };
