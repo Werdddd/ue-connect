@@ -29,12 +29,13 @@ const Header = () => {
 
 const styles = StyleSheet.create({
   header: {
-    height: 60,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     backgroundColor: '#fff',
+    paddingTop: 10,
   },
   leftSection: {
     flexDirection: 'row',
