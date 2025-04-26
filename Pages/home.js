@@ -2,44 +2,49 @@ import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView,
-  Platform
+  Platform, TouchableWithoutFeedback 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome, MaterialIcons, Entypo } from '@expo/vector-icons';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
-
 export default function Home() {
   const navigation = useNavigation();
   const [userProfileImage, setUserProfileImage] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [postText, setPostText] = useState('');
-
   const [selectedImages, setSelectedImages] = useState([]);
+  const [newsfeedPosts, setNewsfeedPosts] = useState([]);
+  const userComment = 'This is a sample comment.'; 
+  const [selectedPostId, setSelectedPostId] = useState(null);
+
+  const [liked, setLiked] = useState(false);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [shareCaption, setShareCaption] = useState('');
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       alert('Permission to access gallery is required!');
       return;
     }
-  
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true, // only works on web, for mobile use looping
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsMultipleSelection: true,
       quality: 1,
     });
-  
     if (!result.canceled) {
-      // `result.assets` is an array of selected images
       const uris = result.assets.map((asset) => asset.uri);
       setSelectedImages([...selectedImages, ...uris]);
     }
   };
-  
+
   const [isDiscardConfirmVisible, setIsDiscardConfirmVisible] = useState(false);
 
   const discardPost = () => {
@@ -49,11 +54,11 @@ export default function Home() {
     setIsDiscardConfirmVisible(false);
     translateY.value = 0;
   };
-  
+
   const keepEditing = () => {
     setIsDiscardConfirmVisible(false);
   };
-  
+
   const translateY = useSharedValue(0);
 
   const closeModal = () => {
@@ -64,7 +69,6 @@ export default function Home() {
       translateY.value = 0;
     }
   };
-  
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -76,6 +80,286 @@ export default function Home() {
     } else {
       translateY.value = withSpring(0);
     }
+  };
+
+  const handleAddComment = () => {
+    if (commentText.trim() === '') return;
+  
+    const updatedPosts = newsfeedPosts.map(post => {
+      if (post.id === selectedPostId) {
+        return {
+          ...post,
+          comments: [
+            ...post.comments,
+            {
+              id: Date.now(),
+              user: {
+                name: 'Andrew Robles',
+                profileImage: userProfileImage,
+              },
+              text: commentText,
+            },
+          ],
+        };
+      }
+      return post;
+    });
+  
+    setNewsfeedPosts(updatedPosts);
+    setCommentText(''); // clear input after sending
+  };
+  const commentModalOpacity = useSharedValue(1);
+
+  const commentModalAnimatedBackground = useAnimatedStyle(() => ({
+    backgroundColor: `rgba(0,0,0,${commentModalOpacity.value})`
+  }));
+
+  const commentBackdropOpacity = useSharedValue(1);
+
+ 
+  const commentBackdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: commentBackdropOpacity.value,
+  }));
+
+  const handleCommentGesture = (event) => {
+    if (event.nativeEvent.translationY > 100) {
+      runOnJS(() => {
+        setCommentModalVisible(false);
+        commentTranslateY.value = 0;
+        commentBackdropOpacity.value = 1;
+        setSelectedPostId(null);
+      })();
+    } else {
+      commentTranslateY.value = withSpring(0);
+    }
+  };
+
+  const handleCommentBackdropPress = () => {
+    setCommentModalVisible(false);
+    commentTranslateY.value = 0;
+    commentBackdropOpacity.value = 1;
+    setSelectedPostId(null);
+  };
+
+  const commentTranslateY = useSharedValue(0);
+
+  const commentAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: commentTranslateY.value }],
+  }));
+  
+  const [likedPosts, setLikedPosts] = useState({});
+
+  const toggleLike = (postId) => {
+    setLikedPosts((prevLikedPosts) => ({
+      ...prevLikedPosts,
+      [postId]: !prevLikedPosts[postId],
+    }));
+  };
+  
+
+  const handlePost = () => {
+    if (postText.trim() === '' && selectedImages.length === 0) return;
+
+    const newPost = {
+      id: Date.now(),
+      user: {
+        name: 'Andrew Robles',
+        profileImage: userProfileImage,
+      },
+      date: new Date(),
+      text: postText,
+      images: selectedImages,
+      comments: [],
+    };
+
+    setNewsfeedPosts([newPost, ...newsfeedPosts]);
+    discardPost();
+  };
+
+  const renderPost = (post) => {
+    const formattedDate = post.date.toLocaleString();
+    const hasText = post.text.trim().length > 0;
+    const hasImages = post.images.length > 0;
+
+    
+    return (
+      <View key={post.id} style={styles.postCard}>
+        {/* Post Header */}
+        <View style={styles.postHeader}>
+          <View style={styles.postUserInfo}>
+            {post.user.profileImage ? (
+              <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
+            ) : (
+              <FontAwesome name="user-circle-o" size={35} color="#999" />
+            )}
+            <View style={{ marginLeft: 10 }}>
+              <Text style={styles.postUserName}>{post.user.name}</Text>
+              <Text style={styles.postDate}>{formattedDate}</Text>
+            </View>
+          </View>
+          <TouchableOpacity>
+            <Entypo name="dots-three-horizontal" size={20} color="#333" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Post Content */}
+        <View style={styles.postBody}>
+          {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
+          {hasImages && (
+            <View style={styles.postImagesContainer}>
+              {post.images.map((uri, idx) => (
+                <Image
+                  key={idx}
+                  source={{ uri }}
+                  style={styles.postImage}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Post Actions */}
+        <View style={styles.postActions}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => toggleLike(post.id)}
+        >
+          <Ionicons
+            name={likedPosts[post.id] ? "heart" : "heart-outline"}
+            size={20}
+            color={likedPosts[post.id] ? 'red' : '#555'}
+          />
+          <Text style={styles.actionText}>Like</Text>
+        </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setSelectedPostId(post.id); // set selected post
+              setCommentModalVisible(true);
+            }}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color="#555" />
+            <Text style={styles.actionText}>Comment</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton} onPress={() => setShareModalVisible(true)}>
+            <Ionicons name="share-social-outline" size={20} color="#555" />
+            <Text style={styles.actionText}>Share</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Modal
+          visible={commentModalVisible}
+          animationType="none"
+          transparent={true}
+          onRequestClose={handleCommentBackdropPress}
+        >
+          <TouchableWithoutFeedback onPress={handleCommentBackdropPress}>
+            <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
+              <PanGestureHandler
+                onGestureEvent={(event) => {
+                  commentTranslateY.value = event.nativeEvent.translationY;
+                  commentBackdropOpacity.value = 1 - (event.nativeEvent.translationY / 300);
+                }}
+                onEnded={handleCommentGesture}
+              >
+                <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
+                  <KeyboardAvoidingView
+                        style={{ flex: 1 }}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 390 : 0}
+                      >
+                      <ScrollView
+                        contentContainerStyle={{ flexGrow: 1 }}
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                      >
+
+                        
+              <Text style={styles.commentsTitle}>Comments</Text>
+              {/* Comment List */}
+              <ScrollView>
+                {post.comments.map((comment) => (
+                  <View key={comment.id} style={styles.commentCard}>
+                    {comment.user.profileImage ? (
+                      <Image source={{ uri: comment.user.profileImage }} style={styles.profileImagePost} />
+                    ) : (
+                      <FontAwesome name="user-circle-o" size={38} color="#999" />
+                    )}
+                    <View>
+                      <Text style={styles.commentUserName}>{comment.user.name}</Text>
+                      <Text style={styles.userComment}>{comment.text}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Input at Bottom */}
+              <View style={styles.commentInputRow}>
+              {post.user.profileImage ? (
+                <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
+              ) : (
+                <FontAwesome name="user-circle-o" size={35} color="#999" />
+              )}
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Add a comment..."
+                  value={commentText}
+                  onChangeText={setCommentText}
+                />
+                <TouchableOpacity onPress={handleAddComment}>
+                  <Ionicons name="send" size={24} color="#ff0000" />
+                </TouchableOpacity>
+
+              </View>
+            
+            </ScrollView>
+            </KeyboardAvoidingView>
+            </Animated.View>
+            </PanGestureHandler>
+            
+          </Animated.View>
+          
+        </TouchableWithoutFeedback>
+
+              
+    </Modal>
+
+        <Modal
+          visible={shareModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShareModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.shareModalContent}>
+              {/* User Info */}
+              <View style={styles.shareHeader}>
+                <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
+                <Text style={styles.shareUsername}>Username</Text>
+              </View>
+
+              {/* Caption Input */}
+              <TextInput
+                style={styles.shareCaptionInput}
+                placeholder="Write a caption..."
+                multiline
+                value={shareCaption}
+                onChangeText={setShareCaption}
+              />
+
+              {/* Share Now Button */}
+              <TouchableOpacity style={styles.shareButton} onPress={() => {/* share post */}}>
+                <Text style={styles.shareButtonText}>Share Now</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+
+      </View>
+    );
   };
 
   return (
@@ -90,18 +374,19 @@ export default function Home() {
             ) : (
               <FontAwesome name="user-circle-o" size={50} color="#999" style={styles.profileIcon} />
             )}
-
             <TouchableOpacity
               style={styles.postInputContainer}
               onPress={() => setIsModalVisible(true)}
             >
               <Text style={styles.placeholderText}>What's on your mind?</Text>
             </TouchableOpacity>
-
             <TouchableOpacity onPress={() => setIsModalVisible(true)}>
               <Ionicons name="add-circle-outline" size={30} color="#333" />
             </TouchableOpacity>
           </View>
+
+          {/* Render Newsfeed */}
+          {newsfeedPosts.map((post) => renderPost(post))}
         </ScrollView>
 
         <BottomNavBar />
@@ -109,74 +394,57 @@ export default function Home() {
         {isModalVisible && (
           <View style={StyleSheet.absoluteFill}>
             <TouchableOpacity style={styles.modalBackground} activeOpacity={1} onPress={closeModal} />
-            
+
             <PanGestureHandler onEnded={handleGesture} onGestureEvent={(event) => {
               translateY.value = event.nativeEvent.translationY;
             }}>
               <Animated.View style={[styles.modalContent, animatedStyle]}>
-              <KeyboardAvoidingView
-                style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-              >
-                <ScrollView
-                  contentContainerStyle={{ flexGrow: 1 }}
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator={false}
+                <KeyboardAvoidingView
+                  style={{ flex: 1 }}
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
                 >
+                  <ScrollView
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <View style={styles.modalHeader}>
+                      <TouchableOpacity onPress={closeModal}>
+                        <Ionicons name="close" size={24} color="#333" />
+                      </TouchableOpacity>
+                      <Text style={styles.modalTitle}>Create Post</Text>
+                      <TouchableOpacity style={styles.postTextButton} onPress={handlePost}>
+                        <Text style={styles.postText}>Post</Text>
+                      </TouchableOpacity>
+                    </View>
 
-                  
-                  {/* Header */}
-                  <View style={styles.modalHeader}>
-                    <TouchableOpacity onPress={closeModal}>
-                      <Ionicons name="close" size={24} color="#333" />
-                    </TouchableOpacity>
-                    <Text style={styles.modalTitle}>Create Post</Text>
-                    <TouchableOpacity style={styles.postTextButton}>
-                      <Text style={styles.postText}>Post</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Profile Row */}
-                  <View style={styles.profileRow}>
-                    {userProfileImage ? (
-                      <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
-                    ) : (
-                      <FontAwesome name="user-circle-o" size={30} color="#999" />
-                    )}
-                    <Text style={styles.userName}>Andrew Robles</Text>
-                  </View>
-
-                  <View style={styles.postContentContainer}>
-                  {(postText.length > 0 || selectedImages.length > 0) ? (
-                    <>
-                      {postText.length > 0 && (
-                        <TextInput
-                          placeholder="What's on your mind?"
-                          placeholderTextColor="#777"
-                          multiline
-                          value={postText}
-                          onChangeText={setPostText}
-                          style={styles.textOnly}
-                        />
+                    <View style={styles.profileRow}>
+                      {userProfileImage ? (
+                        <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
+                      ) : (
+                        <FontAwesome name="user-circle-o" size={30} color="#999" />
                       )}
+                      <Text style={styles.userName}>Andrew Robles</Text>
+                    </View>
+
+                    <View style={styles.postContentContainer}>
+                      <TextInput
+                        placeholder="What's on your mind?"
+                        placeholderTextColor="#777"
+                        multiline
+                        value={postText}
+                        onChangeText={setPostText}
+                        style={styles.placeholderInput}
+                      />
+
                       {selectedImages.length > 0 && (
-                        <View
-                          style={[
-                            styles.imageGrid,
-                            { justifyContent: 'flex-start' }
-                          ]}
-                        >
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
                           {selectedImages.map((uri, index) => (
                             <View key={index} style={{ position: 'relative', marginRight: 10, marginBottom: 10 }}>
                               <Image
                                 source={{ uri }}
-                                style={{
-                                  width: 80,
-                                  height: 80,
-                                  borderRadius: 10,
-                                }}
+                                style={{ width: 80, height: 80, borderRadius: 10 }}
                               />
                               <TouchableOpacity
                                 onPress={() => {
@@ -198,25 +466,10 @@ export default function Home() {
                             </View>
                           ))}
                         </View>
-
-                        </View>
                       )}
-                    </>
-                  ) : (
-                    <TextInput
-                      placeholder="What's on your mind?"
-                      placeholderTextColor="#777"
-                      multiline
-                      value={postText}
-                      onChangeText={setPostText}
-                      style={styles.placeholderInput}
-                    />
-                  )}
-                </View>
+                    </View>
 
-
-
-                  {/* Options */}
+                    {/* Options */}
                   <View style={styles.optionsGrid}>
                       <TouchableOpacity style={styles.optionButton} onPress={pickImage}>
                         <MaterialIcons name="photo-library" size={24} color="#2e89ff" />
@@ -249,14 +502,12 @@ export default function Home() {
                           <Text style={styles.optionText}>Add Link</Text>
                       </TouchableOpacity>
                   </View>
-                </ScrollView>
-              </KeyboardAvoidingView>
-            </Animated.View>
+                  </ScrollView>
+                </KeyboardAvoidingView>
+              </Animated.View>
+            </PanGestureHandler>
 
-            
-
-          </PanGestureHandler>
-          <Modal
+            <Modal
               visible={isDiscardConfirmVisible}
               transparent
               animationType="fade"
@@ -265,7 +516,6 @@ export default function Home() {
                 <View style={styles.discardModalBox}>
                   <Text style={styles.discardTitle}>Discard Post?</Text>
                   <Text style={styles.discardMessage}>You have unsaved changes. Are you sure you want to discard?</Text>
-
                   <View style={styles.discardButtons}>
                     <TouchableOpacity onPress={discardPost} style={styles.discardButton}>
                       <Text style={{ color: '#fff' }}>Discard</Text>
@@ -277,12 +527,13 @@ export default function Home() {
                 </View>
               </View>
             </Modal>
-        </View>
-      )}
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
 }
+
 
 
 const styles = StyleSheet.create({
@@ -306,11 +557,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     marginTop: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 1 },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 2,
+    // elevation: 2,
+    borderBottomColor: '#ccc',
+    borderBottomWidth: 1,
+    marginBottom: 15,
   },
   profileImage: {
     width: 30,       // 👈 increase or decrease as needed
@@ -332,6 +586,7 @@ const styles = StyleSheet.create({
   postInputContainer: {
     flex: 1,
     justifyContent: 'center',
+    
   },
 
   postContentContainer: {
@@ -341,6 +596,7 @@ const styles = StyleSheet.create({
     padding: 10,
     minHeight: '60%',
     marginBottom: 20,
+    
   },
   textOnly: {
     fontSize: 16,
@@ -420,6 +676,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  
   textInput: {
     flex: 1,
     borderColor: '#ccc',
@@ -498,6 +755,191 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
+  postCard: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    
+    marginBottom: 15,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  postHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  postUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  postUserName: {
+    
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  postDate: {
+    fontSize: 12,
+    color: '#888',
+  },
+  postBody: {
+    marginTop: 5,
+  },
+  postTextContent: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 10,
+  },
+  postImagesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  postImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+    marginRight: 5,
+    marginBottom: 5,
+  },
+  postActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 10,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  actionText: {
+    color: '#555',
+    fontSize: 14,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 10,
+  },
   
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  
+  commentModalContent: {
+    height: '60%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    
+  },
+  
+  commentCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+  },
+  
+  commentsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 13,
+    paddingBottom: 10,
+    borderBottomColor: '#555',
+    borderBottomWidth: 1,
+  },
+  
+  commentUserName: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  userComment: {
+    fontSize: 14,
+    color: '#000',
+    marginLeft: 10,
+    marginTop: 2,
+    fontWeight: '400',
+  },
+  
+  commentInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderColor: "#eee",
+    backgroundColor: "#fff",
+    marginBottom: 10,
+  },
+  
+  commentInput: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginHorizontal: 10,
+  },
+  
+  shareModalContent: {
+    height: '50%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 15,
+  },
+  
+  shareHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  
+  shareProfilePic: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  
+  shareUsername: {
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  
+  shareCaptionInput: {
+    flex: 1,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 20,
+  },
+  
+  shareButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  
+  shareButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   
 });
