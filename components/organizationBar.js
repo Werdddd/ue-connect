@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function OrganizationBar() {
+export default function OrganizationBar({ onSelectOrganization }) {
+    const [selectedOrg, setSelectedOrg] = useState('All'); 
+
+    const handleSelect = (orgName) => {
+        setSelectedOrg(orgName);
+        if (onSelectOrganization) {
+            onSelectOrganization(orgName); 
+        }
+    };
+
     return (
         <View style={styles.horizontalBar}>
             <ScrollView
@@ -10,29 +19,41 @@ export default function OrganizationBar() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.horizontalContent}
             >
-                <TouchableOpacity style={styles.column}>
+                <TouchableOpacity 
+                    style={[styles.column, selectedOrg === 'All' && styles.selectedColumn]} 
+                    onPress={() => handleSelect('All')}
+                >
                     <Text style={styles.columnText}>All</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.column}>
+                <TouchableOpacity 
+                    style={[styles.column, selectedOrg === 'CSC' && styles.selectedColumn]} 
+                    onPress={() => handleSelect('CSC')}
+                >
                     <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.column}>
+                <TouchableOpacity 
+                    style={[styles.column, selectedOrg === 'GDSC' && styles.selectedColumn]} 
+                    onPress={() => handleSelect('GDSC')}
+                >
+                    <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                    style={[styles.column, selectedOrg === 'CFAD' && styles.selectedColumn]} 
+                    onPress={() => handleSelect('CFAD')}
+                >
                     <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.column}>
-                    <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
-                </TouchableOpacity>
 
-                <TouchableOpacity style={styles.column}>
-                    <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
-                </TouchableOpacity>
 
-                <TouchableOpacity style={styles.column}>
-                    <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
-                </TouchableOpacity>
+
+
+
+                {/* Add Org logos here, Orgname must be unique para di mag error*/}
+                {/* After mag add dito, go to organizationPage, then add org sa function, follow format*/}
             </ScrollView>
 
             <LinearGradient
@@ -65,6 +86,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginRight: 10,
         elevation: 2,
+    },
+    selectedColumn: {
+        borderBottomWidth: 3,
+        borderBottomColor: '#E50914', 
     },
     columnText: {
         fontWeight: 'bold',
