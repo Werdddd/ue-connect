@@ -61,6 +61,9 @@ export default function SignUp() {
             lastName: lastName,
             timestamp: new Date()
         });
+
+        //loading screen here
+
         navigation.navigate('Login');
         } catch (error) {
         console.error("Error writing document: ", error);

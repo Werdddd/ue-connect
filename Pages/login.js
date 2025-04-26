@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { auth } from '../Firebase';
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { Alert } from 'react-native';
 
 export default function Login() {
   const [studentNumber, setStudentNumber] = useState('');
@@ -9,11 +12,27 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigation = useNavigation();  
 
-  const handleLogin = () => {
-    console.log('Student Number:', studentNumber);
-    console.log('UE Email Address:', email);
-    console.log('Password:', password);
-    navigation.navigate('Home'); // Navigate to Home screen after login
+  const handleLogin = async () => {
+
+    try {
+
+        await createUserWithEmailAndPassword(auth, email, password);
+        navigation.navigate('Home');
+
+        } catch (error) {
+
+        console.error("Error writing document: ", error);
+
+        Alert.alert(
+                    'Login Error',
+                    error, 
+                    [
+                      { text: 'I Understand' }
+                    ]
+                  );
+
+        }
+
   };
 
   return (
