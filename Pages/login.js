@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform, ActivityIndicator, } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { auth } from '../Firebase';
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -11,33 +11,56 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigation = useNavigation();  
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-
+    const studentNumberRegex = /^[0-9]{11}$/;
+    const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
+  
+    // Input validation
+    if (!studentNumber.match(studentNumberRegex)) {
+      Alert.alert('Invalid Input', 'Student number must be exactly 11 digits.');
+      return;
+    }
+  
+    if (!email.match(ueEmailRegex)) {
+      Alert.alert('Invalid Input', 'Use a valid UE email address.');
+      return;
+    }
+  
+    if (password.length < 6) {
+      Alert.alert('Invalid Input', 'Password must be at least 6 characters long.');
+      return;
+    }
+  
     try {
-
-        await signInWithEmailAndPassword(auth, email, password);
-        navigation.navigate('Home');
-
-        } catch (error) {
-
-        console.error("Error writing document: ", error);
-
-        Alert.alert(
-                    'Login Error',
-                    error, 
-                    [
-                      { text: 'I Understand' }
-                    ]
-                  );
-
-        }
-
+      setLoading(true); // Start loading
+      await signInWithEmailAndPassword(auth, email, password);
+      setLoading(false);
+      navigation.navigate('Home');
+    } catch (error) {
+      setLoading(false); // Stop loading on error
+      console.error("Error logging in: ", error);
+      Alert.alert(
+        'Login Error',
+        error.message || 'Something went wrong. Please try again.',
+        [{ text: 'I Understand' }]
+      );
+    }
   };
+  
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>
+        {loading && (
+                <View style={styles.loadingContainer}>
+                  <View style={styles.loadingBox}>
+                    <ActivityIndicator size="large" color="#FE070C" />
+                    <Text style={{ marginTop: 10 }}>Logging your account...</Text>
+                  </View>
+                </View>
+              )}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
@@ -175,5 +198,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: '#FE070C',
     fontWeight: 'bold',
+  },
+
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingBox: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
   },
 });

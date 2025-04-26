@@ -11,7 +11,8 @@ import {
   ScrollView,
   Platform,
   SafeAreaView,
-  StyleSheet
+  StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { auth, firestore } from '../Firebase';
@@ -31,48 +32,79 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+  const nameRegex = /^[A-Za-z]+$/;
+  const studentNumberRegex = /^[0-9]{11}$/;
+  const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
+  
+
   const handleSignUp = async () => {
-    if (password !== confirmPassword) {
-      console.log("Passwords don't match");
+    if (!firstName.match(nameRegex)) {
+      Alert.alert('Invalid Input', 'First name should contain only letters.');
       return;
     }
-
-    if (!email.endsWith("@ue.edu.ph")) {
-        console.log("Please use your UE email address.");
-        Alert.alert(
-            'SignUp Error',
-            'Please use your UE email address.', 
-            [
-              { text: 'I Understand' }
-            ]
-          );
-        return;
-      }
-
+  
+    if (!lastName.match(nameRegex)) {
+      Alert.alert('Invalid Input', 'Last name should contain only letters.');
+      return;
+    }
+  
+    if (!studentNumber.match(studentNumberRegex)) {
+      Alert.alert('Invalid Input', 'Student number must be exactly 11 digits.');
+      return;
+    }
+  
+    if (!email.match(ueEmailRegex)) {
+      Alert.alert('Invalid Input', 'Use a valid UE email address.');
+      return;
+    }
+  
+    if (password.length < 6) {
+      Alert.alert('Invalid Input', 'Password must be at least 6 characters long.');
+      return;
+    }
+  
+    if (password !== confirmPassword) {
+      Alert.alert('Invalid Input', "Passwords don't match.");
+      return;
+    }
+  
+    setLoading(true);
     try {
-
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        await setDoc(doc(firestore, "Users", studentNumber), {
-            email: email,
-            studentNumber: studentNumber,
-            firstName: firstName,
-            lastName: lastName,
-            timestamp: new Date()
-        });
-
-        //loading screen here
-
-        navigation.navigate('Login');
-        } catch (error) {
-        console.error("Error writing document: ", error);
-        }
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+  
+      await setDoc(doc(firestore, "Users", studentNumber), {
+        email: email,
+        studentNumber: studentNumber,
+        firstName: firstName,
+        lastName: lastName,
+        timestamp: new Date(),
+      });
+  
+      navigation.navigate('Login');
+    } catch (error) {
+      console.error("Error writing document: ", error);
+      Alert.alert('SignUp Error', error.message);
+    } finally {
+      setLoading(false);
+    }
   };
+  
+  
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#FE070C" />
+            <Text style={{ marginTop: 10 }}>Creating your account...</Text>
+          </View>
+        </View>
+      )}
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
@@ -250,4 +282,22 @@ const styles = StyleSheet.create({
   lastNameInput: {
     marginLeft: 10,
   },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingBox: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  
 });
