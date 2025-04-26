@@ -80,7 +80,6 @@ const styles = StyleSheet.create({
     column: {
         width: 60,
         height: 50,
-        borderRadius: 10,
         backgroundColor: '#fff',
         justifyContent: 'center',
         alignItems: 'center',
@@ -93,7 +92,7 @@ const styles = StyleSheet.create({
     },
     columnText: {
         fontWeight: 'bold',
-        fontSize: 14,
+        fontSize: 17,
         color: '#E50914',
     },
     orglogo: {
