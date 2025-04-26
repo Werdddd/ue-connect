@@ -16,7 +16,7 @@ export default function Login() {
 
     try {
 
-        await createUserWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
         navigation.navigate('Home');
 
         } catch (error) {
