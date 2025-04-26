@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { LinearGradient } from 'expo-linear-gradient';
-import HorizontalBar from '../components/horizontalBar';
+import OrganizationBar from '../components/organizationBar';
 
 export default function OrganizationPage() {
     const navigation = useNavigation();
@@ -18,7 +18,7 @@ export default function OrganizationPage() {
                     <View style={styles.container}>
                         <Header />
                         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                            <HorizontalBar />
+                            <OrganizationBar />
                         </ScrollView>
                         <BottomNavBar />
                     </View>
