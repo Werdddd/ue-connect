@@ -12,6 +12,7 @@ import Home from './Pages/home.js';
 import Template from './Pages/templatePage.js';
 import OrganizationPage from './Pages/organizationPage.js';
 import Events from './Pages/eventPage.js';
+import Settings from './Pages/settings.js';
 
 
 const Stack = createStackNavigator();
@@ -31,6 +32,7 @@ export default function App() {
         <Stack.Screen name="Template" component={Template} />
         <Stack.Screen name="OrganizationPage" component={OrganizationPage} />
         <Stack.Screen name="Events" component={Events} />
+        <Stack.Screen name="Settings" component={Settings} />
         
       </Stack.Navigator>
     </NavigationContainer>
