@@ -17,6 +17,8 @@
     "@react-navigation/stack": "^7.2.10",
     "dotenv": "^16.5.0",
     "expo": "~52.0.38",
+    "expo-image-picker": "^16.0.6",
+    "expo-linear-gradient": "~14.0.2",
     "expo-status-bar": "~2.0.1",
     "firebase": "^11.4.0",
     "react": "18.3.1",
@@ -30,9 +32,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
     "react-navigation": "^4.4.4",
-    "react-navigation-stack": "^2.10.4",
-    "expo-image-picker": "~16.0.6",
-    "expo-linear-gradient": "~14.0.2"
+    "react-navigation-stack": "^2.10.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

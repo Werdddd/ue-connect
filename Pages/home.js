@@ -12,6 +12,10 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
+import { getDoc, doc } from "firebase/firestore";
+import { auth, firestore } from '../Firebase';
+import { savePost } from '../Backend/uploadPost';
+
 export default function Home() {
   const navigation = useNavigation();
   const [userProfileImage, setUserProfileImage] = useState(null);
@@ -90,7 +94,7 @@ export default function Home() {
         return {
           ...post,
           comments: [
-            ...post.comments,
+            ...(post.comments || []), // Add default empty array if comments is undefined
             {
               id: Date.now(),
               user: {
@@ -157,23 +161,68 @@ export default function Home() {
   };
   
 
-  const handlePost = () => {
+  const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
-
-    const newPost = {
-      id: Date.now(),
-      user: {
-        name: 'Andrew Robles',
-        profileImage: userProfileImage,
-      },
-      date: new Date(),
-      text: postText,
-      images: selectedImages,
-      comments: [],
-    };
-
-    setNewsfeedPosts([newPost, ...newsfeedPosts]);
-    discardPost();
+  
+    // Get the current authenticated user
+    const user = auth.currentUser;
+  
+    if (!user) {
+      console.log("No user is logged in");
+      return;
+    }
+  
+    // Use the user's email as the document ID
+    const userEmail = user.email;
+  
+    if (!userEmail) {
+      console.log("No email found for the user");
+      return;
+    }
+  
+    // Query the Firestore collection using the email as the document ID
+    const userDocRef = doc(firestore, "Users", userEmail);
+    try {
+      const userDoc = await getDoc(userDocRef);
+  
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const { firstName, lastName, profileImage } = userData;
+  
+        // If no profile image is found, use a default image
+        const userProfileImage = profileImage || 'https://scontent.fmnl4-7.fna.fbcdn.net/v/t39.30808-1/435061244_10233008332218681_6832912123986907235_n.jpg?stp=c410.0.566.566a_dst-jpg_s100x100_tt6&_nc_cat=104&ccb=1-7&_nc_sid=e99d92&_nc_eui2=AeEO33Aa3PWmE85KMa1vbnw3-ooGmG6Bh876igaYboGHzmBkgU7tVg5wIb8Gjs4ArljzG4IUfPHrDZsJJ6P3Wt08&_nc_ohc=G8sJh2rC8CcQ7kNvwFK_yas&_nc_oc=AdlTlvbjMjZkL2zSYIoVkwQl2gHZHsBssnHGsK1ojyC5kQrde8xJ5WM4Q4tghieDZuFKNMU4hMGS0kLGrXdAJu3o&_nc_zt=24&_nc_ht=scontent.fmnl4-7.fna&_nc_gid=XbR2l4jwsdm-41OxP6-REw&oh=00_AfHs__vDTZrXJNyAp_UsSx7czxtp5V6cO4S_6mnVCwB4eA&oe=6813868D';
+  
+        // Get current date (ensure it's a valid Date object)
+        const postDate = new Date();
+        if (!(postDate instanceof Date) || isNaN(postDate)) {
+          console.error("Invalid Date object.");
+          return;
+        }
+  
+        const newPost = {
+          user: {
+            id: userEmail,
+            name: `${firstName} ${lastName}`,
+            profileImage: userProfileImage,
+          },
+          text: postText,
+          images: selectedImages,
+          date: postDate, // Add date here
+          comments: [], // Initialize empty comments array
+        };
+  
+        // Call savePost to save the post and upload images if there are any
+        const postId = await savePost(newPost.user, postText, selectedImages);
+  
+        // After saving the post, you can update the local state or any other required steps
+        setNewsfeedPosts([{ ...newPost, id: postId }, ...newsfeedPosts]);
+        discardPost();
+      } else {
+        console.log("No such user found in Firestore");
+      }
+    } catch (error) {
+      console.error("Error getting user document:", error);
+    }
   };
 
   const renderPost = (post) => {
@@ -280,7 +329,7 @@ export default function Home() {
               <Text style={styles.commentsTitle}>Comments</Text>
               {/* Comment List */}
               <ScrollView>
-                {post.comments.map((comment) => (
+                {(post.comments || []).map((comment) => (
                   <View key={comment.id} style={styles.commentCard}>
                     {comment.user.profileImage ? (
                       <Image source={{ uri: comment.user.profileImage }} style={styles.profileImagePost} />
