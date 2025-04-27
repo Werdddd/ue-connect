@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform, ActivityIndicator, } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { auth } from '../Firebase';
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { loginUser } from '../Backend/login';
 import { Alert } from 'react-native';
 
 export default function Login() {
@@ -33,13 +32,15 @@ export default function Login() {
       return;
     }
   
-    try {
-      setLoading(true); // Start loading
-      await signInWithEmailAndPassword(auth, email, password);
-      setLoading(false);
+    setLoading(true);
+  
+    const { success, user, error } = await loginUser({ email, password });
+  
+    setLoading(false);
+  
+    if (success) {
       navigation.navigate('Home');
-    } catch (error) {
-      setLoading(false); // Stop loading on error
+    } else {
       console.error("Error logging in: ", error);
       Alert.alert(
         'Login Error',
@@ -48,6 +49,7 @@ export default function Login() {
       );
     }
   };
+  
   
 
   return (

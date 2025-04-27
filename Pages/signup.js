@@ -15,9 +15,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { auth, firestore } from '../Firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { signUpUser } from '../Backend/signup';
 import { Alert } from 'react-native';
 
 export default function SignUp() {
@@ -71,24 +69,19 @@ export default function SignUp() {
   
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-  
-      await setDoc(doc(firestore, "Users", studentNumber), {
-        email: email,
-        studentNumber: studentNumber,
-        firstName: firstName,
-        lastName: lastName,
-        timestamp: new Date(),
-      });
-  
-      navigation.navigate('Login');
-    } catch (error) {
-      console.error("Error writing document: ", error);
-      Alert.alert('SignUp Error', error.message);
-    } finally {
-      setLoading(false);
+    const result = await signUpUser({ firstName, lastName, studentNumber, email, password });
+
+    if (result.success) {
+        navigation.navigate('Login');
+    } else {
+        Alert.alert('SignUp Error', result.error);
     }
+    } catch (error) {
+    Alert.alert('SignUp Error', 'An unexpected error occurred.');
+    } finally {
+    setLoading(false);
+    }
+
   };
   
   
