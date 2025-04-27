@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 
-export default function OrganizationCard() {
+export default function OrganizationCard({ orgName, memberCount, description, logo }) {
     return (
         <View style={styles.card}>
             <View style={styles.headerRow}>
                 <Image
-                    source={require('../assets/cscLogo.png')}
+                    source={logo}
                     style={styles.orgcardlogo}
                 />
-                <Text style={styles.orgName}>Google Developer Student Club</Text>
+                <Text style={styles.orgName}>{orgName}</Text>
             </View>
-            <Text style={styles.memberCount}>230 members</Text>
+            <Text style={styles.memberCount}>{memberCount} members</Text>
             <Text style={styles.description}>
-                A student-led technology organization and a proud member of a global community
+                {description}
             </Text>
         </View>
     );
