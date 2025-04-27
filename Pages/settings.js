@@ -21,7 +21,7 @@ export default function Settings() {
         <TouchableOpacity style={styles.upperContent} onPress={handlePress}>
                 <Image
                   source={require("../assets/profile.png")}
-                  style={{ maxHeight: 40, maxWidth: 40 }}
+                  style={{ maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
                   resizeMode="contain"
                 />
                 <View style={styles.innerContent}>
@@ -38,7 +38,7 @@ export default function Settings() {
         <TouchableOpacity style={styles.upperContent} onPress={handlePress}>
             <Image
             source={require("../assets/activity.png")}
-            style={{maxHeight: 40, maxWidth: 40}}
+            style={{maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
             resizeMode="contain"
             />
             <View style={styles.innerContent}>
@@ -57,7 +57,7 @@ export default function Settings() {
         <TouchableOpacity style={styles.upperContent} onPress={handlePress}>
             <Image
             source={require("../assets/notif.png")}
-            style={{maxHeight: 40, maxWidth: 40}}
+            style={{maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
             resizeMode="contain"
             />
             <View style={styles.innerContent}>
@@ -76,7 +76,7 @@ export default function Settings() {
         <TouchableOpacity style={styles.upperContent} onPress={handlePress}>
             <Image
             source={require("../assets/review.png")}
-            style={{maxHeight: 40, maxWidth: 40}}
+            style={{maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
             resizeMode="contain"
             />
             <View style={styles.innerContent}>
@@ -95,7 +95,7 @@ export default function Settings() {
         <TouchableOpacity style={styles.upperContent} onPress={handlePress}>
             <Image
             source={require("../assets/help.png")}
-            style={{maxHeight: 40, maxWidth: 40}}
+            style={{maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
             resizeMode="contain"
             />
             <View style={styles.innerContent}>
@@ -114,7 +114,7 @@ export default function Settings() {
         <TouchableOpacity style={styles.upperContent} onPress={handlePress}>
             <Image
             source={require("../assets/info.png")}
-            style={{maxHeight: 40, maxWidth: 40}}
+            style={{maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
             resizeMode="contain"
             />
             <View style={styles.innerContent}>
@@ -137,7 +137,7 @@ export default function Settings() {
         <TouchableOpacity style={styles.bottomContent} onPress={handlePress}>
             <Image
             source={require("../assets/switch.png")}
-            style={{maxHeight: 40, maxWidth: 40}}
+            style={{maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
             resizeMode="contain"
             />
             <View style={styles.innerContent}>
@@ -156,12 +156,12 @@ export default function Settings() {
         <TouchableOpacity style={styles.bottomContent} onPress={handlePress}>
             <Image
             source={require("../assets/sign_out.png")}
-            style={{maxHeight: 40, maxWidth: 40}}
+            style={{maxHeight: 32, maxWidth: 32, marginLeft: 10 }}
             resizeMode="contain"
             />
             <View style={styles.innerContent}>
                 <Text style={styles.innerView}>
-                    Profile Settings
+                    Log Out
                 </Text>
                 <View style={styles.arrow}>
                     <Image
@@ -214,12 +214,15 @@ const styles = StyleSheet.create({
     },
     innerView: {
         fontSize: 13,
-        padding: 15,
+        paddingTop: 15,
+        paddingBottom: 15,
+        paddingLeft: 5,
         fontWeight: 'bold',
     },
     innerImage: {
-        maxHeight: 40,
-        maxWidth: 40,
+        maxHeight: 33,
+        maxWidth: 33,
+        marginRight: 5
     },
     arrow: {
         flex: 1,
