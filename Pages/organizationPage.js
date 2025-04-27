@@ -8,6 +8,35 @@ import OrganizationCard from '../components/organizationCard';
 
 export default function OrganizationPage() {
     const navigation = useNavigation();
+
+    const organizations = [
+        {
+            id: 1,
+            org: 'GDSC',
+            orgName: 'Google Developer Student Clubs',
+            memberCount: 230,
+            description: 'A student-led technology organization and a proud member of a global community',
+            logo: require('../assets/cscLogo.png'),
+        },
+        {
+            id: 2,
+            org: 'CSC',
+            orgName: 'Central Student Council',
+            memberCount: 120,
+            description: 'The highest student governing body promoting student welfare.',
+            logo: require('../assets/cscLogo.png'),
+        },
+        {
+            id: 3,
+            org: 'CFAD',
+            orgName: 'College of Fine Arts and Design',
+            memberCount: 95,
+            description: 'An organization for students passionate about arts and design.',
+            logo: require('../assets/cscLogo.png'),
+        },
+    ];
+
+
     const [selectedOrg, setSelectedOrg] = useState('All');
 
     const getOrganizationTitle = () => {
@@ -43,7 +72,17 @@ export default function OrganizationPage() {
                                 <View style={styles.underline} />
                             </View>
 
-                            <OrganizationCard />
+                            {organizations
+                                .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
+                                .map(org => (
+                                    <OrganizationCard
+                                        key={org.id}
+                                        orgName={org.orgName}
+                                        memberCount={org.memberCount}
+                                        description={org.description}
+                                        logo={org.logo}
+                                    />
+                                ))}
                         </ScrollView>
 
                         <BottomNavBar />
