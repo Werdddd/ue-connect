@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-    View, Text, TouchableWithoutFeedback, Keyboard,
+    View, Text, TouchableOpacity, Keyboard,
     SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, StyleSheet
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -55,34 +55,32 @@ export default function Event() {
         : events.filter(event => event.org === selectedOrg);
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <SafeAreaView style={styles.safeArea}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.container}
-                >
-                    <View style={styles.container}>
-                        <Header />
+        <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.container}
+            >
+                <View style={styles.container}>
+                    <Header />
 
-                        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                            <OrganizationBar onSelectOrganization={setSelectedOrg} />
+                    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                        <OrganizationBar onSelectOrganization={setSelectedOrg} />
 
-                            <View style={styles.titleContainer}>
-                                <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
-                                <View style={styles.underline} />
-                            </View>
+                        <View style={styles.titleContainer}>
+                            <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
+                            <View style={styles.underline} />
+                        </View>
 
-                            {/* Render Event Cards */}
-                            {filteredEvents.map((event) => (
-                                <EventCard key={event.id} event={event} />
-                            ))}
-                        </ScrollView>
+                        {/* Render Event Cards */}
+                        {filteredEvents.map((event) => (
+                            <EventCard key={event.id} event={event} />
+                        ))}
+                    </ScrollView>
 
-                        <BottomNavBar />
-                    </View>
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        </TouchableWithoutFeedback>
+                    <BottomNavBar />
+                </View>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
