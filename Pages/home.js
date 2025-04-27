@@ -211,10 +211,9 @@ export default function Home() {
           comments: [], // Initialize empty comments array
         };
   
-        // Call savePost to save the post and upload images if there are any
         const postId = await savePost(newPost.user, postText, selectedImages);
-  
-        // After saving the post, you can update the local state or any other required steps
+        //const postId = 2202;
+        console.log(newPost);
         setNewsfeedPosts([{ ...newPost, id: postId }, ...newsfeedPosts]);
         discardPost();
       } else {
