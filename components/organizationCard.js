@@ -1,7 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { firestore } from '../Firebase';
+import { DEC8_BIN } from 'mysql/lib/protocol/constants/charsets';
 
 export default function OrganizationCard({ orgName, memberCount, description, logo }) {
+
+    const [logo, setLogo] = useState(null);
+    const [memberCount, setMemberCount] = useState(0);
+    const [description, setDescription] = useState('');
+    const [orgName, setOrgName] = useState('');
+
+    useEffect (() => {
+
+        const fetchOrgData = async () =>{
+            try{
+                const docRef = doc(firestore, 'organizations', 'orgId') ;
+                const docSnap = await getDoc(docRef);
+
+                //get values
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setOrgName(data.name);
+                    setMemberCount(data.members.length);
+                    setDescription(data.description);
+                    setLogo({ uri: data.logoUrl});
+                }else{
+                    console.log('No Registry Found')
+                }
+                
+            }catch(error){
+                console.error('Error fetching organzation data:', error)
+            }
+        }
+
+        fetchOrgData();
+    }, []);
+
     return (
         <View style={styles.card}>
             <View style={styles.headerRow}>
