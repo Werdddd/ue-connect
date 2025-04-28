@@ -44,7 +44,7 @@ export default function OrganizationCard({ orgName, memberCount, description, lo
                 />
                 <Text style={styles.orgName}>{orgName}</Text>
             </View>
-            <Text style={styles.memberCount}>{memberCount} members</Text>
+            <Text style={styles.memberCount}>{memberCount} membersss</Text>
             <Text style={styles.description}>
                 {description}
             </Text>
