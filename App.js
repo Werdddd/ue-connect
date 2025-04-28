@@ -14,6 +14,7 @@ import OrganizationPage from './Pages/organizationPage.js';
 import Events from './Pages/eventPage.js';
 import Settings from './Pages/settings.js';
 import OrgProfilePage from './Pages/orgProfilePage.js';
+import UserProfilePage from './Pages/userProfilePage.js';
 
 
 const Stack = createStackNavigator();
@@ -23,15 +24,16 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="OrganizationPage" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="UserProfilePage" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Landing" component={Landing} />
         <Stack.Screen name="Tutorial" component={Tutorial} />
         <Stack.Screen name="Start" component={Start} />
         <Stack.Screen name="SignUp" component={SignUp} />
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Home" component={Home} />
-        <Stack.Screen name="Template" component={Template} />
         <Stack.Screen name="OrganizationPage" component={OrganizationPage} />
+        <Stack.Screen name="Template" component={Template} />
+        <Stack.Screen name="UserProfilePage" component={UserProfilePage} />
         <Stack.Screen name="OrgProfilePage" component={OrgProfilePage} />
         <Stack.Screen name="Events" component={Events} />
         <Stack.Screen name="Settings" component={Settings} />
