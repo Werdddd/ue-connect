@@ -17,10 +17,10 @@ export default function Login() {
     const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
   
     // Input validation
-    if (!studentNumber.match(studentNumberRegex)) {
-      Alert.alert('Invalid Input', 'Student number must be exactly 11 digits.');
-      return;
-    }
+    // if (!studentNumber.match(studentNumberRegex)) {
+    //   Alert.alert('Invalid Input', 'Student number must be exactly 11 digits.');
+    //   return;
+    // }
   
     if (!email.match(ueEmailRegex)) {
       Alert.alert('Invalid Input', 'Use a valid UE email address.');

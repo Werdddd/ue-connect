@@ -38,9 +38,7 @@ export default function Home() {
   };
 
   // Function to filter posts based on search text
-  const filteredPosts = newsfeedPosts.filter(post => 
-    post.text.toLowerCase().includes(searchText.toLowerCase())  // Adjust this filter based on your post structure
-  );
+  const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -169,7 +167,22 @@ export default function Home() {
     }));
   };
   
-
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  
+    // Check if the query is empty, and display all posts if true
+    if (query === '') {
+      setFilteredPosts(posts); // Show all posts if search is cleared
+    } else {
+      // Filter posts based on title and content
+      const filtered = posts.filter(post =>
+        post.title.toLowerCase().includes(query.toLowerCase()) ||
+        post.content.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredPosts(filtered);
+    }
+  };
+  
   const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
   
@@ -422,7 +435,11 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-      <Header scrollY={scrollY} />
+      <Header
+        posts={filteredPosts} // Send filtered posts as props
+        setFilteredPosts={setFilteredPosts} // Send setter function as props
+        scrollY={scrollY}
+      />
 
         <ScrollView
           onScroll={(event) => {

@@ -9,13 +9,19 @@ const Header = ({ scrollY, posts, setFilteredPosts }) => {
   // Handle the search logic
   const handleSearch = (query) => {
     setSearchQuery(query);
-    const filtered = posts.filter(post =>
-      post.title.toLowerCase().includes(query.toLowerCase()) ||
-      post.content.toLowerCase().includes(query.toLowerCase())
-    );
-    setFilteredPosts(filtered);
+  
+    // Ensure posts is an array before filtering
+    if (Array.isArray(posts)) {
+      const filtered = posts.filter(post =>
+        post.title.toLowerCase().includes(query.toLowerCase()) ||
+        post.content.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredPosts(filtered);
+    } else {
+      console.error("Posts data is not an array or is undefined");
+    }
   };
-
+  
   return (
     <View style={[styles.header, scrollY > 0 && styles.headerShadow]}>
       <View style={styles.leftSection}>
