@@ -1,59 +1,52 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import OrganizationCard from '../components/organizationCard';
+import { addOrganization } from '../Backend/organizationHandler'; // Only this now
 
 export default function OrganizationPage() {
     const navigation = useNavigation();
     const [scrollY, setScrollY] = useState(0);
-    const organizations = [
-        {
-            id: 1,
-            org: 'GDSC',
-            orgName: 'Google Developer Student Clubs',
-            memberCount: 230,
-            description: 'A student-led technology organization and a proud member of a global community',
-            logo: require('../assets/cscLogo.png'),
-        },
-        {
-            id: 2,
-            org: 'CSC',
-            orgName: 'Central Student Council',
-            memberCount: 120,
-            description: 'The highest student governing body promoting student welfare.',
-            logo: require('../assets/cscLogo.png'),
-        },
-        {
-            id: 3,
-            org: 'CFAD',
-            orgName: 'College of Fine Arts and Design',
-            memberCount: 95,
-            description: 'An organization for students passionate about arts and design.',
-            logo: require('../assets/cscLogo.png'),
-        },
-        {
-            id: 4,
-            org: 'CFAD',
-            orgName: 'College of Fine Arts and Design',
-            memberCount: 95,
-            description: 'An organization for students passionate about arts and design.',
-            logo: require('../assets/cscLogo.png'),
-        },
-        {
-            id: 5,
-            org: 'CFAD',
-            orgName: 'College of Fine Arts and Design',
-            memberCount: 95,
-            description: 'An organization for students passionate about arts and design.',
-            logo: require('../assets/cscLogo.png'),
-        },
-    ];
-
+    const [isModalVisible, setModalVisible] = useState(false);
+    const [newOrg, setNewOrg] = useState({
+        org: '',
+        orgName: '',
+        memberCount: '',
+        description: '',
+    });
+    const [organizations, setOrganizations] = useState([]);
 
     const [selectedOrg, setSelectedOrg] = useState('All');
+
+    const handleAddOrganization = async () => {
+        try {
+            const newOrgData = {
+                org: newOrg.org,
+                orgName: newOrg.orgName,
+                memberCount: parseInt(newOrg.memberCount),
+                description: newOrg.description,
+                logo: require('../assets/cscLogo.png'),
+            };
+
+            // Call the handler to add to Firestore
+            await addOrganization(newOrgData);
+
+            // Locally update state so UI reflects new organization
+            setOrganizations(prevOrgs => [
+                ...prevOrgs,
+                { id: prevOrgs.length + 1, ...newOrgData }
+            ]);
+
+            setNewOrg({ org: '', orgName: '', memberCount: '', description: '' });
+            setModalVisible(false);
+
+        } catch (error) {
+            console.error('Error adding organization:', error);
+        }
+    };
 
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
@@ -64,55 +57,104 @@ export default function OrganizationPage() {
             case 'GDSC':
                 return 'Google Developer Student Clubs';
             case 'CFAD':
-                return 'College of Fine Arts and Science';
+                return 'College of Fine Arts and Design';
             default:
                 return '';
         }
     };
 
     return (
-       
-            <SafeAreaView style={styles.safeArea}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.container}
+        <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.container}
+            >
+                <Header scrollY={scrollY} />
+                <ScrollView
+                    onScroll={(event) => {
+                        setScrollY(event.nativeEvent.contentOffset.y);
+                    }}
+                    scrollEventThrottle={16}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
                 >
+                    <OrganizationBar onSelectOrganization={setSelectedOrg} />
+                    <View style={styles.titleContainer}>
+                        <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
+                        <View style={styles.underline} />
+                    </View>
 
-                    <Header scrollY={scrollY} />
+                    {organizations
+                        .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
+                        .map(org => (
+                            <OrganizationCard
+                                key={org.id}
+                                orgName={org.orgName}
+                                memberCount={org.memberCount}
+                                description={org.description}
+                                logo={org.logo}
+                            />
+                        ))}
 
-                    <ScrollView
-                        onScroll={(event) => {
-                            setScrollY(event.nativeEvent.contentOffset.y);
-                        }}
-                        scrollEventThrottle={16}
-                        contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={false}>
+                    <TouchableOpacity
+                        style={styles.plusButton}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <Text style={styles.plusText}>＋</Text>
+                    </TouchableOpacity>
 
-                        <OrganizationBar onSelectOrganization={setSelectedOrg} />
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={isModalVisible}
+                        onRequestClose={() => setModalVisible(false)}
+                    >
+                        <View style={styles.modalBackground}>
+                            <View style={styles.modalContainer}>
+                                <Text style={styles.modalTitle}>Add New Organization</Text>
 
-                        <View style={styles.titleContainer}>
-                            <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
-                            <View style={styles.underline} />
-                        </View>
-
-                        {organizations
-                            .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
-                            .map(org => (
-                                <OrganizationCard
-                                    key={org.id}
-                                    orgName={org.orgName}
-                                    memberCount={org.memberCount}
-                                    description={org.description}
-                                    logo={org.logo}
+                                <TextInput
+                                    placeholder="Org Short Name (e.g. CSC)"
+                                    style={styles.input}
+                                    value={newOrg.org}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, org: text })}
                                 />
-                            ))}
-                    </ScrollView>
+                                <TextInput
+                                    placeholder="Full Organization Name"
+                                    style={styles.input}
+                                    value={newOrg.orgName}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, orgName: text })}
+                                />
+                                <TextInput
+                                    placeholder="Member Count"
+                                    style={styles.input}
+                                    keyboardType="numeric"
+                                    value={newOrg.memberCount}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, memberCount: text })}
+                                />
+                                <TextInput
+                                    placeholder="Description"
+                                    style={[styles.input, { height: 80 }]}
+                                    multiline
+                                    value={newOrg.description}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, description: text })}
+                                />
 
-                    <BottomNavBar />
+                                <TouchableOpacity style={styles.addButton} onPress={handleAddOrganization}>
+                                    <Text style={styles.addButtonText}>Add Organization</Text>
+                                </TouchableOpacity>
 
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        
+                                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
+                </ScrollView>
+
+                <BottomNavBar />
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
@@ -145,5 +187,63 @@ const styles = StyleSheet.create({
         backgroundColor: '#E50914',
         width: '100%',
         marginTop: 2,
+    },
+    plusButton: {
+        alignSelf: 'center',
+        marginVertical: 20,
+        backgroundColor: '#E50914',
+        borderRadius: 50,
+        width: 50,
+        height: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    plusText: {
+        color: 'white',
+        fontSize: 30,
+    },
+    modalBackground: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        width: '85%',
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 20,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+        padding: 10,
+        marginVertical: 5,
+    },
+    addButton: {
+        backgroundColor: '#E50914',
+        padding: 12,
+        borderRadius: 5,
+        marginTop: 10,
+    },
+    addButtonText: {
+        color: 'white',
+        textAlign: 'center',
+        fontWeight: 'bold',
+    },
+    cancelButton: {
+        padding: 10,
+        marginTop: 10,
+    },
+    cancelButtonText: {
+        textAlign: 'center',
+        color: '#E50914',
     },
 });
