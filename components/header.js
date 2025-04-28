@@ -2,12 +2,12 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons'; // Make sure you install expo/vector-icons
 
-const Header = () => {
+const Header = ({ scrollY }) => {
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, scrollY > 0 && styles.headerShadow]}>
       <View style={styles.leftSection}>
         <Image
-          source={require('../assets/logo.png')} // Replace with your logo path
+          source={require('../assets/logo.png')}
           style={styles.logo}
         />
         <Text style={styles.title}>UE Connect</Text>
@@ -36,6 +36,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: '#fff',
     paddingTop: 10,
+    paddingBottom: 10,
+    zIndex: 10,
+  },
+  headerShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5, // for Android
   },
   leftSection: {
     flexDirection: 'row',

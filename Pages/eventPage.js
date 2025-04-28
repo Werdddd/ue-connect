@@ -12,7 +12,7 @@ import EventCard from '../components/eventCard'; // <-- import EventCard
 export default function Event() {
     const navigation = useNavigation();
     const [selectedOrg, setSelectedOrg] = useState('All');
-
+    const [scrollY, setScrollY] = useState(0);
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
             case 'All':
@@ -60,10 +60,16 @@ export default function Event() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.container}
             >
-                <View style={styles.container}>
-                    <Header />
+               
+                <Header scrollY={scrollY} />
 
-                    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <ScrollView
+                        onScroll={(event) => {
+                        setScrollY(event.nativeEvent.contentOffset.y);
+                        }}
+                        scrollEventThrottle={16}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}>
                         <OrganizationBar onSelectOrganization={setSelectedOrg} />
 
                         <View style={styles.titleContainer}>
@@ -78,7 +84,7 @@ export default function Event() {
                     </ScrollView>
 
                     <BottomNavBar />
-                </View>
+              
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -95,13 +101,13 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: 20,
+        
         paddingBottom: 80,
     },
     titleContainer: {
-        marginTop: 10,
+        marginTop: 15,
         marginHorizontal: 20,
-        marginBottom: 10,
+        marginBottom: 15,
     },
     titleText: {
         fontSize: 16,
@@ -113,7 +119,7 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         height: 1,
         backgroundColor: '#E50914',
-        width: '80%',
+        width: '100%',
         marginTop: 2,
     },
 });

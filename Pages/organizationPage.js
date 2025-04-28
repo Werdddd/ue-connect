@@ -8,7 +8,7 @@ import OrganizationCard from '../components/organizationCard';
 
 export default function OrganizationPage() {
     const navigation = useNavigation();
-
+    const [scrollY, setScrollY] = useState(0);
     const organizations = [
         {
             id: 1,
@@ -61,10 +61,17 @@ export default function OrganizationPage() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.container}
                 >
-                    <View style={styles.container}>
-                        <Header />
+                  
+                        <Header scrollY={scrollY} />
 
-                        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                        <ScrollView
+                        onScroll={(event) => {
+                        setScrollY(event.nativeEvent.contentOffset.y);
+                        }}
+                        scrollEventThrottle={16}
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}>
+
                             <OrganizationBar onSelectOrganization={setSelectedOrg} />
 
                             <View style={styles.titleContainer}>
@@ -86,7 +93,7 @@ export default function OrganizationPage() {
                         </ScrollView>
 
                         <BottomNavBar />
-                    </View>
+                    
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </TouchableWithoutFeedback>
@@ -106,9 +113,9 @@ const styles = StyleSheet.create({
         flexGrow: 1,
     },
     titleContainer: {
-        marginTop: 10,
+        marginTop: 15,
         marginHorizontal: 20,
-        marginBottom: 10,
+        marginBottom: 15,
     },
     titleText: {
         fontSize: 16,
@@ -120,7 +127,7 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         height: 1,
         backgroundColor: '#E50914',
-        width: '80%',
+        width: '100%',
         marginTop: 2,
     },
 });

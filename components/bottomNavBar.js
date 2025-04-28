@@ -1,27 +1,63 @@
 import React, { useState } from 'react'; 
 import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { Feather, Ionicons } from '@expo/vector-icons'; // icons
+import { Feather, Ionicons } from '@expo/vector-icons'; 
 import { FontAwesome } from '@expo/vector-icons'; 
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const BottomNavBar = () => {
-    const [userProfileImage, setUserProfileImage] = useState(null);
+  const [userProfileImage, setUserProfileImage] = useState(null);
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const isActive = (screenName) => route.name === screenName;
+
   return (
     <View style={styles.navbar}>
-      <TouchableOpacity>
-        <Ionicons name="home" size={28} color="#E50914" />
+      {/* Home */}
+      <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+        <Ionicons
+          name={isActive('Home') ? 'home' : 'home-outline'}
+          size={28}
+          color={isActive('Home') ? '#E50914' : '#555'}
+        />
       </TouchableOpacity>
-      <TouchableOpacity>
-        <Feather name="users" size={28} color="black" />
+
+      {/* Organization */}
+      <TouchableOpacity onPress={() => navigation.navigate('OrganizationPage')}>
+        <Ionicons
+          name={isActive('OrganizationPage') ? 'people' : 'people-outline'}
+          size={28}
+          color={isActive('OrganizationPage') ? '#E50914' : '#555'}
+        />
       </TouchableOpacity>
-      <TouchableOpacity>
-        <Ionicons name="calendar-outline" size={28} color="black" />
+
+      {/* Event */}
+      <TouchableOpacity onPress={() => navigation.navigate('Events')}>
+        <Ionicons
+          name={isActive('Events') ? 'calendar' : 'calendar-outline'}
+          size={28}
+          color={isActive('Events') ? '#E50914' : '#555'}
+        />
       </TouchableOpacity>
-      <TouchableOpacity>
-      {userProfileImage ? (
-              <Image source={{ uri: userProfileImage }} style={styles.profileImage} />
-            ) : (
-              <FontAwesome name="user-circle-o" size={40} color="#999" style={styles.profileIcon} />
-            )}
+
+      {/* Settings / Profile */}
+      <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+        {userProfileImage ? (
+          <Image 
+            source={{ uri: userProfileImage }} 
+            style={[
+              styles.profileImage, 
+              isActive('Settings') && { borderColor: '#E50914', borderWidth: 2 }
+            ]}
+          />
+        ) : (
+          <FontAwesome 
+            name={isActive('Settings') ? 'user-circle' : 'user-circle-o'}
+            size={40}
+            color={isActive('Settings') ? '#E50914' : '#555'}
+            style={styles.profileIcon}
+          />
+        )}
       </TouchableOpacity>
     </View>
   );

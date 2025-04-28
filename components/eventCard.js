@@ -41,12 +41,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 10,
         marginBottom: 20,
-        overflow: 'hidden',
+        // overflow: 'hidden',
         elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        marginHorizontal: 20,
+        borderWidth: 1,
+        borderColor: '#ddd',
+
+       
     },
     banner: {
         width: '100%',

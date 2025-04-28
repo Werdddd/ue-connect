@@ -105,7 +105,8 @@ const styles = StyleSheet.create({
         bottom: -1,
         left: 0,
         right: 0,
-        height: 8,
+        height: 5,
         zIndex: 1,
+        opacity: 0.5,
     },
 });
