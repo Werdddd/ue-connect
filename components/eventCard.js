@@ -43,7 +43,7 @@ export default function EventCard({ event }) {
                             onPress={handleJoinToggle}
                         >
                             <Text style={styles.joinButtonText}>
-                                {joined ? 'Joined' : 'Join Now'}
+                                {joined ? 'Applied' : 'Join Now'}
                             </Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleFavoriteToggle}>
@@ -87,23 +87,23 @@ export default function EventCard({ event }) {
                             </Text>
                             <Text style={styles.modalLocation}>Location: {event.location}</Text>
                             <View style={styles.joinHeartContainer}>
-                            <TouchableOpacity
-                                style={[styles.joinButton, joined && styles.joinedButton]}
-                                onPress={handleJoinToggle}
-                            >
-                                <Text style={styles.joinButtonText}>
-                                    {joined ? 'Joined' : 'Join Now'}
-                                </Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.joinButton, joined && styles.joinedButton]}
+                                    onPress={handleJoinToggle}
+                                >
+                                    <Text style={styles.joinButtonText}>
+                                        {joined ? 'Applied' : 'Join Now'}
+                                    </Text>
+                                </TouchableOpacity>
 
-                            {/* Favorite Button */}
-                            <TouchableOpacity onPress={handleFavoriteToggle} style={styles.favoriteButton}>
-                                <Ionicons
-                                    name={favorited ? 'heart' : 'heart-outline'}
-                                    size={30}
-                                    color={favorited ? '#E50914' : '#E50914'}
-                                />
-                            </TouchableOpacity>
+                                {/* Favorite Button */}
+                                <TouchableOpacity onPress={handleFavoriteToggle} style={styles.favoriteButton}>
+                                    <Ionicons
+                                        name={favorited ? 'heart' : 'heart-outline'}
+                                        size={30}
+                                        color={favorited ? '#E50914' : '#E50914'}
+                                    />
+                                </TouchableOpacity>
                             </View>
                         </ScrollView>
                     </View>
@@ -173,6 +173,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderRadius: 20,
         marginTop: 10,
+    },
+    joinedButton: {
+        backgroundColor: 'orange', // Change button color to yellow when joined
     },
     firstfavoriteButton: {
         marginTop: 15,
