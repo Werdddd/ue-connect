@@ -12,6 +12,7 @@ export async function signUpUser({ firstName, lastName, studentNumber, email, pa
       studentNumber: studentNumber,
       firstName: firstName,
       lastName: lastName,
+      role: 'user',
       timestamp: new Date(),
     });
 
