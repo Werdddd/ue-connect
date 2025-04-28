@@ -38,8 +38,9 @@ const Header = ({ scrollY, posts, setFilteredPosts }) => {
         <TouchableOpacity>
           <Ionicons name="notifications-outline" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
+      
         <TouchableOpacity>
-          <Feather name="menu" size={24} color="black" style={styles.icon} />
+        <Ionicons name="chatbubble-ellipses-outline" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
       </View>
 
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: '#fff',
     paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: 5,
     zIndex: 10,
   },
   headerShadow: {
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     right: 16,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    
+    backgroundColor: '#fff',
     borderRadius: 5,
     borderWidth: 1,
     borderColor: '#ccc',
