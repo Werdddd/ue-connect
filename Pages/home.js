@@ -212,7 +212,7 @@ export default function Home() {
         const { firstName, lastName, profileImage } = userData;
   
         // If no profile image is found, use a default image
-        const userProfileImage = profileImage || 'https://scontent.fmnl4-7.fna.fbcdn.net/v/t39.30808-1/435061244_10233008332218681_6832912123986907235_n.jpg?stp=c410.0.566.566a_dst-jpg_s100x100_tt6&_nc_cat=104&ccb=1-7&_nc_sid=e99d92&_nc_eui2=AeEO33Aa3PWmE85KMa1vbnw3-ooGmG6Bh876igaYboGHzmBkgU7tVg5wIb8Gjs4ArljzG4IUfPHrDZsJJ6P3Wt08&_nc_ohc=G8sJh2rC8CcQ7kNvwFK_yas&_nc_oc=AdlTlvbjMjZkL2zSYIoVkwQl2gHZHsBssnHGsK1ojyC5kQrde8xJ5WM4Q4tghieDZuFKNMU4hMGS0kLGrXdAJu3o&_nc_zt=24&_nc_ht=scontent.fmnl4-7.fna&_nc_gid=XbR2l4jwsdm-41OxP6-REw&oh=00_AfHs__vDTZrXJNyAp_UsSx7czxtp5V6cO4S_6mnVCwB4eA&oe=6813868D';
+        const userProfileImage = profileImage || 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png';
   
         // Get current date (ensure it's a valid Date object)
         const postDate = new Date();

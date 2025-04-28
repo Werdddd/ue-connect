@@ -1,28 +1,48 @@
-import { firestore, storage } from '../Firebase'; // Correct imports from Firebase
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'; // Correct Firebase Storage imports
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Correct Firestore imports
+import { firestore } from '../Firebase'; // Firestore import
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 
-
-// Upload image to Firebase Storage
-const uploadImage = async (uri, path) => {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const storageRef = ref(storage, path); // Create a reference to Firebase Storage
-  await uploadBytes(storageRef, blob); // Upload the blob
-  return getDownloadURL(storageRef); // Get the download URL of the uploaded image
+// Compress and resize image
+const compressImage = async (uri) => {
+  const compressed = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: 800 } }], // Resize width to 800px
+    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG } // Compress to 50% quality
+  );
+  return compressed.uri;
 };
 
-export const savePost = async (user, postText, images) => {
-  const postId = Date.now().toString(); // Generate a unique post ID
-  let imageUrls = [];
+// Convert image to base64
+const convertToBase64 = async (uri) => {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result.split(',')[1]; // Remove "data:image/jpeg;base64," part
+      resolve(base64String);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
 
-  // If there are images, upload them to Firebase Storage
+// Save post with base64 images
+export const savePost = async (user, postText, images) => {
+  const postId = Date.now().toString(); // Unique post ID
+  let imageBase64List = [];
+
   if (images.length > 0) {
-    for (const [index, image] of images.entries()) {
-      const path = `posts/${postId}/image-${index}`;
-      const imageUrl = await uploadImage(image, path);
-      imageUrls.push(imageUrl);
+    for (const image of images) {
+      try {
+        const compressedUri = await compressImage(image); // Compress first
+        const base64 = await convertToBase64(compressedUri); // Then convert to base64
+        imageBase64List.push(base64);
+      } catch (error) {
+        console.error('Error processing image:', error);
+      }
     }
   }
 
@@ -32,11 +52,17 @@ export const savePost = async (user, postText, images) => {
     userName: user.name,
     userProfileImage: user.profileImage,
     text: postText,
-    images: imageUrls,
-    timestamp: serverTimestamp(), // Correctly use serverTimestamp() from Firestore
+    images: imageBase64List,
+    timestamp: serverTimestamp(),
   };
 
   // Save the post to Firestore
-  await setDoc(doc(firestore, 'newsfeed', postId), post); // Save the post in the 'newsfeed' collection using the generated postId
-  return postId; // Return the generated post ID
+  try {
+    await setDoc(doc(firestore, 'newsfeed', postId), post);
+    console.log('Post saved successfully!');
+    return postId;
+  } catch (error) {
+    console.error('Error saving post to Firestore:', error);
+    throw error;
+  }
 };
