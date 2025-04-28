@@ -34,6 +34,22 @@ export default function OrganizationPage() {
             description: 'An organization for students passionate about arts and design.',
             logo: require('../assets/cscLogo.png'),
         },
+        {
+            id: 4,
+            org: 'CFAD',
+            orgName: 'College of Fine Arts and Design',
+            memberCount: 95,
+            description: 'An organization for students passionate about arts and design.',
+            logo: require('../assets/cscLogo.png'),
+        },
+        {
+            id: 5,
+            org: 'CFAD',
+            orgName: 'College of Fine Arts and Design',
+            memberCount: 95,
+            description: 'An organization for students passionate about arts and design.',
+            logo: require('../assets/cscLogo.png'),
+        },
     ];
 
 
@@ -55,48 +71,48 @@ export default function OrganizationPage() {
     };
 
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+       
             <SafeAreaView style={styles.safeArea}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.container}
                 >
-                  
-                        <Header scrollY={scrollY} />
 
-                        <ScrollView
+                    <Header scrollY={scrollY} />
+
+                    <ScrollView
                         onScroll={(event) => {
-                        setScrollY(event.nativeEvent.contentOffset.y);
+                            setScrollY(event.nativeEvent.contentOffset.y);
                         }}
                         scrollEventThrottle={16}
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}>
 
-                            <OrganizationBar onSelectOrganization={setSelectedOrg} />
+                        <OrganizationBar onSelectOrganization={setSelectedOrg} />
 
-                            <View style={styles.titleContainer}>
-                                <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
-                                <View style={styles.underline} />
-                            </View>
+                        <View style={styles.titleContainer}>
+                            <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
+                            <View style={styles.underline} />
+                        </View>
 
-                            {organizations
-                                .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
-                                .map(org => (
-                                    <OrganizationCard
-                                        key={org.id}
-                                        orgName={org.orgName}
-                                        memberCount={org.memberCount}
-                                        description={org.description}
-                                        logo={org.logo}
-                                    />
-                                ))}
-                        </ScrollView>
+                        {organizations
+                            .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
+                            .map(org => (
+                                <OrganizationCard
+                                    key={org.id}
+                                    orgName={org.orgName}
+                                    memberCount={org.memberCount}
+                                    description={org.description}
+                                    logo={org.logo}
+                                />
+                            ))}
+                    </ScrollView>
 
-                        <BottomNavBar />
-                    
+                    <BottomNavBar />
+
                 </KeyboardAvoidingView>
             </SafeAreaView>
-        </TouchableWithoutFeedback>
+        
     );
 }
 
