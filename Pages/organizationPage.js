@@ -95,7 +95,12 @@ export default function OrganizationPage() {
                         <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
                         <View style={styles.underline} />
                     </View>
-
+                    <TouchableOpacity
+                        style={styles.plusButton}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <Text style={styles.plusText}>＋</Text>
+                    </TouchableOpacity>
                     {organizations
                         .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
                         .map(org => (
@@ -108,12 +113,7 @@ export default function OrganizationPage() {
                             />
                         ))}
 
-                    <TouchableOpacity
-                        style={styles.plusButton}
-                        onPress={() => setModalVisible(true)}
-                    >
-                        <Text style={styles.plusText}>＋</Text>
-                    </TouchableOpacity>
+                    
 
                     <Modal
                         animationType="slide"
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     },
     plusButton: {
         alignSelf: 'center',
-        marginVertical: 20,
+      
         backgroundColor: '#E50914',
         borderRadius: 50,
         width: 50,

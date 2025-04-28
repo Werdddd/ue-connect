@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     },
     floatingButton: {
         alignSelf: 'center',
-        marginVertical: 20,
+        marginBottom: 10,
         backgroundColor: '#E50914',
         borderRadius: 50,
         width: 50,
