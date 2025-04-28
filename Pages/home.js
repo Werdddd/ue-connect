@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView,
-  Platform, TouchableWithoutFeedback 
+  Platform, TouchableWithoutFeedback, ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, FontAwesome, MaterialIcons, Entypo } from '@expo/vector-icons';
@@ -23,7 +23,7 @@ export default function Home() {
   const [postText, setPostText] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [searchQuery, setSearchQuery] = useState(''); // New state for search query
- 
+ const [loading, setLoading] = useState(false);
   const [newsfeedPosts, setNewsfeedPosts] = useState([]);
   const userComment = 'This is a sample comment.'; 
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -64,6 +64,7 @@ export default function Home() {
     setIsModalVisible(false);
     setIsDiscardConfirmVisible(false);
     translateY.value = 0;
+    setLoading(false);
   };
 
   const keepEditing = () => {
@@ -193,7 +194,7 @@ export default function Home() {
       console.log("No user is logged in");
       return;
     }
-  
+    
     // Use the user's email as the document ID
     const userEmail = user.email;
   
@@ -232,12 +233,15 @@ export default function Home() {
           date: postDate, // Add date here
           comments: [], // Initialize empty comments array
         };
-  
+        setLoading(true);
         const postId = await savePost(newPost.user, postText, selectedImages);
         //const postId = 2202;
         console.log(newPost);
         setNewsfeedPosts([{ ...newPost, id: postId }, ...newsfeedPosts]);
-        discardPost();
+        discardPost(
+          
+        );
+        
       } else {
         console.log("No such user found in Firestore");
       }
@@ -434,6 +438,14 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {loading && (
+                      <View style={styles.loadingContainer}>
+                        <View style={styles.loadingBox}>
+                          <ActivityIndicator size="large" color="#FE070C" />
+                          {/* <Text style={{ marginTop: 10 }}>Logging your account...</Text> */}
+                        </View>
+                      </View>
+                    )}
       <View style={styles.container}>
       <Header
         posts={filteredPosts} // Send filtered posts as props
@@ -1021,5 +1033,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingBox: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
 });
