@@ -50,7 +50,7 @@ export const savePost = async (user, postText, images) => {
   const post = {
     userId: user.id,
     userName: user.name,
-    userProfileImage: user.profileImage,
+    profileImage: user.profileImage,
     text: postText,
     images: imageBase64List,
     timestamp: serverTimestamp(),

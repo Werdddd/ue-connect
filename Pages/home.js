@@ -12,7 +12,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
-import { getDoc, doc } from "firebase/firestore";
+import { getDoc, doc, collection, getDocs} from "firebase/firestore";
 import { auth, firestore } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
 
@@ -39,6 +39,61 @@ export default function Home() {
 
   // Function to filter posts based on search text
   const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
+
+  useEffect(() => {
+    const fetchNewsfeed = async () => {
+      try {
+        const snapshot = await getDocs(collection(firestore, 'newsfeed'));
+
+        const fetched = snapshot.docs.map(doc => {
+          const d = doc.data();
+
+          // — date handling —
+          const rawDate = d.date || d.timestamp;
+          const dateObj = rawDate?.toDate
+            ? rawDate.toDate()
+            : new Date(rawDate || Date.now());
+
+          // — normalize post images (same as before) —
+          const images = (d.images || []).map(img =>
+            img.startsWith('http')
+              ? img
+              : `data:image/jpeg;base64,${img}`
+          );
+
+          // — normalize profile image just like images —
+          const rawProfileImage = d.profileImage || '';
+          const profileImage = rawProfileImage.startsWith('http')
+            ? rawProfileImage
+            : rawProfileImage.length > 0
+              ? `data:image/jpeg;base64,${rawProfileImage}`
+              : ''; 
+
+          //console.log(rawProfileImage, " + ");
+
+          return {
+            id:        doc.id,
+            text:      d.text || '',
+            date:      dateObj,
+            images,
+            user: {
+              name:         d.userName || '',
+              profileImage,             // now guaranteed to be either a full URL or valid data-uri
+            },
+          };
+        });
+
+        setNewsfeedPosts(fetched.reverse());
+      } catch (e) {
+        console.error('Error fetching newsfeed:', e);
+      }
+    };
+
+    fetchNewsfeed();
+  }, []);
+
+
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -55,6 +110,7 @@ export default function Home() {
       setSelectedImages([...selectedImages, ...uris]);
     }
   };
+  
 
   const [isDiscardConfirmVisible, setIsDiscardConfirmVisible] = useState(false);
 
