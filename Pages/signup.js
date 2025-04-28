@@ -31,7 +31,7 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const nameRegex = /^[A-Za-z]+$/;
+  const nameRegex = /^[A-Za-z\s]+$/;
   const studentNumberRegex = /^[0-9]{11}$/;
   const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
   

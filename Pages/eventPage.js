@@ -36,6 +36,9 @@ export default function Event() {
             seal: require('../assets/cscLogo.png'),
             title: 'ENtramurals 2025',
             date: 'February 14-15, 2025',
+            time: '8:00 AM - 5:00 PM',
+            location: 'UE Caloocan Campus',
+            participants: '170 Students',
             description: 'The annual Intramurals of the College of Engineering with both Physical Sports and E-Sports.',
         },
         {

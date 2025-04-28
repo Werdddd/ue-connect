@@ -73,13 +73,13 @@ export default function Login() {
             <Image source={require('../assets/logo.png')} style={styles.logo} />
             <Text style={styles.title}>Login to your Account</Text>
 
-            <TextInput
+            {/* <TextInput
               style={styles.input}
               placeholder="Student Number"
               value={studentNumber}
               onChangeText={setStudentNumber}
               keyboardType="numeric"
-            />
+            /> */}
 
             <TextInput
               style={styles.input}

@@ -1,0 +1,222 @@
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import Header from '../components/header';
+import BottomNavBar from '../components/bottomNavBar';
+import { Ionicons, MaterialIcons, Feather, Entypo } from '@expo/vector-icons'; // icon packs
+
+export default function OrgProfilePage() {
+    const navigation = useNavigation();
+    const [orgData, setOrgData] = useState(null);
+
+    useEffect(() => {
+        // Simulate fetching data
+        const fetchData = async () => {
+            const data = {
+                name: 'Association of Computer Studies Students (ACSS)',
+                description: 'The official home organization of Computer Studies students.',
+                fullDescription: 'The official student organization dedicated to Computer Studies students, providing a platform for academic growth, collaboration, and professional development.',
+                members: 518,
+                location: '2nd Floor, College of Engineering',
+                email: 'acssue@ue.edu.ph',
+                website: 'https://acss.com',
+                logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/LogoSample.png/600px-LogoSample.png', // sample logo, replace later
+            };
+            setOrgData(data);
+        };
+        fetchData();
+    }, []);
+
+    if (!orgData) {
+        return null; // or a loader
+    }
+
+    return (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <SafeAreaView style={styles.safeArea}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.container}
+                >
+                    <View style={styles.container}>
+                        <Header />
+                        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                            {/* Org Profile Content */}
+                            <View style={styles.profileContainer}>
+                                <Image source={{ uri: orgData.logo }} style={styles.logo} />
+                                <Text style={styles.orgName}>{orgData.name}</Text>
+                                <Text style={styles.shortDescription}>{orgData.description}</Text>
+                                
+                                <View style={styles.buttonRow}>
+                                    <TouchableOpacity style={styles.followButton}>
+                                        <Text style={styles.followButtonText}>Follow</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.messageButton}>
+                                        <Text style={styles.messageButtonText}>Message</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.joinButton}>
+                                        <Text style={styles.joinButtonText}>Join</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.underline} />
+                                <View style={styles.section}>
+                                    <Text style={styles.sectionTitle}>Organization Details</Text>
+                                    
+                                    <View style={styles.infoDetailRow}>
+                                        <Ionicons name="information-circle-outline" size={20} color="#555" />
+                                        <Text style={styles.detailText}>{orgData.fullDescription}</Text>
+                                    </View>
+
+                                    <View style={styles.detailRow}>
+                                        <Ionicons name="people-outline" size={20} color="#555" />
+                                        <Text style={styles.detailText}>{orgData.members} members</Text>
+                                    </View>
+
+                                    <View style={styles.detailRow}>
+                                        <Ionicons name="location-outline" size={20} color="#555" />
+                                        <Text style={styles.detailText}>{orgData.location}</Text>
+                                    </View>
+
+                                    <View style={styles.detailRow}>
+                                        <Ionicons name="mail-outline" size={20} color="#555" />
+                                        <Text style={styles.detailLink} onPress={() => Linking.openURL(`mailto:${orgData.email}`)}>
+                                            {orgData.email}
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.detailRow}>
+                                        <Feather name="link" size={20} color="#555" />
+                                        <Text style={styles.detailLink} onPress={() => Linking.openURL(orgData.website)}>
+                                            {orgData.website.replace('https://', '')}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <View style={styles.underline} />
+                            </View>
+                        </ScrollView>
+                        <BottomNavBar />
+                    </View>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </TouchableWithoutFeedback>
+    );
+}
+
+const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    scrollContent: {
+        flexGrow: 1,
+        paddingHorizontal: 20,
+        paddingBottom: 80,
+    },
+    profileContainer: {
+        alignItems: 'center',
+        marginTop: 20,
+    },
+    logo: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        marginBottom: 15,
+    },
+    orgName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginBottom: 5,
+    },
+    shortDescription: {
+        fontSize: 14,
+        textAlign: 'center',
+        color: '#777',
+        marginBottom: 20,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginBottom: 25,
+    },
+    followButton: {
+        backgroundColor: '#E0E0E0',
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+    },
+    followButtonText: {
+        color: '#000',
+        fontWeight: 'bold',
+    },
+    messageButton: {
+        backgroundColor: '#E0E0E0',
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+    },
+    messageButtonText: {
+        color: '#000',
+        fontWeight: 'bold',
+    },
+    joinButton: {
+        backgroundColor: '#d32f2f',
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+    },
+    joinButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    section: {
+        width: '100%',
+        borderRadius: 10,
+        padding: 15,
+  
+    },
+    sectionTitle: {
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginBottom: 10,
+        
+    },
+    fullDescription: {
+        fontSize: 14,
+        color: '#555',
+        marginBottom: 20,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    infoDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'top',
+        marginBottom: 10,
+    },
+    detailText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#555',
+    },
+    detailLink: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: '#1e88e5',
+        textDecorationLine: 'underline',
+    },
+    underline: {
+        alignSelf: 'center',
+        height: 1,
+        backgroundColor: '#555',
+        width: '100%',
+        marginTop: 2,
+    },
+});
