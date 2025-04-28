@@ -5,9 +5,23 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import OrganizationCard from '../components/organizationCard';
-import { addOrganization } from '../Backend/organizationHandler'; // Only this now
+import { addOrganization, getOrganizations } from '../Backend/organizationHandler'; 
+import { useEffect } from 'react';
 
 export default function OrganizationPage() {
+    useEffect(() => {
+        const fetchOrganizations = async () => {
+            try {
+                const orgs = await getOrganizations();
+                setOrganizations(orgs);
+            } catch (error) {
+                console.error('Error fetching organizations:', error);
+            }
+        };
+    
+        fetchOrganizations();
+    }, []);
+    
     const navigation = useNavigation();
     const [scrollY, setScrollY] = useState(0);
     const [isModalVisible, setModalVisible] = useState(false);
@@ -31,10 +45,8 @@ export default function OrganizationPage() {
                 logo: require('../assets/cscLogo.png'),
             };
 
-            // Call the handler to add to Firestore
             await addOrganization(newOrgData);
 
-            // Locally update state so UI reflects new organization
             setOrganizations(prevOrgs => [
                 ...prevOrgs,
                 { id: prevOrgs.length + 1, ...newOrgData }
