@@ -8,7 +8,7 @@ import { Ionicons, MaterialIcons, Feather, Entypo } from '@expo/vector-icons'; /
 export default function OrgProfilePage() {
     const navigation = useNavigation();
     const [orgData, setOrgData] = useState(null);
-
+    const [scrollY, setScrollY] = useState(0);
     useEffect(() => {
         // Simulate fetching data
         const fetchData = async () => {
@@ -39,8 +39,14 @@ export default function OrgProfilePage() {
                     style={styles.container}
                 >
                     <View style={styles.container}>
-                        <Header />
-                        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <Header scrollY={scrollY} />
+                        <ScrollView
+                                onScroll={(event) => {
+                                setScrollY(event.nativeEvent.contentOffset.y);
+                                }}
+                                scrollEventThrottle={16}
+                                contentContainerStyle={styles.scrollContent}
+                                showsVerticalScrollIndicator={false}>
                             {/* Org Profile Content */}
                             <View style={styles.profileContainer}>
                                 <Image source={{ uri: orgData.logo }} style={styles.logo} />

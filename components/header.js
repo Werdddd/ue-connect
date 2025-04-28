@@ -1,8 +1,21 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons'; // Make sure you install expo/vector-icons
 
-const Header = ({ scrollY }) => {
+const Header = ({ scrollY, posts, setFilteredPosts }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchActive, setIsSearchActive] = useState(false);
+
+  // Handle the search logic
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    const filtered = posts.filter(post =>
+      post.title.toLowerCase().includes(query.toLowerCase()) ||
+      post.content.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredPosts(filtered);
+  };
+
   return (
     <View style={[styles.header, scrollY > 0 && styles.headerShadow]}>
       <View style={styles.leftSection}>
@@ -13,7 +26,7 @@ const Header = ({ scrollY }) => {
         <Text style={styles.title}>UE Connect</Text>
       </View>
       <View style={styles.rightSection}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setIsSearchActive(!isSearchActive)}>
           <Feather name="search" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
         <TouchableOpacity>
@@ -23,6 +36,16 @@ const Header = ({ scrollY }) => {
           <Feather name="menu" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
       </View>
+
+      {/* Conditional rendering of the search bar */}
+      {isSearchActive && (
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search..."
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+      )}
     </View>
   );
 };
@@ -67,6 +90,18 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginLeft: 20,
+  },
+  searchInput: {
+    position: 'absolute',
+    top: 40,
+    left: 16,
+    right: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
 });
 

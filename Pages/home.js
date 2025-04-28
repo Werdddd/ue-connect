@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView,
@@ -22,16 +22,25 @@ export default function Home() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [postText, setPostText] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
+ 
   const [newsfeedPosts, setNewsfeedPosts] = useState([]);
   const userComment = 'This is a sample comment.'; 
   const [selectedPostId, setSelectedPostId] = useState(null);
-
+  const [scrollY, setScrollY] = useState(0);
   const [liked, setLiked] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [shareCaption, setShareCaption] = useState('');
+  const toggleSearch = () => {
+    setIsSearchVisible(!isSearchVisible);
+  };
 
+  // Function to filter posts based on search text
+  const filteredPosts = newsfeedPosts.filter(post => 
+    post.text.toLowerCase().includes(searchText.toLowerCase())  // Adjust this filter based on your post structure
+  );
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -413,9 +422,15 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Header />
+      <Header scrollY={scrollY} />
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          onScroll={(event) => {
+          setScrollY(event.nativeEvent.contentOffset.y);
+          }}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
           <View style={styles.postContainer}>
             {userProfileImage ? (
               <Image source={{ uri: userProfileImage }} style={styles.profileImage} />
