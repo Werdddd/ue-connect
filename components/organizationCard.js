@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { firestore } from '../Firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
 
 export default function OrganizationCard({ orgName, memberCount, description, logo }) {
-
+    const navigation = useNavigation();
     return (
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('OrgProfilePage', {orgName})}>
             <View style={styles.headerRow}>
                 <Image
                     source={logo}
@@ -18,7 +19,7 @@ export default function OrganizationCard({ orgName, memberCount, description, lo
             <Text style={styles.description}>
                 {description}
             </Text>
-        </View>
+        </TouchableOpacity>
     );
 }
 

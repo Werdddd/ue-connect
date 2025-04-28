@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Linking } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { Ionicons, MaterialIcons, Feather, Entypo } from '@expo/vector-icons'; // icon packs
+import { firestore } from '../Firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function OrgProfilePage() {
     const navigation = useNavigation();
@@ -11,7 +13,7 @@ export default function OrgProfilePage() {
     const [scrollY, setScrollY] = useState(0);
 
     //re-check values
-    const [orgName, setOrgName] = useState('');
+    const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [fullDescription, setFullDescription] = useState('');
     const [memberCount, setMemberCount] = useState(0);
@@ -20,58 +22,39 @@ export default function OrgProfilePage() {
     const [website, setWebsite] = useState('');
     const [logo, setLogo] = useState(null);
 
-    useEffect(() => {
-        // Simulate fetching data
-        const fetchData = async () => {
-            const data = {
-                name: 'Association of Computer Studies Students (ACSS)',
-                description: 'The official home organization of Computer Studies students.',
-                fullDescription: 'The official student organization dedicated to Computer Studies students, providing a platform for academic growth, collaboration, and professional development.',
-                members: 518,
-                location: '2nd Floor, College of Engineering',
-                email: 'acssue@ue.edu.ph',
-                website: 'https://acss.com',
-                logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/LogoSample.png/600px-LogoSample.png', // sample logo, replace later
-            };
-            setOrgData(data);
-        };
-        fetchData();
-    }, []);
+    const route = useRoute();
+    // const { orgName } = route.params;
+    const orgName = 'ACSS';
 
-    // re-check function
-    // useEffect (() => {
+    useEffect (() => {
 
-    //     const fetchOrgData = async () =>{
-    //         try{
-    //             const docRef = doc(firestore, 'organizations', 'orgId') ;
-    //             const docSnap = await getDoc(docRef);
+        const fetchOrgData = async () =>{
+            try{
+                const docRef = doc(firestore, 'test', orgName);
+                const docSnap = await getDoc(docRef);
 
-    //             //get values
-    //             if (docSnap.exists()) {
-    //                 const data = docSnap.data();
-    //                 setOrgName(data.name);
-    //                 setDescription(data.description);
-    //                 setFullDescription(data.fullDescription);
-    //                 setMemberCount(data.members);
-    //                 setLocation(data.location);
-    //                 setEmail(data.email);
-    //                 setWebsite(data.website);
-    //                 setLogo({ uri: data.logoUrl});
-    //             }else{
-    //                 console.log('No Registry Found')
-    //             }
+                //get values
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setName(data.fullName);
+                    setDescription(data.description);
+                    setFullDescription(data.fullDescription);
+                    setMemberCount(data.members);
+                    setLocation(data.location);
+                    setEmail(data.email);
+                    setWebsite(data.website);
+                    setLogo({ uri: data.logoUrl});
+                }else{
+                    console.log('No Registry Found')
+                }
                 
-    //         }catch(error){
-    //             console.error('Error fetching organzation data:', error)
-    //         }
-    //     }
+            }catch(error){
+                console.error('Error fetching organzation data:', error)
+            }
+        }
 
-    //     fetchOrgData();
-    // }, []);
-
-    if (!orgData) {
-        return null; // or a loader
-    }
+        fetchOrgData();
+    }, []);
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -91,9 +74,9 @@ export default function OrgProfilePage() {
                                 showsVerticalScrollIndicator={false}>
                             {/* Org Profile Content */}
                             <View style={styles.profileContainer}>
-                                <Image source={{ uri: orgData.logo }} style={styles.logo} />
-                                <Text style={styles.orgName}>{orgData.name}</Text>
-                                <Text style={styles.shortDescription}>{orgData.description}</Text>
+                                {/* <Image source={{ uri: logo }} style={styles.logo} /> */}
+                                <Text style={styles.orgName}>{name}</Text>
+                                <Text style={styles.shortDescription}>{description}</Text>
                                 
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity style={styles.followButton}>
@@ -112,30 +95,30 @@ export default function OrgProfilePage() {
                                     
                                     <View style={styles.infoDetailRow}>
                                         <Ionicons name="information-circle-outline" size={20} color="#555" />
-                                        <Text style={styles.detailText}>{orgData.fullDescription}</Text>
+                                        <Text style={styles.detailText}>{fullDescription}</Text>
                                     </View>
 
                                     <View style={styles.detailRow}>
                                         <Ionicons name="people-outline" size={20} color="#555" />
-                                        <Text style={styles.detailText}>{orgData.members} members</Text>
+                                        <Text style={styles.detailText}>{memberCount} members</Text>
                                     </View>
 
                                     <View style={styles.detailRow}>
                                         <Ionicons name="location-outline" size={20} color="#555" />
-                                        <Text style={styles.detailText}>{orgData.location}</Text>
+                                        <Text style={styles.detailText}>{location}</Text>
                                     </View>
 
                                     <View style={styles.detailRow}>
                                         <Ionicons name="mail-outline" size={20} color="#555" />
-                                        <Text style={styles.detailLink} onPress={() => Linking.openURL(`mailto:${orgData.email}`)}>
-                                            {orgData.email}
+                                        <Text style={styles.detailLink} onPress={() => Linking.openURL(`mailto:${email}`)}>
+                                            {email}
                                         </Text>
                                     </View>
 
                                     <View style={styles.detailRow}>
                                         <Feather name="link" size={20} color="#555" />
-                                        <Text style={styles.detailLink} onPress={() => Linking.openURL(orgData.website)}>
-                                            {orgData.website.replace('https://', '')}
+                                        <Text style={styles.detailLink} onPress={() => Linking.openURL(website)}>
+                                            {website.replace('https://', '')}
                                         </Text>
                                     </View>
                                 </View>
