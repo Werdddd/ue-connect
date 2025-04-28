@@ -27,7 +27,13 @@ export default function EventCard({ event }) {
         <View>
             {/* Event Card */}
             <TouchableOpacity style={styles.card} onPress={handleOpenModal}>
-                <Image source={event.banner} style={styles.banner} />
+            {event.bannerUrl && (
+                <Image
+                    source={{ uri: event.bannerUrl }}
+                    style={styles.banner}
+                    resizeMode="cover"
+                />
+            )}
                 <View style={styles.infoContainer}>
                     <View style={styles.headerRow}>
                         <Image source={event.seal} style={styles.seal} />
