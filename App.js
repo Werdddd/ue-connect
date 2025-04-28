@@ -16,7 +16,6 @@ import Settings from './Pages/settings.js';
 import OrgProfilePage from './Pages/orgProfilePage.js';
 import UserProfilePage from './Pages/userProfilePage.js';
 
-
 const Stack = createStackNavigator();
 
 export default function App() {

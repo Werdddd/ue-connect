@@ -20,54 +20,54 @@ export default function OrgProfilePage() {
     const [website, setWebsite] = useState('');
     const [logo, setLogo] = useState(null);
 
-    // useEffect(() => {
-    //     // Simulate fetching data
-    //     const fetchData = async () => {
-    //         const data = {
-    //             name: 'Association of Computer Studies Students (ACSS)',
-    //             description: 'The official home organization of Computer Studies students.',
-    //             fullDescription: 'The official student organization dedicated to Computer Studies students, providing a platform for academic growth, collaboration, and professional development.',
-    //             members: 518,
-    //             location: '2nd Floor, College of Engineering',
-    //             email: 'acssue@ue.edu.ph',
-    //             website: 'https://acss.com',
-    //             logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/LogoSample.png/600px-LogoSample.png', // sample logo, replace later
-    //         };
-    //         setOrgData(data);
-    //     };
-    //     fetchData();
-    // }, []);
+    useEffect(() => {
+        // Simulate fetching data
+        const fetchData = async () => {
+            const data = {
+                name: 'Association of Computer Studies Students (ACSS)',
+                description: 'The official home organization of Computer Studies students.',
+                fullDescription: 'The official student organization dedicated to Computer Studies students, providing a platform for academic growth, collaboration, and professional development.',
+                members: 518,
+                location: '2nd Floor, College of Engineering',
+                email: 'acssue@ue.edu.ph',
+                website: 'https://acss.com',
+                logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/LogoSample.png/600px-LogoSample.png', // sample logo, replace later
+            };
+            setOrgData(data);
+        };
+        fetchData();
+    }, []);
 
     // re-check function
-    useEffect (() => {
+    // useEffect (() => {
 
-        const fetchOrgData = async () =>{
-            try{
-                const docRef = doc(firestore, 'organizations', 'orgId') ;
-                const docSnap = await getDoc(docRef);
+    //     const fetchOrgData = async () =>{
+    //         try{
+    //             const docRef = doc(firestore, 'organizations', 'orgId') ;
+    //             const docSnap = await getDoc(docRef);
 
-                //get values
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setOrgName(data.name);
-                    setDescription(data.description);
-                    setFullDescription(data.fullDescription);
-                    setMemberCount(data.members.length);
-                    setLocation(data.location);
-                    setEmail(data.email);
-                    setWebsite(data.website);
-                    setLogo({ uri: data.logoUrl});
-                }else{
-                    console.log('No Registry Found')
-                }
+    //             //get values
+    //             if (docSnap.exists()) {
+    //                 const data = docSnap.data();
+    //                 setOrgName(data.name);
+    //                 setDescription(data.description);
+    //                 setFullDescription(data.fullDescription);
+    //                 setMemberCount(data.members);
+    //                 setLocation(data.location);
+    //                 setEmail(data.email);
+    //                 setWebsite(data.website);
+    //                 setLogo({ uri: data.logoUrl});
+    //             }else{
+    //                 console.log('No Registry Found')
+    //             }
                 
-            }catch(error){
-                console.error('Error fetching organzation data:', error)
-            }
-        }
+    //         }catch(error){
+    //             console.error('Error fetching organzation data:', error)
+    //         }
+    //     }
 
-        fetchOrgData();
-    }, []);
+    //     fetchOrgData();
+    // }, []);
 
     if (!orgData) {
         return null; // or a loader

@@ -1,45 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { firestore } from '../Firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-export default function OrganizationCard({ orgName, memberCount, description, logo }) {
+export default function OrganizationCard() {
 
-    // const [logo, setLogo] = useState(null);
-    // const [memberCount, setMemberCount] = useState(0);
-    // const [description, setDescription] = useState('');
-    // const [orgName, setOrgName] = useState('');
+    const [logo, setLogo] = useState(null);
+    const [memberCount, setMemberCount] = useState(0);
+    const [description, setDescription] = useState('');
+    const [orgName, setOrgName] = useState('');
 
-    // useEffect (() => {
+    useEffect (() => {
 
-    //     const fetchOrgData = async () =>{
-    //         try{
-    //             const docRef = doc(firestore, 'organizations', 'orgId') ;
-    //             const docSnap = await getDoc(docRef);
+        const fetchOrgData = async () =>{
+            try{
+                const docRef = doc(firestore, 'organizations', 'orgId') ;
+                const docSnap = await getDoc(docRef);
 
-    //             //get values
-    //             if (docSnap.exists()) {
-    //                 const data = docSnap.data();
-    //                 setOrgName(data.name);
-    //                 setMemberCount(data.members.length);
-    //                 setDescription(data.description);
-    //                 setLogo({ uri: data.logoUrl});
-    //             }else{
-    //                 console.log('No Registry Found')
-    //             }
+                //get values
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setOrgName(data.orgName);
+                    setMemberCount(data.members);
+                    setDescription(data.description);
+                    setLogo(data.logoUrl);
+                }else{
+                    console.log('No Registry Found')
+                }
                 
-    //         }catch(error){
-    //             console.error('Error fetching organzation data:', error)
-    //         }
-    //     }
+            }catch(error){
+                console.error('Error fetching organzation data:', error)
+            }
+        }
 
-    //     fetchOrgData();
-    // }, []);
+        fetchOrgData();
+    }, []);
 
     return (
         <View style={styles.card}>
             <View style={styles.headerRow}>
                 <Image
-                    source={logo}
+                    source={{ uri: logo }}
                     style={styles.orgcardlogo}
                 />
                 <Text style={styles.orgName}>{orgName}</Text>
@@ -51,6 +52,7 @@ export default function OrganizationCard({ orgName, memberCount, description, lo
         </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     card: {
