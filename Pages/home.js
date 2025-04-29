@@ -25,6 +25,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState(''); // New state for search query
  const [loading, setLoading] = useState(false);
   const [newsfeedPosts, setNewsfeedPosts] = useState([]);
+  const [userName, setusername] = useState('');
   const userComment = 'This is a sample comment.'; 
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [scrollY, setScrollY] = useState(0);
@@ -45,8 +46,17 @@ export default function Home() {
 
     const user = auth.currentUser;
     if (user?.email) {
-        setCurrentUserEmail(user.email);
-      }
+    setCurrentUserEmail(user.email);
+    }
+
+    const getUserData = async () => {
+    const userDoc = await getDoc(doc(firestore, "Users", user.email));
+    if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setusername(`${userData.firstName} ${userData.lastName}`);
+    }
+    };
+    getUserData();
 
     const fetchNewsfeed = async () => {
       try {
@@ -319,6 +329,7 @@ export default function Home() {
           images: selectedImages,
           date: postDate, // Add date here
           comments: [], // Initialize empty comments array
+          likedBy: [],
         };
         setLoading(true);
         const postId = await savePost(newPost.user, postText, selectedImages);
@@ -608,7 +619,7 @@ export default function Home() {
                       ) : (
                         <FontAwesome name="user-circle-o" size={30} color="#999" />
                       )}
-                      <Text style={styles.userName}>Andrew Robles</Text>
+                      <Text style={styles.userName}>{userName}</Text>
                     </View>
 
                     <View style={styles.postContentContainer}>
