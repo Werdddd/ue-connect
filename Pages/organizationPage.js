@@ -30,7 +30,7 @@ export default function OrganizationPage() {
     const [scrollY, setScrollY] = useState(0);
     const [isModalVisible, setModalVisible] = useState(false);
     const [newOrg, setNewOrg] = useState({
-        org: '',
+        department: '',
         orgName: '',
         memberCount: '0',
         shortdesc: '',
@@ -43,7 +43,7 @@ export default function OrganizationPage() {
     });
     const [organizations, setOrganizations] = useState([]);
 
-    const [selectedOrg, setSelectedOrg] = useState('All');
+    const [selectedDepartment, setSelectedDepartment] = useState('All');
 
     async function getBase64(uri) {
         const base64 = await FileSystem.readAsStringAsync(uri, {
@@ -88,7 +88,7 @@ export default function OrganizationPage() {
     const handleAddOrganization = async () => {
         try {
             const newOrgData = {
-                org: newOrg.org,
+                department: newOrg.department,
                 orgName: newOrg.orgName,
                 memberCount: parseInt(newOrg.memberCount),
                 shortdesc: newOrg.shortdesc,
@@ -107,7 +107,7 @@ export default function OrganizationPage() {
                 { id: prevOrgs.length + 1, ...newOrgData }
             ]);
 
-            setNewOrg({ org: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' });
+            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' });
             setModalVisible(false);
 
         } catch (error) {
@@ -117,7 +117,7 @@ export default function OrganizationPage() {
 
 
     const getOrganizationTitle = () => {
-        switch (selectedOrg) {
+        switch (selectedDepartment) {
             case 'All':
                 return 'All Organizations';
             case 'CSC':
@@ -146,14 +146,14 @@ export default function OrganizationPage() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    <OrganizationBar onSelectOrganization={setSelectedOrg} />
+                    <OrganizationBar onSelectDepartment={setSelectedDepartment} />
                     <View style={styles.titleContainer}>
                         <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
                         <View style={styles.underline} />
                     </View>
 
                     {organizations
-                        .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
+                        .filter(org => selectedDepartment === 'All' || org.department === selectedDepartment)
                         .map(org => {
 
                             return (
@@ -183,10 +183,10 @@ export default function OrganizationPage() {
                                 <Text style={styles.modalTitle}>Add New Organization</Text>
 
                                 <TextInput
-                                    placeholder="Org Short Name (e.g. CSC)"
+                                    placeholder="Organization Department (e.g. CSC)"
                                     style={styles.input}
-                                    value={newOrg.org}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, org: text })}
+                                    value={newOrg.department}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, department: text })}
                                 />
                                 <TextInput
                                     placeholder="Full Organization Name"

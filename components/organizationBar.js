@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function OrganizationBar({ onSelectOrganization }) {
-    const [selectedOrg, setSelectedOrg] = useState('All'); 
+export default function OrganizationBar({ onSelectDepartment }) {
+    const [selectedDepartment, setSelectedDepartment] = useState('All'); 
 
     const handleSelect = (orgName) => {
-        setSelectedOrg(orgName);
-        if (onSelectOrganization) {
-            onSelectOrganization(orgName); 
+        setSelectedDepartment(orgName);
+        if (onSelectDepartment) {
+            onSelectDepartment(orgName); 
         }
     };
 
@@ -20,28 +20,28 @@ export default function OrganizationBar({ onSelectOrganization }) {
                 contentContainerStyle={styles.horizontalContent}
             >
                 <TouchableOpacity 
-                    style={[styles.column, selectedOrg === 'All' && styles.selectedColumn]} 
+                    style={[styles.column, selectedDepartment === 'All' && styles.selectedColumn]} 
                     onPress={() => handleSelect('All')}
                 >
                     <Text style={styles.columnText}>All</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                    style={[styles.column, selectedOrg === 'CSC' && styles.selectedColumn]} 
+                    style={[styles.column, selectedDepartment === 'CSC' && styles.selectedColumn]} 
                     onPress={() => handleSelect('CSC')}
                 >
                     <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                    style={[styles.column, selectedOrg === 'GDSC' && styles.selectedColumn]} 
+                    style={[styles.column, selectedDepartment === 'GDSC' && styles.selectedColumn]} 
                     onPress={() => handleSelect('GDSC')}
                 >
                     <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                    style={[styles.column, selectedOrg === 'CFAD' && styles.selectedColumn]} 
+                    style={[styles.column, selectedDepartment === 'CFAD' && styles.selectedColumn]} 
                     onPress={() => handleSelect('CFAD')}
                 >
                     <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
