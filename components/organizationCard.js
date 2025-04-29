@@ -6,7 +6,6 @@ import { useNavigation } from '@react-navigation/native';
 
 export default function OrganizationCard({ orgName, memberCount, description, logo }) {
     const navigation = useNavigation();
-    console.log('Logo URI:', logo);
     return (
         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('OrgProfilePage', {orgName})}>
             <View style={styles.headerRow}>

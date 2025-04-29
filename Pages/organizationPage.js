@@ -32,7 +32,7 @@ export default function OrganizationPage() {
     const [newOrg, setNewOrg] = useState({
         org: '',
         orgName: '',
-        memberCount: '',
+        memberCount: '0',
         description: '',
         logoUri: '',
         logoBase64: '',
@@ -147,7 +147,7 @@ export default function OrganizationPage() {
                     {organizations
                         .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
                         .map(org => {
-                            console.log('Org data:', org); 
+                            
                             return (
                                 <OrganizationCard
                                     key={org.id}
@@ -186,13 +186,7 @@ export default function OrganizationPage() {
                                     value={newOrg.orgName}
                                     onChangeText={(text) => setNewOrg({ ...newOrg, orgName: text })}
                                 />
-                                <TextInput
-                                    placeholder="Member Count"
-                                    style={styles.input}
-                                    keyboardType="numeric"
-                                    value={newOrg.memberCount}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, memberCount: text })}
-                                />
+
                                 <TextInput
                                     placeholder="Description"
                                     style={[styles.input, { height: 80 }]}
