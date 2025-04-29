@@ -341,7 +341,8 @@ export default function Home() {
     const formattedDate = post.date.toLocaleString();
     const hasText = post.text.trim().length > 0;
     const hasImages = post.images.length > 0;
-    const isLiked = post.likedBy.includes(currentUserEmail);
+    const isLiked = (post.likedBy || []).includes(currentUserEmail);
+
 
     
     return (
@@ -392,7 +393,7 @@ export default function Home() {
                 color={isLiked ? 'red' : '#555'}
                 />
                 <Text style={styles.actionText}>
-                {post.likedBy.length} Like{post.likedBy.length !== 1 ? 's' : ''}
+                {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
                 </Text>
             </TouchableOpacity>
 
