@@ -5,7 +5,7 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { Ionicons, MaterialIcons, Feather, Entypo } from '@expo/vector-icons'; // icon packs
 import { firestore, auth } from '../Firebase';
-import { doc, getDoc, query, collection, getDocs, where, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, query, collection, getDocs, where, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 export default function OrgProfilePage() {
     const navigation = useNavigation();
@@ -26,6 +26,8 @@ export default function OrgProfilePage() {
     const { orgName } = route.params;
     const currentUser = auth.currentUser;
     const userEmail = currentUser.email;
+
+    const [isMember, setIsMember] = useState(false);
 
 
     // const orgName = 'ACSS';
@@ -62,27 +64,53 @@ export default function OrgProfilePage() {
         fetchOrgData();
     }, []);
 
-    const addUserToMembers = async (orgName, userEmail) => {
-        try {
+    useEffect(() => {
+        const userCheck = async() =>{
             const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
             const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+            const orgDoc = querySnapshot.docs[0];
+            const data = orgDoc.data();
+
+            const members = data.members || [];
+            setIsMember(members.includes(userEmail)); // <-- Update membership state
+            }
+        };
+        userCheck();
+    }, [orgName, userEmail]);
+
+    const addUserToMembers = async (orgName, userEmail) => {
+        try {
+          const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+          const querySnapshot = await getDocs(q);
       
           if (!querySnapshot.empty) {
-            const orgDoc = querySnapshot.docs[0]; // Get the first matching document
-            const orgRef = doc(firestore, 'organizations', orgDoc.id); // Use the doc ID to get the reference
+            const orgDoc = querySnapshot.docs[0];
+            const orgRef = doc(firestore, 'organizations', orgDoc.id);
       
+            const data = orgDoc.data();
+            const members = data.members || [];
+            const userIsMember = members.includes(userEmail);
+
+            setIsMember(!userIsMember);
+
             await updateDoc(orgRef, {
-              members: arrayUnion(userEmail),
+              members: userIsMember ? arrayRemove(userEmail) : arrayUnion(userEmail),
             });
       
-            console.log(`User ${userEmail} added to organization ${orgName}`);
+            console.log(
+              userIsMember
+                ? `User ${userEmail} removed from organization ${orgName}`
+                : `User ${userEmail} added to organization ${orgName}`
+            );
           } else {
             console.log('Organization not found');
           }
         } catch (error) {
-          console.error('Error adding user to members:', error);
+          console.error('Error updating members:', error);
         }
-    };
+      };
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -117,7 +145,7 @@ export default function OrgProfilePage() {
                                         <Text style={styles.messageButtonText}>Message</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.joinButton} onPress={() => addUserToMembers(orgName, userEmail)}>
-                                        <Text style={styles.joinButtonText}>Join</Text>
+                                        <Text style={styles.joinButtonText}>{isMember ? 'Leave': 'Join'}</Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.underline} />
