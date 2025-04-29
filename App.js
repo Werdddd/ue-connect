@@ -15,6 +15,7 @@ import Events from './Pages/eventPage.js';
 import Settings from './Pages/settings.js';
 import OrgProfilePage from './Pages/orgProfilePage.js';
 import UserProfilePage from './Pages/userProfilePage.js';
+import EventPageRSO from './Pages/eventPageRSO.js';
 
 const Stack = createStackNavigator();
 
@@ -36,6 +37,7 @@ export default function App() {
         <Stack.Screen name="OrgProfilePage" component={OrgProfilePage} />
         <Stack.Screen name="Events" component={Events} />
         <Stack.Screen name="Settings" component={Settings} />
+        <Stack.Screen name="EventPageRSO" component={EventPageRSO} />
         
       </Stack.Navigator>
     </NavigationContainer>

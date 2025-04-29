@@ -1,0 +1,471 @@
+import React, { useState, useEffect } from 'react';
+import {
+    View, Text, TouchableOpacity, SafeAreaView,
+    KeyboardAvoidingView, Platform, ScrollView, StyleSheet,
+    Modal, TextInput, Image
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import Header from '../components/header';
+import BottomNavBar from '../components/bottomNavBar';
+import OrganizationBar from '../components/organizationBar';
+import EventCardRSO from '../components/eventCardRSO';
+import { fetchEvents, addEvent } from '../Backend/eventPageRSO'; // <-- import backend fetcher
+import {launchImageLibrary} from 'react-native-image-picker';
+// import DocumentPicker from 'react-native-document-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+
+
+export default function EventPageRSO() {
+    const navigation = useNavigation();
+    const [selectedOrg, setSelectedOrg] = useState('All');
+    const [scrollY, setScrollY] = useState(0);
+    const [events, setEvents] = useState([]);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+
+    // Inputs for new event
+    const [newTitle, setNewTitle] = useState('');
+    const [newDescription, setNewDescription] = useState('');
+    const [newDate, setNewDate] = useState('');
+    const [newTime, setNewTime] = useState('');
+    const [newLocation, setNewLocation] = useState('');
+    const [newParticipants, setNewParticipants] = useState('');
+    const [organization, setOrganization] = useState('');  // Default organization (this would come from logged-in data)
+    const [status, setStatus] = useState(''); 
+    const [selectedBanner, setSelectedBanner] = useState(null);
+    const [selectedProposal, setSelectedProposal] = useState(null);
+    
+    useEffect(() => {
+        loadEvents();
+    }, []);
+
+    const loadEvents = async () => {
+        try {
+            const data = await fetchEvents();
+            setEvents(data);
+        } catch (error) {
+            console.error('Failed to load events:', error);
+        }
+    };
+
+    const handleSelectBanner = async () => {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+        if (permissionResult.granted === false) {
+          alert("Permission to access media library is required!");
+          return;
+        }
+      
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [4, 3],
+          quality: 1,
+        });
+      
+        if (!result.canceled) {
+          setSelectedBanner(result.assets[0]); // For SDK 48 and later
+        }
+      };
+      
+    
+      const handleSelectProposal = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
+            if (result.type === 'success') {
+                console.log('Selected proposal:', result); // Debug log
+                setSelectedProposal(result);
+            }
+        } catch (error) {
+            console.error("Error picking proposal file:", error);
+        }
+    };
+    
+      
+
+    const handleAddEvent = async () => {
+        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants) {
+            alert('Please fill out all fields!');
+            return;
+        }
+    
+        // Parsing participants to integer
+        const participants = parseInt(newParticipants, 10);
+        if (isNaN(participants)) {
+            alert('Please enter a valid number for participants!');
+            return;
+        }
+    
+        // Set default status (it can be set dynamically depending on superadmin settings)
+        const eventStatus = status || 'Applied';  // Default status if not set
+    
+        const newEvent = {
+            title: newTitle,
+            description: newDescription,
+            date: newDate,
+            time: newTime,
+            location: newLocation,
+            participants: participants,
+            org: organization,  // From the logged-in organization
+            status: eventStatus,  // Applying the status (either default or admin-defined)
+        };
+    
+        try {
+            await addEvent(newEvent);  // This function should handle uploading to Firebase
+            await loadEvents();  // Refresh events after adding
+            setIsModalVisible(false);  // Close modal
+            setSelectedBanner(null);
+            // Clear inputs
+            setNewTitle('');
+            setNewDescription('');
+            setNewDate('');
+            setNewTime('');
+            setNewLocation('');
+            setNewParticipants('');
+            setStatus('');
+        } catch (error) {
+            console.error('Error adding event:', error);
+        }
+    };
+    
+
+    const getOrganizationTitle = () => {
+        switch (selectedOrg) {
+            case 'All': return 'All Events';
+            case 'CSC': return 'Central Student Council';
+            case 'GDSC': return 'Google Developer Student Clubs';
+            case 'CFAD': return 'College of Fine Arts and Science';
+            default: return '';
+        }
+    };
+
+    const filteredEvents = selectedOrg === 'All'
+        ? events
+        : events.filter(event => event.org === selectedOrg);
+
+    return (
+        <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.container}
+            >
+                <Header scrollY={scrollY} />
+                <ScrollView
+                    onScroll={(event) => {
+                        setScrollY(event.nativeEvent.contentOffset.y);
+                    }}
+                    scrollEventThrottle={16}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}>
+                    
+                    <TouchableOpacity
+                        style={styles.floatingButton}
+                        onPress={() => setIsModalVisible(true)}
+                    >
+                        <Text style={styles.floatingButtonText}>Create Event</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.titleContainer}>
+                        <Text style={styles.titleText}>Your Events</Text>
+                        <View style={styles.underline} />
+                    </View>
+                    
+                    {filteredEvents.map((event) => (
+                        <EventCardRSO key={event.id} event={event} />
+                    ))}
+                    
+                </ScrollView>
+                
+                <BottomNavBar />
+
+                {/* Modal for Adding Event */}
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={isModalVisible}
+                    onRequestClose={() => setIsModalVisible(false)}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Create Event</Text>
+                            <Text style={styles.label}>Event Title</Text>
+                            <TextInput
+                                placeholder="ENtramurals 2025"
+                                placeholderTextColor="#D3D3D3" 
+                                style={styles.input}
+                                value={newTitle}
+                                onChangeText={setNewTitle}
+                            />
+                            <Text style={styles.label}>Event Description</Text>
+                            <TextInput
+                                placeholder="An event of..."
+                                placeholderTextColor="#D3D3D3" 
+                                style={styles.input}
+                                value={newDescription}
+                                onChangeText={setNewDescription}
+                            />
+                            <View style={styles.dateTimeRow}>
+                            {/* Event Date */}
+                            <View style={styles.dateTimeColumn}>
+                                <Text style={styles.label}>Event Date</Text>
+                                <TextInput
+                                placeholder="April 25, 2025"
+                                placeholderTextColor="#D3D3D3"
+                                style={styles.input}
+                                value={newDate}
+                                onChangeText={setNewDate}
+                                />
+                            </View>
+
+                            {/* Event Time */}
+                            <View style={styles.dateTimeColumn}>
+                                <Text style={styles.label}>Event Time</Text>
+                                <TextInput
+                                placeholder="8:00 AM - 12:00 PM"
+                                placeholderTextColor="#D3D3D3"
+                                style={styles.input}
+                                value={newTime}
+                                onChangeText={setNewTime}
+                                />
+                            </View>
+                            </View>
+
+                            <Text style={styles.label}>Event Location</Text>
+                            <TextInput
+                                placeholder="MPH 2, Engineering Building"
+                                placeholderTextColor="#D3D3D3" 
+                                style={styles.input}
+                                value={newLocation}
+                                onChangeText={setNewLocation}
+                            />
+                            <Text style={styles.label}>Event Participants</Text>
+                            <TextInput
+                                placeholder="100"
+                                placeholderTextColor="#D3D3D3" 
+                                style={styles.input}
+                                keyboardType="numeric"
+                                value={newParticipants}
+                                onChangeText={setNewParticipants}
+                            />
+                            <View style={styles.bannerFileRow}>
+                            {/* Banner Upload Section */}
+                            <View style={styles.uploadSection}>
+                                <Text style={styles.label}>Event Banner</Text>
+                                <TouchableOpacity
+                                style={styles.uploadButton}
+                                onPress={handleSelectBanner}
+                                >
+                                <Text style={styles.buttonText}>
+                                    {selectedBanner ? 'Change Banner' : 'Upload Banner'}
+                                </Text>
+                                </TouchableOpacity>
+                                {selectedBanner && (
+                                <Image
+                                    source={{ uri: selectedBanner.uri }}
+                                    style={styles.bannerPreview}
+                                    resizeMode="cover"
+                                />
+                                )}
+                            </View>
+
+                            {/* Proposal Upload Section */}
+                            <View style={styles.uploadSection}>
+                                <Text style={styles.label}>Event Proposal</Text>
+                                <TouchableOpacity
+                                    style={styles.uploadButton}
+                                    onPress={handleSelectProposal}
+                                >
+                                    <Text style={styles.buttonText}>
+                                        {selectedProposal ? 'Change File' : 'Upload Proposal'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {selectedProposal && (
+                                <View style={{ marginTop: 8 }}>
+                                    <Text style={styles.proposalText}>
+                                    📄 {selectedProposal?.uri?.split('/').pop() ?? 'No name found'}
+                                    </Text>
+
+
+                                </View>
+                                )}
+
+                            </View>
+
+                            </View>
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => setIsModalVisible(false)}
+                                >
+                                    <Text style={styles.buttonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.addButton}
+                                    onPress={handleAddEvent}
+                                >
+                                    <Text style={styles.buttonText}>Add</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    scrollContent: {
+        flexGrow: 1,
+        paddingBottom: 80,
+    },
+    titleContainer: {
+        marginTop: 15,
+        marginHorizontal: 20,
+        marginBottom: 15,
+    },
+    titleText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#E50914',
+        textAlign: 'center',
+    },
+    underline: {
+        alignSelf: 'center',
+        height: 1,
+        backgroundColor: '#E50914',
+        width: '100%',
+        marginTop: 2,
+    },
+    floatingButton: {
+        alignSelf: 'center',
+        marginTop: 10,
+        backgroundColor: '#E50914',
+        padding: 10,
+        borderRadius: 10,
+        width: '90%',
+        height: 'auto',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    dateTimeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10, // Add spacing between the two columns
+      },
+      
+      dateTimeColumn: {
+        flex: 1,
+      },
+      
+    floatingButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        marginHorizontal: 20,
+        borderRadius: 10,
+        padding: 20,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '500',
+        marginBottom: 5,
+        marginTop: 5,
+        textAlign: 'left',
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+        padding: 10,
+        marginVertical: 5,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 15,
+    },
+    cancelButton: {
+        backgroundColor: '#ccc',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+    },
+    addButton: {
+        backgroundColor: '#E50914',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+    },
+    buttonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+
+    uploadButton: {
+        backgroundColor: '#E50914',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+        width: '100%',
+        marginTop: 5,
+    },
+    bannerPreview: {
+        width: '100%',
+        height: 150,
+        marginTop: 10,
+        borderRadius: 8,
+      },
+      uploadSection: {
+        flex: 1,
+      },
+    bannerFileRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: 10,
+      },
+      
+      uploadSection: {
+        flex: 1,
+      },
+      
+      bannerPreview: {
+        width: '100%',
+        height: 100,
+        marginTop: 8,
+        borderRadius: 8,
+      },
+      
+      proposalText: {
+        fontSize: 24,
+        color: '#000',
+        fontStyle: 'italic',
+    }
+    
+      
+});

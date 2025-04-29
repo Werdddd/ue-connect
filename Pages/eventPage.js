@@ -34,7 +34,10 @@ export default function Event() {
     const loadEvents = async () => {
         try {
             const data = await fetchEvents();
-            setEvents(data);
+
+            // Filter only the events with status 'approved'
+            const approvedEvents = data.filter(event => event.status === 'Approved');
+            setEvents(approvedEvents); // Set the approved events to the state
         } catch (error) {
             console.error('Failed to load events:', error);
         }
@@ -113,12 +116,7 @@ export default function Event() {
                         <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
                         <View style={styles.underline} />
                     </View>
-                    <TouchableOpacity
-                        style={styles.floatingButton}
-                        onPress={() => setIsModalVisible(true)}
-                    >
-                        <Text style={styles.floatingButtonText}>+</Text>
-                    </TouchableOpacity>
+                    
 
                     {filteredEvents.map((event) => (
                         <EventCard key={event.id} event={event} />
@@ -127,84 +125,6 @@ export default function Event() {
                 </ScrollView>
                 
                 <BottomNavBar />
-
-                {/* Modal for Adding Event */}
-                <Modal
-                    animationType="slide"
-                    transparent={true}
-                    visible={isModalVisible}
-                    onRequestClose={() => setIsModalVisible(false)}
-                >
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Add Event</Text>
-                            <Text style={styles.label}>Event Title</Text>
-                            <TextInput
-                                placeholder="ENtramurals 2025"
-                                placeholderTextColor="#555" 
-                                style={styles.input}
-                                value={newTitle}
-                                onChangeText={setNewTitle}
-                            />
-                            <Text style={styles.label}>Event Description</Text>
-                            <TextInput
-                                placeholder="An event of..."
-                                placeholderTextColor="#555" 
-                                style={styles.input}
-                                value={newDescription}
-                                onChangeText={setNewDescription}
-                            />
-                            <Text style={styles.label}>Event Date</Text>
-                            <TextInput
-                                placeholder="April 25, 2025"
-                                placeholderTextColor="#555" 
-                                style={styles.input}
-                                value={newDate}
-                                onChangeText={setNewDate}
-                            />
-                            <Text style={styles.label}>Event Time</Text>
-                            <TextInput
-                                placeholder="8:00 AM - 12:00 PM"
-                                placeholderTextColor="#555" 
-                                style={styles.input}
-                                value={newTime}
-                                onChangeText={setNewTime}
-                            />
-                            <Text style={styles.label}>Event Location</Text>
-                            <TextInput
-                                placeholder="MPH 2, Engineering Building"
-                                placeholderTextColor="#555" 
-                                style={styles.input}
-                                value={newLocation}
-                                onChangeText={setNewLocation}
-                            />
-                            <Text style={styles.label}>Event Participants</Text>
-                            <TextInput
-                                placeholder="100"
-                                placeholderTextColor="#555" 
-                                style={styles.input}
-                                keyboardType="numeric"
-                                value={newParticipants}
-                                onChangeText={setNewParticipants}
-                            />
-
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => setIsModalVisible(false)}
-                                >
-                                    <Text style={styles.buttonText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.addButton}
-                                    onPress={handleAddEvent}
-                                >
-                                    <Text style={styles.buttonText}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
