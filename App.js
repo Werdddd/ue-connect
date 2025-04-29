@@ -16,6 +16,7 @@ import Settings from './Pages/settings.js';
 import OrgProfilePage from './Pages/orgProfilePage.js';
 import UserProfilePage from './Pages/userProfilePage.js';
 import EventPageRSO from './Pages/eventPageRSO.js';
+import EventPageSAO from './Pages/eventPageSAO.js';
 import ChatPage from './Pages/chatPage.js';
 import ConversationPage from './Pages/ConversationPage.js';
 
@@ -40,6 +41,7 @@ export default function App() {
         <Stack.Screen name="Events" component={Events} />
         <Stack.Screen name="Settings" component={Settings} />
         <Stack.Screen name="EventPageRSO" component={EventPageRSO} />
+        <Stack.Screen name="EventPageSAO" component={EventPageSAO} />
         <Stack.Screen name="ChatPage" component={ChatPage} />
         <Stack.Screen name="ConversationPage" component={ConversationPage} />
 
