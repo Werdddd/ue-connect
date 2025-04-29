@@ -12,7 +12,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
-import { getDoc, doc, collection, getDocs} from "firebase/firestore";
+import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove} from "firebase/firestore";
 import { auth, firestore } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
 
@@ -33,6 +33,7 @@ export default function Home() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [shareCaption, setShareCaption] = useState('');
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
   const toggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
   };
@@ -41,6 +42,12 @@ export default function Home() {
   const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
 
   useEffect(() => {
+
+    const user = auth.currentUser;
+    if (user?.email) {
+        setCurrentUserEmail(user.email);
+      }
+
     const fetchNewsfeed = async () => {
       try {
         const snapshot = await getDocs(collection(firestore, 'newsfeed'));
@@ -80,6 +87,7 @@ export default function Home() {
               name:         d.userName || '',
               profileImage,             // now guaranteed to be either a full URL or valid data-uri
             },
+            likedBy: d.likedBy || []
           };
         });
 
@@ -217,12 +225,35 @@ export default function Home() {
   
   const [likedPosts, setLikedPosts] = useState({});
 
-  const toggleLike = (postId) => {
-    setLikedPosts((prevLikedPosts) => ({
-      ...prevLikedPosts,
-      [postId]: !prevLikedPosts[postId],
-    }));
-  };
+  const toggleLike = async (postId, likedBy) => {
+    const postRef = doc(firestore, 'newsfeed', postId);
+    const hasLiked = likedBy.includes(currentUserEmail);
+  
+    try {
+      await updateDoc(postRef, {
+        likedBy: hasLiked
+          ? arrayRemove(currentUserEmail)
+          : arrayUnion(currentUserEmail),
+      });
+  
+      // Optimistically update UI
+      setNewsfeedPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                likedBy: hasLiked
+                  ? p.likedBy.filter(email => email !== currentUserEmail)
+                  : [...p.likedBy, currentUserEmail],
+              }
+            : p
+        )
+      );
+      
+    } catch (e) {
+      console.error('Error updating like:', e);
+    }
+  };  
   
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -310,6 +341,7 @@ export default function Home() {
     const formattedDate = post.date.toLocaleString();
     const hasText = post.text.trim().length > 0;
     const hasImages = post.images.length > 0;
+    const isLiked = post.likedBy.includes(currentUserEmail);
 
     
     return (
@@ -349,18 +381,20 @@ export default function Home() {
         </View>
 
         {/* Post Actions */}
-        <View style={styles.postActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => toggleLike(post.id)}
-        >
-          <Ionicons
-            name={likedPosts[post.id] ? "heart" : "heart-outline"}
-            size={20}
-            color={likedPosts[post.id] ? 'red' : '#555'}
-          />
-          <Text style={styles.actionText}>Like</Text>
-        </TouchableOpacity>
+            <View style={styles.postActions}>
+            <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => toggleLike(post.id, post.likedBy)}
+            >
+                <Ionicons
+                name={isLiked ? 'heart' : 'heart-outline'}
+                size={20}
+                color={isLiked ? 'red' : '#555'}
+                />
+                <Text style={styles.actionText}>
+                {post.likedBy.length} Like{post.likedBy.length !== 1 ? 's' : ''}
+                </Text>
+            </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
