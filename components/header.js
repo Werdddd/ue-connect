@@ -1,27 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
-import { Ionicons, Feather } from '@expo/vector-icons'; // Make sure you install expo/vector-icons
+import { Ionicons, Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native'; // ✅ Use hook for navigation
 
-const Header = ({ scrollY, posts, setFilteredPosts }) => {
+const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
+  const navigation = useNavigation(); // ✅ Solves "undefined navigation" error
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
 
-  // Handle the search logic
   const handleSearch = (query) => {
     setSearchQuery(query);
-  
-    // Ensure posts is an array before filtering
-    if (Array.isArray(posts)) {
-      const filtered = posts.filter(post =>
-        post.title.toLowerCase().includes(query.toLowerCase()) ||
-        post.content.toLowerCase().includes(query.toLowerCase())
-      );
-      setFilteredPosts(filtered);
-    } else {
-      console.error("Posts data is not an array or is undefined");
-    }
+    const filtered = posts.filter(post =>
+      post?.title?.toLowerCase().includes(query.toLowerCase()) ||
+      post?.content?.toLowerCase().includes(query.toLowerCase())
+    );
+    setFilteredPosts(filtered);
   };
-  
+
   return (
     <View style={[styles.header, scrollY > 0 && styles.headerShadow]}>
       <View style={styles.leftSection}>
@@ -38,13 +33,11 @@ const Header = ({ scrollY, posts, setFilteredPosts }) => {
         <TouchableOpacity>
           <Ionicons name="notifications-outline" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
-      
-        <TouchableOpacity>
-        <Ionicons name="chatbubble-ellipses-outline" size={24} color="black" style={styles.icon} />
+        <TouchableOpacity onPress={() => navigation.navigate('ChatPage')}>
+          <Ionicons name="chatbubble-ellipses-outline" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
       </View>
 
-      {/* Conditional rendering of the search bar */}
       {isSearchActive && (
         <TextInput
           style={styles.searchInput}
@@ -59,14 +52,14 @@ const Header = ({ scrollY, posts, setFilteredPosts }) => {
 
 const styles = StyleSheet.create({
   header: {
-    height: 40,
+    paddingTop: 10,
+    paddingBottom: 5,
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     backgroundColor: '#fff',
-    paddingTop: 10,
-    paddingBottom: 5,
     zIndex: 10,
   },
   headerShadow: {
@@ -74,7 +67,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 5, // for Android
+    elevation: 5,
   },
   leftSection: {
     flexDirection: 'row',
@@ -89,7 +82,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#E50914', // UE red color
+    color: '#E50914',
   },
   rightSection: {
     flexDirection: 'row',
@@ -100,7 +93,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     position: 'absolute',
-    top: 40,
+    top: 60,
     left: 16,
     right: 16,
     paddingHorizontal: 10,
@@ -109,6 +102,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     borderColor: '#ccc',
+    zIndex: 20,
   },
 });
 
