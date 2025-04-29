@@ -5,8 +5,12 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import OrganizationCard from '../components/organizationCard';
-import { addOrganization, getOrganizations } from '../Backend/organizationHandler'; 
+import { addOrganization, getOrganizations } from '../Backend/organizationHandler';
 import { useEffect } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system';
 
 export default function OrganizationPage() {
     useEffect(() => {
@@ -18,22 +22,64 @@ export default function OrganizationPage() {
                 console.error('Error fetching organizations:', error);
             }
         };
-    
+
         fetchOrganizations();
     }, []);
-    
+
     const navigation = useNavigation();
     const [scrollY, setScrollY] = useState(0);
     const [isModalVisible, setModalVisible] = useState(false);
     const [newOrg, setNewOrg] = useState({
         org: '',
         orgName: '',
-        memberCount: '',
+        memberCount: '0',
         description: '',
+        logoUri: '',
+        logoBase64: '',
     });
     const [organizations, setOrganizations] = useState([]);
 
     const [selectedOrg, setSelectedOrg] = useState('All');
+
+    async function getBase64(uri) {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+        });
+        return base64;
+    }
+
+    async function compressImage(uri) {
+        const compressed = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 100 } }], 
+            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG } 
+        );
+        return compressed.uri;
+    }
+
+    async function pickImage() {
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 1,
+        });
+    
+        if (!result.canceled) {
+            const asset = result.assets[0];
+            const base64 = await processImage(asset.uri); 
+            setNewOrg(prev => ({
+                ...prev,
+                logoUri: asset.uri,
+                logoBase64: `data:image/jpeg;base64,${base64}`,
+            }));
+        }
+    }
+
+    async function processImage(uri) {
+        const compressedUri = await compressImage(uri);
+        const base64 = await getBase64(compressedUri);
+        return base64;
+    }
 
     const handleAddOrganization = async () => {
         try {
@@ -42,7 +88,8 @@ export default function OrganizationPage() {
                 orgName: newOrg.orgName,
                 memberCount: parseInt(newOrg.memberCount),
                 description: newOrg.description,
-                logo: require('../assets/cscLogo.png'),
+                logoUri: newOrg.logoUri, 
+                logoBase64: newOrg.logoBase64,  
             };
 
             await addOrganization(newOrgData);
@@ -52,13 +99,14 @@ export default function OrganizationPage() {
                 { id: prevOrgs.length + 1, ...newOrgData }
             ]);
 
-            setNewOrg({ org: '', orgName: '', memberCount: '', description: '' });
+            setNewOrg({ org: '', orgName: '', memberCount: '', description: '', logoUri: '', logoBase64: '' });
             setModalVisible(false);
 
         } catch (error) {
             console.error('Error adding organization:', error);
         }
     };
+
 
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
@@ -95,26 +143,27 @@ export default function OrganizationPage() {
                         <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
                         <View style={styles.underline} />
                     </View>
+
+                    {organizations
+                        .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
+                        .map(org => {
+                            
+                            return (
+                                <OrganizationCard
+                                    key={org.id}
+                                    orgName={org.orgName}
+                                    memberCount={org.memberCount}
+                                    description={org.description}
+                                    logo={org.logoBase64}
+                                />
+                            );
+                        })}
                     <TouchableOpacity
                         style={styles.plusButton}
                         onPress={() => setModalVisible(true)}
                     >
                         <Text style={styles.plusText}>＋</Text>
                     </TouchableOpacity>
-                    {organizations
-                        .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
-                        .map(org => (
-                            <OrganizationCard
-                                key={org.id}
-                                orgName={org.orgName}
-                                memberCount={org.memberCount}
-                                description={org.description}
-                                logo={org.logo}
-                            />
-                        ))}
-
-                    
-
                     <Modal
                         animationType="slide"
                         transparent={true}
@@ -137,13 +186,7 @@ export default function OrganizationPage() {
                                     value={newOrg.orgName}
                                     onChangeText={(text) => setNewOrg({ ...newOrg, orgName: text })}
                                 />
-                                <TextInput
-                                    placeholder="Member Count"
-                                    style={styles.input}
-                                    keyboardType="numeric"
-                                    value={newOrg.memberCount}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, memberCount: text })}
-                                />
+
                                 <TextInput
                                     placeholder="Description"
                                     style={[styles.input, { height: 80 }]}
@@ -151,7 +194,16 @@ export default function OrganizationPage() {
                                     value={newOrg.description}
                                     onChangeText={(text) => setNewOrg({ ...newOrg, description: text })}
                                 />
-
+                                <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
+                                    <Text style={styles.pickImageButtonText}>Pick Logo</Text>
+                                </TouchableOpacity>
+                                {(newOrg.logoUri || newOrg.logoBase64) && (
+                                    <Image
+                                        source={{ uri: newOrg.logoBase64 || newOrg.logoUri }}
+                                        style={{ width: 50, height: 50, marginVertical: 10, alignSelf: 'center' }}
+                                        resizeMode="contain"
+                                    />
+                                )}
                                 <TouchableOpacity style={styles.addButton} onPress={handleAddOrganization}>
                                     <Text style={styles.addButtonText}>Add Organization</Text>
                                 </TouchableOpacity>
@@ -202,7 +254,7 @@ const styles = StyleSheet.create({
     },
     plusButton: {
         alignSelf: 'center',
-      
+
         backgroundColor: '#E50914',
         borderRadius: 50,
         width: 50,

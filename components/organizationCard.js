@@ -10,7 +10,7 @@ export default function OrganizationCard({ orgName, memberCount, description, lo
         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('OrgProfilePage', {orgName})}>
             <View style={styles.headerRow}>
                 <Image
-                    source={logo}
+                    source={{ uri: logo }}
                     style={styles.orgcardlogo}
                 />
                 <Text style={styles.orgName}>{orgName}</Text>
