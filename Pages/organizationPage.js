@@ -61,16 +61,16 @@ export default function OrganizationPage() {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            base64: true,
             quality: 1,
         });
-
+    
         if (!result.canceled) {
             const asset = result.assets[0];
+            const base64 = await processImage(asset.uri); 
             setNewOrg(prev => ({
                 ...prev,
                 logoUri: asset.uri,
-                logoBase64: asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : '',
+                logoBase64: `data:image/jpeg;base64,${base64}`,
             }));
         }
     }
@@ -146,15 +146,18 @@ export default function OrganizationPage() {
 
                     {organizations
                         .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
-                        .map(org => (
-                            <OrganizationCard
-                                key={org.id}
-                                orgName={org.orgName}
-                                memberCount={org.memberCount}
-                                description={org.description}
-                                logo={org.logo}
-                            />
-                        ))}
+                        .map(org => {
+                            console.log('Org data:', org); 
+                            return (
+                                <OrganizationCard
+                                    key={org.id}
+                                    orgName={org.orgName}
+                                    memberCount={org.memberCount}
+                                    description={org.description}
+                                    logo={org.logoBase64}
+                                />
+                            );
+                        })}
                     <TouchableOpacity
                         style={styles.plusButton}
                         onPress={() => setModalVisible(true)}
