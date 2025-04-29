@@ -33,9 +33,13 @@ export default function OrganizationPage() {
         org: '',
         orgName: '',
         memberCount: '0',
-        description: '',
+        shortdesc: '',
         logoUri: '',
         logoBase64: '',
+        fulldesc: '',
+        location: '',
+        email: '',
+        websitelink: '',
     });
     const [organizations, setOrganizations] = useState([]);
 
@@ -51,8 +55,8 @@ export default function OrganizationPage() {
     async function compressImage(uri) {
         const compressed = await ImageManipulator.manipulateAsync(
             uri,
-            [{ resize: { width: 100 } }], 
-            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG } 
+            [{ resize: { width: 100 } }],
+            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG }
         );
         return compressed.uri;
     }
@@ -63,10 +67,10 @@ export default function OrganizationPage() {
             allowsEditing: true,
             quality: 1,
         });
-    
+
         if (!result.canceled) {
             const asset = result.assets[0];
-            const base64 = await processImage(asset.uri); 
+            const base64 = await processImage(asset.uri);
             setNewOrg(prev => ({
                 ...prev,
                 logoUri: asset.uri,
@@ -87,9 +91,13 @@ export default function OrganizationPage() {
                 org: newOrg.org,
                 orgName: newOrg.orgName,
                 memberCount: parseInt(newOrg.memberCount),
-                description: newOrg.description,
-                logoUri: newOrg.logoUri, 
-                logoBase64: newOrg.logoBase64,  
+                shortdesc: newOrg.shortdesc,
+                logoUri: newOrg.logoUri,
+                logoBase64: newOrg.logoBase64,
+                fulldesc: newOrg.fulldesc,
+                location: newOrg.location,
+                email: newOrg.email,
+                websitelink: newOrg.websitelink,
             };
 
             await addOrganization(newOrgData);
@@ -99,7 +107,7 @@ export default function OrganizationPage() {
                 { id: prevOrgs.length + 1, ...newOrgData }
             ]);
 
-            setNewOrg({ org: '', orgName: '', memberCount: '', description: '', logoUri: '', logoBase64: '' });
+            setNewOrg({ org: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' });
             setModalVisible(false);
 
         } catch (error) {
@@ -147,13 +155,13 @@ export default function OrganizationPage() {
                     {organizations
                         .filter(org => selectedOrg === 'All' || org.org === selectedOrg)
                         .map(org => {
-                            
+
                             return (
                                 <OrganizationCard
                                     key={org.id}
                                     orgName={org.orgName}
                                     memberCount={org.memberCount}
-                                    description={org.description}
+                                    shortdesc={org.shortdesc}
                                     logo={org.logoBase64}
                                 />
                             );
@@ -188,12 +196,45 @@ export default function OrganizationPage() {
                                 />
 
                                 <TextInput
-                                    placeholder="Description"
+                                    placeholder="Short Description"
+                                    style={[styles.input, { height: 40 }]}
+                                    multiline
+                                    value={newOrg.shortdesc}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, shortdesc: text })}
+                                />
+
+                                <TextInput
+                                    placeholder="Full Description"
                                     style={[styles.input, { height: 80 }]}
                                     multiline
-                                    value={newOrg.description}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, description: text })}
+                                    value={newOrg.fulldesc}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, fulldesc: text })}
                                 />
+
+                                <TextInput
+                                    placeholder="Location (e.g. 2nd Floor, Main Building)"
+                                    style={[styles.input, { height: 40 }]}
+                                    multiline
+                                    value={newOrg.location}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, location: text })}
+                                />
+                                
+                                <TextInput
+                                    placeholder="Email"
+                                    style={[styles.input, { height: 40 }]}
+                                    multiline
+                                    value={newOrg.email}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, email: text })}
+                                />
+
+                                <TextInput
+                                    placeholder="Website (Optional)"
+                                    style={[styles.input, { height: 40 }]}
+                                    multiline
+                                    value={newOrg.websitelink}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, websitelink: text })}
+                                />
+
                                 <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
                                     <Text style={styles.pickImageButtonText}>Pick Logo</Text>
                                 </TouchableOpacity>

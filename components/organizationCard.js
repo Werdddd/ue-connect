@@ -4,7 +4,7 @@ import { firestore } from '../Firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 
-export default function OrganizationCard({ orgName, memberCount, description, logo }) {
+export default function OrganizationCard({ orgName, memberCount, shortdesc, logo }) {
     const navigation = useNavigation();
     return (
         <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('OrgProfilePage', {orgName})}>
@@ -17,7 +17,7 @@ export default function OrganizationCard({ orgName, memberCount, description, lo
             </View>
             <Text style={styles.memberCount}>{memberCount} members</Text>
             <Text style={styles.description}>
-                {description}
+                {shortdesc}
             </Text>
         </TouchableOpacity>
     );
