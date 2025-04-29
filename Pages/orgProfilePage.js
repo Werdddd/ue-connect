@@ -4,8 +4,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { Ionicons, MaterialIcons, Feather, Entypo } from '@expo/vector-icons'; // icon packs
-import { firestore } from '../Firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { firestore, auth } from '../Firebase';
+import { doc, getDoc, query, collection, getDocs, where, updateDoc, arrayUnion } from 'firebase/firestore';
 
 export default function OrgProfilePage() {
     const navigation = useNavigation();
@@ -23,31 +23,37 @@ export default function OrgProfilePage() {
     const [logo, setLogo] = useState(null);
 
     const route = useRoute();
-    // const { orgName } = route.params;
-    const orgName = 'ACSS';
+    const { orgName } = route.params;
+    const currentUser = auth.currentUser;
+    const userEmail = currentUser.email;
+
+
+    // const orgName = 'ACSS';
 
     useEffect (() => {
 
         const fetchOrgData = async () =>{
             try{
-                const docRef = doc(firestore, 'test', orgName);
-                const docSnap = await getDoc(docRef);
-
-                //get values
-                if (docSnap.exists()) {
+                const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+                const querySnapshot = await getDocs(q);
+                console.log(orgName);
+                if(!querySnapshot.empty){
+                    const docSnap = querySnapshot.docs[0];
                     const data = docSnap.data();
-                    setName(data.fullName);
-                    setDescription(data.description);
-                    setFullDescription(data.fullDescription);
-                    setMemberCount(data.members);
+
+                    setName(data.orgName);
+                    setDescription(data.shortdesc);
+                    setFullDescription(data.fulldesc);
+                    setMemberCount(Array.isArray(data.members) ? data.members.length : 0);
                     setLocation(data.location);
                     setEmail(data.email);
-                    setWebsite(data.website);
-                    setLogo({ uri: data.logoUrl});
+                    setWebsite(data.websitelink);
+                    setLogo(data.logoBase64);
+                    console.log('data fetched');
+                    console.log(userEmail);
                 }else{
                     console.log('No Registry Found')
                 }
-                
             }catch(error){
                 console.error('Error fetching organzation data:', error)
             }
@@ -55,6 +61,28 @@ export default function OrgProfilePage() {
 
         fetchOrgData();
     }, []);
+
+    const addUserToMembers = async (orgName, userEmail) => {
+        try {
+            const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const querySnapshot = await getDocs(q);
+      
+          if (!querySnapshot.empty) {
+            const orgDoc = querySnapshot.docs[0]; // Get the first matching document
+            const orgRef = doc(firestore, 'organizations', orgDoc.id); // Use the doc ID to get the reference
+      
+            await updateDoc(orgRef, {
+              members: arrayUnion(userEmail),
+            });
+      
+            console.log(`User ${userEmail} added to organization ${orgName}`);
+          } else {
+            console.log('Organization not found');
+          }
+        } catch (error) {
+          console.error('Error adding user to members:', error);
+        }
+    };
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -74,7 +102,10 @@ export default function OrgProfilePage() {
                                 showsVerticalScrollIndicator={false}>
                             {/* Org Profile Content */}
                             <View style={styles.profileContainer}>
-                                {/* <Image source={{ uri: logo }} style={styles.logo} /> */}
+                                <Image 
+                                    source={{ uri: logo }}
+                                    style={styles.logo}
+                                />
                                 <Text style={styles.orgName}>{name}</Text>
                                 <Text style={styles.shortDescription}>{description}</Text>
                                 
@@ -85,7 +116,7 @@ export default function OrgProfilePage() {
                                     <TouchableOpacity style={styles.messageButton}>
                                         <Text style={styles.messageButtonText}>Message</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={styles.joinButton}>
+                                    <TouchableOpacity style={styles.joinButton} onPress={() => addUserToMembers(orgName, userEmail)}>
                                         <Text style={styles.joinButtonText}>Join</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -118,7 +149,7 @@ export default function OrgProfilePage() {
                                     <View style={styles.detailRow}>
                                         <Feather name="link" size={20} color="#555" />
                                         <Text style={styles.detailLink} onPress={() => Linking.openURL(website)}>
-                                            {website.replace('https://', '')}
+                                            {website}
                                         </Text>
                                     </View>
                                 </View>
