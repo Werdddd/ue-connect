@@ -170,7 +170,12 @@ export default function OrganizationPage() {
                                 />
                             );
                         })}
-                    
+                    <TouchableOpacity
+                        style={styles.plusButton}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <Text style={styles.plusText}>＋</Text>
+                    </TouchableOpacity>
                     <Modal
                         animationType="slide"
                         transparent={true}

@@ -9,12 +9,13 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCardRSO from '../components/eventCardRSO';
-import { fetchEvents, addEvent } from '../Backend/eventPageRSO'; // <-- import backend fetcher
-import {launchImageLibrary} from 'react-native-image-picker';
+import { fetchEvents, addEvent } from '../Backend/eventPageRSO'; 
+import { launchImageLibrary } from 'react-native-image-picker';
 // import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 export default function EventPageRSO() {
     const navigation = useNavigation();
@@ -23,18 +24,17 @@ export default function EventPageRSO() {
     const [events, setEvents] = useState([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
 
-    // Inputs for new event
     const [newTitle, setNewTitle] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [newDate, setNewDate] = useState('');
     const [newTime, setNewTime] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [newParticipants, setNewParticipants] = useState('');
-    const [organization, setOrganization] = useState('');  // Default organization (this would come from logged-in data)
-    const [status, setStatus] = useState(''); 
+    const [organization, setOrganization] = useState('');  
+    const [status, setStatus] = useState('');
     const [selectedBanner, setSelectedBanner] = useState(null);
     const [selectedProposal, setSelectedProposal] = useState(null);
-    
+
     useEffect(() => {
         loadEvents();
     }, []);
@@ -48,74 +48,104 @@ export default function EventPageRSO() {
         }
     };
 
+    async function getBase64(uri) {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+        });
+        return base64;
+    }
+
+    async function compressImage(uri) {
+        const compressed = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 100 } }],
+            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        return compressed.uri;
+    }
+
     const handleSelectBanner = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-        if (permissionResult.granted === false) {
-          alert("Permission to access media library is required!");
-          return;
+
+        if (!permissionResult.granted) {
+            alert("Permission to access media library is required!");
+            return;
         }
-      
+
         const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 1,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
         });
-      
+
         if (!result.canceled) {
-          setSelectedBanner(result.assets[0]); // For SDK 48 and later
+            try {
+                const uri = result.assets[0].uri;
+
+                // For Compressing Image(Di kaya pag malaki)
+                const compressed = await ImageManipulator.manipulateAsync(
+                    uri,
+                    [{ resize: { width: 800 } }],
+                    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+                );
+
+                // Convert to base64
+                const base64 = await FileSystem.readAsStringAsync(compressed.uri, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+
+                const dataUri = `data:image/jpeg;base64,${base64}`;
+                setSelectedBanner(dataUri);
+
+            } catch (error) {
+                console.error("Error processing image:", error);
+            }
         }
-      };
-      
-    
-      const handleSelectProposal = async () => {
+    };
+
+    const handleSelectProposal = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
             if (result.type === 'success') {
-                console.log('Selected proposal:', result); // Debug log
                 setSelectedProposal(result);
             }
         } catch (error) {
             console.error("Error picking proposal file:", error);
         }
     };
-    
-      
 
     const handleAddEvent = async () => {
-        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants) {
+        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants || !selectedBanner) {
             alert('Please fill out all fields!');
             return;
         }
-    
-        // Parsing participants to integer
+
         const participants = parseInt(newParticipants, 10);
         if (isNaN(participants)) {
             alert('Please enter a valid number for participants!');
             return;
         }
-    
-        // Set default status (it can be set dynamically depending on superadmin settings)
-        const eventStatus = status || 'Applied';  // Default status if not set
-    
+
+        const eventStatus = status || 'Applied'; 
+
         const newEvent = {
+            banner: selectedBanner,
             title: newTitle,
             description: newDescription,
             date: newDate,
             time: newTime,
             location: newLocation,
             participants: participants,
-            org: organization,  // From the logged-in organization
-            status: eventStatus,  // Applying the status (either default or admin-defined)
+            org: organization,  
+            status: eventStatus, 
         };
-    
+
         try {
-            await addEvent(newEvent);  // This function should handle uploading to Firebase
-            await loadEvents();  // Refresh events after adding
-            setIsModalVisible(false);  // Close modal
+            await addEvent(newEvent);
+            await loadEvents();
+            setIsModalVisible(false);
             setSelectedBanner(null);
-            // Clear inputs
             setNewTitle('');
             setNewDescription('');
             setNewDate('');
@@ -127,7 +157,7 @@ export default function EventPageRSO() {
             console.error('Error adding event:', error);
         }
     };
-    
+
 
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
@@ -157,7 +187,7 @@ export default function EventPageRSO() {
                     scrollEventThrottle={16}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}>
-                    
+
                     <TouchableOpacity
                         style={styles.floatingButton}
                         onPress={() => setIsModalVisible(true)}
@@ -169,16 +199,30 @@ export default function EventPageRSO() {
                         <Text style={styles.titleText}>Your Events</Text>
                         <View style={styles.underline} />
                     </View>
-                    
+
                     {filteredEvents.map((event) => (
-                        <EventCardRSO key={event.id} event={event} />
+                        <EventCardRSO
+                            key={event.id}
+                            event={{
+                                id: event.id,
+                                banner: event.banner,
+                                seal: event.seal,
+                                title: event.title,
+                                date: event.date,
+                                time: event.time,
+                                description: event.description,
+                                participants: event.participants,
+                                location: event.location,
+                                status: event.status
+                            }}
+                        />
                     ))}
-                    
+
                 </ScrollView>
-                
+
                 <BottomNavBar />
 
-                {/* Modal for Adding Event */}
+                {/* Modal */}
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -191,7 +235,7 @@ export default function EventPageRSO() {
                             <Text style={styles.label}>Event Title</Text>
                             <TextInput
                                 placeholder="ENtramurals 2025"
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 value={newTitle}
                                 onChangeText={setNewTitle}
@@ -199,41 +243,38 @@ export default function EventPageRSO() {
                             <Text style={styles.label}>Event Description</Text>
                             <TextInput
                                 placeholder="An event of..."
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 value={newDescription}
                                 onChangeText={setNewDescription}
                             />
                             <View style={styles.dateTimeRow}>
-                            {/* Event Date */}
-                            <View style={styles.dateTimeColumn}>
-                                <Text style={styles.label}>Event Date</Text>
-                                <TextInput
-                                placeholder="April 25, 2025"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newDate}
-                                onChangeText={setNewDate}
-                                />
-                            </View>
-
-                            {/* Event Time */}
-                            <View style={styles.dateTimeColumn}>
-                                <Text style={styles.label}>Event Time</Text>
-                                <TextInput
-                                placeholder="8:00 AM - 12:00 PM"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newTime}
-                                onChangeText={setNewTime}
-                                />
-                            </View>
+                                <View style={styles.dateTimeColumn}>
+                                    <Text style={styles.label}>Event Date</Text>
+                                    <TextInput
+                                        placeholder="April 25, 2025"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={newDate}
+                                        onChangeText={setNewDate}
+                                    />
+                                </View>
+                                <View style={styles.dateTimeColumn}>
+                                    <Text style={styles.label}>Event Time</Text>
+                                    <TextInput
+                                        placeholder="8:00 AM - 12:00 PM"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={newTime}
+                                        onChangeText={setNewTime}
+                                    />
+                                </View>
                             </View>
 
                             <Text style={styles.label}>Event Location</Text>
                             <TextInput
                                 placeholder="MPH 2, Engineering Building"
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 value={newLocation}
                                 onChangeText={setNewLocation}
@@ -241,56 +282,54 @@ export default function EventPageRSO() {
                             <Text style={styles.label}>Event Participants</Text>
                             <TextInput
                                 placeholder="100"
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 keyboardType="numeric"
                                 value={newParticipants}
                                 onChangeText={setNewParticipants}
                             />
                             <View style={styles.bannerFileRow}>
-                            {/* Banner Upload Section */}
-                            <View style={styles.uploadSection}>
-                                <Text style={styles.label}>Event Banner</Text>
-                                <TouchableOpacity
-                                style={styles.uploadButton}
-                                onPress={handleSelectBanner}
-                                >
-                                <Text style={styles.buttonText}>
-                                    {selectedBanner ? 'Change Banner' : 'Upload Banner'}
-                                </Text>
-                                </TouchableOpacity>
-                                {selectedBanner && (
-                                <Image
-                                    source={{ uri: selectedBanner.uri }}
-                                    style={styles.bannerPreview}
-                                    resizeMode="cover"
-                                />
-                                )}
-                            </View>
+                                <View style={styles.uploadSection}>
+                                    <Text style={styles.label}>Event Banner</Text>
+                                    <TouchableOpacity
+                                        style={styles.uploadButton}
+                                        onPress={handleSelectBanner}
+                                    >
+                                        <Text style={styles.buttonText}>
+                                            {selectedBanner ? 'Change Banner' : 'Upload Banner'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {selectedBanner && (
+                                        <Image
+                                            source={{ uri: selectedBanner }}
+                                            style={styles.bannerPreview}
+                                            resizeMode="cover"
+                                        />
+                                    )}
+                                </View>
 
-                            {/* Proposal Upload Section */}
-                            <View style={styles.uploadSection}>
-                                <Text style={styles.label}>Event Proposal</Text>
-                                <TouchableOpacity
-                                    style={styles.uploadButton}
-                                    onPress={handleSelectProposal}
-                                >
-                                    <Text style={styles.buttonText}>
-                                        {selectedProposal ? 'Change File' : 'Upload Proposal'}
-                                    </Text>
-                                </TouchableOpacity>
+                                <View style={styles.uploadSection}>
+                                    <Text style={styles.label}>Event Proposal</Text>
+                                    <TouchableOpacity
+                                        style={styles.uploadButton}
+                                        onPress={handleSelectProposal}
+                                    >
+                                        <Text style={styles.buttonText}>
+                                            {selectedProposal ? 'Change File' : 'Upload Proposal'}
+                                        </Text>
+                                    </TouchableOpacity>
 
-                                {selectedProposal && (
-                                <View style={{ marginTop: 8 }}>
-                                    <Text style={styles.proposalText}>
-                                    📄 {selectedProposal?.uri?.split('/').pop() ?? 'No name found'}
-                                    </Text>
+                                    {selectedProposal && (
+                                        <View style={{ marginTop: 8 }}>
+                                            <Text style={styles.proposalText}>
+                                                📄 {selectedProposal?.uri?.split('/').pop() ?? 'No name found'}
+                                            </Text>
 
+
+                                        </View>
+                                    )}
 
                                 </View>
-                                )}
-
-                            </View>
 
                             </View>
 
@@ -361,13 +400,13 @@ const styles = StyleSheet.create({
     dateTimeRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        gap: 10, // Add spacing between the two columns
-      },
-      
-      dateTimeColumn: {
+        gap: 10, 
+    },
+
+    dateTimeColumn: {
         flex: 1,
-      },
-      
+    },
+
     floatingButtonText: {
         color: 'white',
         fontSize: 16,
@@ -439,33 +478,31 @@ const styles = StyleSheet.create({
         height: 150,
         marginTop: 10,
         borderRadius: 8,
-      },
-      uploadSection: {
+    },
+    uploadSection: {
         flex: 1,
-      },
+    },
     bannerFileRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         gap: 10,
-      },
-      
-      uploadSection: {
+    },
+
+    uploadSection: {
         flex: 1,
-      },
-      
-      bannerPreview: {
+    },
+
+    bannerPreview: {
         width: '100%',
         height: 100,
         marginTop: 8,
         borderRadius: 8,
-      },
-      
-      proposalText: {
+    },
+
+    proposalText: {
         fontSize: 24,
         color: '#000',
         fontStyle: 'italic',
     }
-    
-      
 });

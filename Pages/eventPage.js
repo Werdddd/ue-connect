@@ -111,7 +111,7 @@ export default function Event() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}>
                     <OrganizationBar onSelectOrganization={setSelectedOrg} />
-
+                    
                     <View style={styles.titleContainer}>
                         <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
                         <View style={styles.underline} />

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // For the heart icon
+import { Ionicons } from '@expo/vector-icons'; 
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 export default function EventCardRSO({ event }) {
     const [modalVisible, setModalVisible] = useState(false);
@@ -14,6 +17,22 @@ export default function EventCardRSO({ event }) {
     const handleCloseModal = () => {
         setModalVisible(false);
     };
+
+    async function getBase64(uri) {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+        });
+        return base64;
+    }
+    
+    async function compressImage(uri) {
+        const compressed = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 100 } }],
+            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        return compressed.uri;
+    }
 
     const getStatusStyle = (status) => {
         switch (status) {
@@ -31,9 +50,9 @@ export default function EventCardRSO({ event }) {
         <View>
             {/* Event Card */}
             <TouchableOpacity style={styles.card} onPress={handleOpenModal}>
-            {event.bannerUrl && (
+            {event.banner && (
                 <Image
-                    source={{ uri: event.bannerUrl }}
+                    source={{ uri: event.banner }}
                     style={styles.banner}
                     resizeMode="cover"
                 />

@@ -11,6 +11,8 @@ import Start from './Pages/start.js';
 import Home from './Pages/home.js';
 import Template from './Pages/templatePage.js';
 import OrganizationPage from './Pages/organizationPage.js';
+import OrganizationPageRSO from './Pages/organizationPageRSO.js';
+import OrganizationPageSAO from './Pages/organizationPageRSO.js';
 import Events from './Pages/eventPage.js';
 import Settings from './Pages/settings.js';
 import OrgProfilePage from './Pages/orgProfilePage.js';
@@ -27,7 +29,7 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Landing" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Start" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Landing" component={Landing} />
         <Stack.Screen name="Tutorial" component={Tutorial} />
         <Stack.Screen name="Start" component={Start} />
@@ -35,6 +37,8 @@ export default function App() {
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="OrganizationPage" component={OrganizationPage} />
+        <Stack.Screen name="OrganizationPageRSO" component={OrganizationPageRSO} />
+        <Stack.Screen name="OrganizationPageSAO" component={OrganizationPageSAO} />
         <Stack.Screen name="Template" component={Template} />
         <Stack.Screen name="UserOwnProfilePage" component={UserOwnProfilePage} />
         <Stack.Screen name="OrgProfilePage" component={OrgProfilePage} />

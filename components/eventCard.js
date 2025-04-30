@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // For the heart icon
+import { Ionicons } from '@expo/vector-icons';
 
 export default function EventCard({ event }) {
     const [modalVisible, setModalVisible] = useState(false);
-    const [joined, setJoined] = useState(false); // State to track if the user has joined
-    const [favorited, setFavorited] = useState(false); // State to track if the event is favorited
+    const [joined, setJoined] = useState(false); 
+    const [favorited, setFavorited] = useState(false);
 
     const handleOpenModal = () => {
         setModalVisible(true);
@@ -16,11 +16,11 @@ export default function EventCard({ event }) {
     };
 
     const handleJoinToggle = () => {
-        setJoined((prevJoined) => !prevJoined); // Toggle the join state
+        setJoined((prevJoined) => !prevJoined); 
     };
 
     const handleFavoriteToggle = () => {
-        setFavorited((prevFavorited) => !prevFavorited); // Toggle the favorite state
+        setFavorited((prevFavorited) => !prevFavorited); 
     };
 
     return (
@@ -78,7 +78,6 @@ export default function EventCard({ event }) {
                         </TouchableOpacity>
 
                         <ScrollView contentContainerStyle={styles.modalContent}>
-                            {/* Event Banner */}
                             <Image source={event.banner} style={styles.modalBanner} />
                             <Text style={styles.modalTitle}>{event.title}</Text>
 
@@ -102,7 +101,6 @@ export default function EventCard({ event }) {
                                     </Text>
                                 </TouchableOpacity>
 
-                                {/* Favorite Button */}
                                 <TouchableOpacity onPress={handleFavoriteToggle} style={styles.favoriteButton}>
                                     <Ionicons
                                         name={favorited ? 'heart' : 'heart-outline'}
@@ -181,7 +179,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     joinedButton: {
-        backgroundColor: 'orange', // Change button color to yellow when joined
+        backgroundColor: 'orange',
     },
     firstfavoriteButton: {
         marginTop: 15,
@@ -207,7 +205,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        alignItems: 'flex-start', // Align everything to the left
+        alignItems: 'flex-start', 
     },
     modalBanner: {
         width: '100%',
@@ -226,10 +224,10 @@ const styles = StyleSheet.create({
         marginVertical: 5,
     },
     joinHeartContainer: {
-        flexDirection: 'row', // Align items in a row
-        justifyContent: 'space-between', // Space out the items with space between
-        alignItems: 'center', // Vertically align items
-        width: '100%', // Ensure the container takes up the full width
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
     },
     modalDate: {
         fontSize: 14,
