@@ -9,8 +9,8 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCardSAO from '../components/eventCardSAO';
-import { fetchEvents, addEvent, updateEventStatus } from '../Backend/eventPageSAO'; // <-- import backend fetcher
-import {launchImageLibrary} from 'react-native-image-picker';
+import { fetchEvents, addEvent, updateEventStatus } from '../Backend/eventPageSAO';
+import { launchImageLibrary } from 'react-native-image-picker';
 // import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,20 +23,19 @@ export default function EventPageSAO() {
     const [events, setEvents] = useState([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
 
-    // Inputs for new event
     const [newTitle, setNewTitle] = useState('');
     const [newDescription, setNewDescription] = useState('');
     const [newDate, setNewDate] = useState('');
     const [newTime, setNewTime] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [newParticipants, setNewParticipants] = useState('');
-    const [organization, setOrganization] = useState('');  // Default organization (this would come from logged-in data)
-    const [status, setStatus] = useState(''); 
+    const [organization, setOrganization] = useState('');
+    const [status, setStatus] = useState('');
     const [selectedBanner, setSelectedBanner] = useState(null);
     const [selectedProposal, setSelectedProposal] = useState(null);
-    
+
     const [actionModalVisible, setActionModalVisible] = useState(false);
-    const [currentAction, setCurrentAction] = useState(null); // 'Approved' or 'Rejected'
+    const [currentAction, setCurrentAction] = useState(null);
     const [currentEventId, setCurrentEventId] = useState(null);
     const [remark, setRemark] = useState('');
 
@@ -55,30 +54,30 @@ export default function EventPageSAO() {
 
     const handleSelectBanner = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
         if (permissionResult.granted === false) {
-          alert("Permission to access media library is required!");
-          return;
+            alert("Permission to access media library is required!");
+            return;
         }
-      
+
         const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 1,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
         });
-      
+
         if (!result.canceled) {
-          setSelectedBanner(result.assets[0]); // For SDK 48 and later
+            setSelectedBanner(result.assets[0]);
         }
-      };
-      
-    
-      const handleSelectProposal = async () => {
+    };
+
+
+    const handleSelectProposal = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
             if (result.type === 'success') {
-                console.log('Selected proposal:', result); // Debug log
+                console.log('Selected proposal:', result);
                 setSelectedProposal(result);
             }
         } catch (error) {
@@ -91,9 +90,9 @@ export default function EventPageSAO() {
             alert("Please provide a remark.");
             return;
         }
-    
+
         try {
-            await updateEventStatus(currentEventId, currentAction, remark); // Update in Firestore
+            await updateEventStatus(currentEventId, currentAction, remark);
             const updatedEvents = events.map(e =>
                 e.id === currentEventId ? { ...e, status: currentAction, remark } : e
             );
@@ -113,42 +112,40 @@ export default function EventPageSAO() {
         setActionModalVisible(true);
     };
 
-    
+
     const handleApprove = () => {
-        onApprove(events.id);  // ✅ Will mark event as 'Approved'
+        onApprove(events.id);
         handleCloseModal();
     };
-    
+
     const confirmReject = () => {
-        onReject(events.id, remark);  // ✅ Will mark event as 'Rejected' with optional remarks
+        onReject(events.id, remark);
         handleCloseModal();
     };
 
     const handleReject = (id, remark) => {
         const updatedEvents = events.map(e =>
-        e.id === id ? { ...e, status: 'Rejected', remark } : e
+            e.id === id ? { ...e, status: 'Rejected', remark } : e
         );
         setEvents(updatedEvents);
     };
-    
-      
+
+
 
     const handleAddEvent = async () => {
         if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants) {
             alert('Please fill out all fields!');
             return;
         }
-    
-        // Parsing participants to integer
+
         const participants = parseInt(newParticipants, 10);
         if (isNaN(participants)) {
             alert('Please enter a valid number for participants!');
             return;
         }
-    
-        // Set default status (it can be set dynamically depending on superadmin settings)
-        const eventStatus = status || 'Applied';  // Default status if not set
-    
+
+        const eventStatus = status || 'Applied';
+
         const newEvent = {
             title: newTitle,
             description: newDescription,
@@ -156,16 +153,15 @@ export default function EventPageSAO() {
             time: newTime,
             location: newLocation,
             participants: participants,
-            org: organization,  // From the logged-in organization
-            status: eventStatus,  // Applying the status (either default or admin-defined)
+            org: organization,
+            status: eventStatus,
         };
-    
+
         try {
-            await addEvent(newEvent);  // This function should handle uploading to Firebase
-            await loadEvents();  // Refresh events after adding
-            setIsModalVisible(false);  // Close modal
+            await addEvent(newEvent);
+            await loadEvents();
+            setIsModalVisible(false);
             setSelectedBanner(null);
-            // Clear inputs
             setNewTitle('');
             setNewDescription('');
             setNewDate('');
@@ -177,7 +173,7 @@ export default function EventPageSAO() {
             console.error('Error adding event:', error);
         }
     };
-    
+
 
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
@@ -207,7 +203,7 @@ export default function EventPageSAO() {
                     scrollEventThrottle={16}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}>
-                    
+
                     <TouchableOpacity
                         style={styles.floatingButton}
                         onPress={() => setIsModalVisible(true)}
@@ -219,7 +215,7 @@ export default function EventPageSAO() {
                         <Text style={styles.titleText}>All Events</Text>
                         <View style={styles.underline} />
                     </View>
-                    
+
                     {filteredEvents.map((event) => (
                         <EventCardSAO
                             key={event.id}
@@ -227,15 +223,12 @@ export default function EventPageSAO() {
                             onApprove={() => openActionModal(event.id, 'Approved')}
                             onReject={() => openActionModal(event.id, 'Rejected')}
                         />
-                    
-                    
                     ))}
-                    
+
                 </ScrollView>
-                
+
                 <BottomNavBar />
 
-                {/* Modal for Adding Event */}
                 <Modal
                     animationType="slide"
                     transparent={true}
@@ -248,7 +241,7 @@ export default function EventPageSAO() {
                             <Text style={styles.label}>Event Title</Text>
                             <TextInput
                                 placeholder="ENtramurals 2025"
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 value={newTitle}
                                 onChangeText={setNewTitle}
@@ -256,41 +249,40 @@ export default function EventPageSAO() {
                             <Text style={styles.label}>Event Description</Text>
                             <TextInput
                                 placeholder="An event of..."
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 value={newDescription}
                                 onChangeText={setNewDescription}
                             />
                             <View style={styles.dateTimeRow}>
-                            {/* Event Date */}
-                            <View style={styles.dateTimeColumn}>
-                                <Text style={styles.label}>Event Date</Text>
-                                <TextInput
-                                placeholder="April 25, 2025"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newDate}
-                                onChangeText={setNewDate}
-                                />
-                            </View>
 
-                            {/* Event Time */}
-                            <View style={styles.dateTimeColumn}>
-                                <Text style={styles.label}>Event Time</Text>
-                                <TextInput
-                                placeholder="8:00 AM - 12:00 PM"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newTime}
-                                onChangeText={setNewTime}
-                                />
-                            </View>
+                                <View style={styles.dateTimeColumn}>
+                                    <Text style={styles.label}>Event Date</Text>
+                                    <TextInput
+                                        placeholder="April 25, 2025"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={newDate}
+                                        onChangeText={setNewDate}
+                                    />
+                                </View>
+
+                                <View style={styles.dateTimeColumn}>
+                                    <Text style={styles.label}>Event Time</Text>
+                                    <TextInput
+                                        placeholder="8:00 AM - 12:00 PM"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={newTime}
+                                        onChangeText={setNewTime}
+                                    />
+                                </View>
                             </View>
 
                             <Text style={styles.label}>Event Location</Text>
                             <TextInput
                                 placeholder="MPH 2, Engineering Building"
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 value={newLocation}
                                 onChangeText={setNewLocation}
@@ -298,56 +290,55 @@ export default function EventPageSAO() {
                             <Text style={styles.label}>Event Participants</Text>
                             <TextInput
                                 placeholder="100"
-                                placeholderTextColor="#D3D3D3" 
+                                placeholderTextColor="#D3D3D3"
                                 style={styles.input}
                                 keyboardType="numeric"
                                 value={newParticipants}
                                 onChangeText={setNewParticipants}
                             />
                             <View style={styles.bannerFileRow}>
-                            {/* Banner Upload Section */}
-                            <View style={styles.uploadSection}>
-                                <Text style={styles.label}>Event Banner</Text>
-                                <TouchableOpacity
-                                style={styles.uploadButton}
-                                onPress={handleSelectBanner}
-                                >
-                                <Text style={styles.buttonText}>
-                                    {selectedBanner ? 'Change Banner' : 'Upload Banner'}
-                                </Text>
-                                </TouchableOpacity>
-                                {selectedBanner && (
-                                <Image
-                                    source={{ uri: selectedBanner.uri }}
-                                    style={styles.bannerPreview}
-                                    resizeMode="cover"
-                                />
-                                )}
-                            </View>
+                                {/* Banner Upload Section */}
+                                <View style={styles.uploadSection}>
+                                    <Text style={styles.label}>Event Banner</Text>
+                                    <TouchableOpacity
+                                        style={styles.uploadButton}
+                                        onPress={handleSelectBanner}
+                                    >
+                                        <Text style={styles.buttonText}>
+                                            {selectedBanner ? 'Change Banner' : 'Upload Banner'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                    {selectedBanner && (
+                                        <Image
+                                            source={{ uri: selectedBanner.uri }}
+                                            style={styles.bannerPreview}
+                                            resizeMode="cover"
+                                        />
+                                    )}
+                                </View>
 
-                            {/* Proposal Upload Section */}
-                            <View style={styles.uploadSection}>
-                                <Text style={styles.label}>Event Proposal</Text>
-                                <TouchableOpacity
-                                    style={styles.uploadButton}
-                                    onPress={handleSelectProposal}
-                                >
-                                    <Text style={styles.buttonText}>
-                                        {selectedProposal ? 'Change File' : 'Upload Proposal'}
-                                    </Text>
-                                </TouchableOpacity>
+                                <View style={styles.uploadSection}>
+                                    <Text style={styles.label}>Event Proposal</Text>
+                                    <TouchableOpacity
+                                        style={styles.uploadButton}
+                                        onPress={handleSelectProposal}
+                                    >
+                                        <Text style={styles.buttonText}>
+                                            {selectedProposal ? 'Change File' : 'Upload Proposal'}
+                                        </Text>
+                                    </TouchableOpacity>
 
-                                {selectedProposal && (
-                                <View style={{ marginTop: 8 }}>
-                                    <Text style={styles.proposalText}>
-                                    📄 {selectedProposal?.uri?.split('/').pop() ?? 'No name found'}
-                                    </Text>
+                                    {selectedProposal && (
+                                        <View style={{ marginTop: 8 }}>
+                                            <Text style={styles.proposalText}>
+                                                📄 {selectedProposal?.uri?.split('/').pop() ?? 'No name found'}
+                                            </Text>
 
+
+                                        </View>
+                                    )}
 
                                 </View>
-                                )}
-
-                            </View>
 
                             </View>
 
@@ -370,41 +361,41 @@ export default function EventPageSAO() {
                 </Modal>
 
                 <Modal
-    visible={actionModalVisible}
-    transparent={true}
-    animationType="slide"
-    onRequestClose={() => setActionModalVisible(false)}
->
-    <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-                Confirm {currentAction}
-            </Text>
-            <Text style={styles.label}>Add Remark</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="Enter your remark..."
-                value={remark}
-                onChangeText={setRemark}
-                multiline
-            />
-            <View style={styles.modalButtons}>
-                <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => setActionModalVisible(false)}
+                    visible={actionModalVisible}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setActionModalVisible(false)}
                 >
-                    <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={handleActionConfirm}
-                >
-                    <Text style={styles.buttonText}>Confirm</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    </View>
-</Modal>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>
+                                Confirm {currentAction}
+                            </Text>
+                            <Text style={styles.label}>Add Remark</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter your remark..."
+                                value={remark}
+                                onChangeText={setRemark}
+                                multiline
+                            />
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => setActionModalVisible(false)}
+                                >
+                                    <Text style={styles.buttonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.addButton}
+                                    onPress={handleActionConfirm}
+                                >
+                                    <Text style={styles.buttonText}>Confirm</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
 
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -457,12 +448,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         gap: 10, // Add spacing between the two columns
-      },
-      
-      dateTimeColumn: {
+    },
+
+    dateTimeColumn: {
         flex: 1,
-      },
-      
+    },
+
     floatingButtonText: {
         color: 'white',
         fontSize: 16,
@@ -534,33 +525,33 @@ const styles = StyleSheet.create({
         height: 150,
         marginTop: 10,
         borderRadius: 8,
-      },
-      uploadSection: {
+    },
+    uploadSection: {
         flex: 1,
-      },
+    },
     bannerFileRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         gap: 10,
-      },
-      
-      uploadSection: {
+    },
+
+    uploadSection: {
         flex: 1,
-      },
-      
-      bannerPreview: {
+    },
+
+    bannerPreview: {
         width: '100%',
         height: 100,
         marginTop: 8,
         borderRadius: 8,
-      },
-      
-      proposalText: {
+    },
+
+    proposalText: {
         fontSize: 24,
         color: '#000',
         fontStyle: 'italic',
     }
-    
-      
+
+
 });

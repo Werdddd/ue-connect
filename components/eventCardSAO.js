@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView,TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // For the heart icon
+import { Ionicons } from '@expo/vector-icons'; 
 
 export default function EventCardSAO({ event, onApprove, onReject }) {
     const [modalVisible, setModalVisible] = useState(false);
@@ -17,17 +17,17 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
     };
 
     const handleApprove = () => {
-        onApprove(event.id); // Pass event ID to parent
+        onApprove(event.id); 
         handleCloseModal();
     };
 
     const handleReject = () => {
-        onReject(event.id); // Pass event ID to parent
+        onReject(event.id);
         handleCloseModal();
     };
 
     const confirmReject = () => {
-        onReject(event.id, remark); // Pass event ID and remark
+        onReject(event.id, remark);
         handleCloseModal();
     };
 
@@ -42,7 +42,6 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
       
     return (
         <View>
-        {/* Event Card */}
         <TouchableOpacity style={styles.card} onPress={handleOpenModal}>
             {event.bannerUrl && (
                 <Image source={{ uri: event.bannerUrl }} style={styles.banner} resizeMode="cover" />
@@ -60,7 +59,6 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
             </View>
         </TouchableOpacity>
 
-        {/* Modal */}
         <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={handleCloseModal}>
             <View style={styles.modalBackground}>
                 <View style={styles.modalContainer}>
@@ -91,8 +89,6 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
                                 <Text style={styles.buttonText}>Reject</Text>
                             </TouchableOpacity>
                         </View>
-
-                        
                     </ScrollView>
                 </View>
             </View>
@@ -163,7 +159,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     joinedButton: {
-        backgroundColor: 'orange', // Change button color to yellow when joined
+        backgroundColor: 'orange',
     },
     firstfavoriteButton: {
         marginTop: 15,
@@ -189,7 +185,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        alignItems: 'flex-start', // Align everything to the left
+        alignItems: 'flex-start',
     },
     modalBanner: {
         width: '100%',
@@ -208,10 +204,10 @@ const styles = StyleSheet.create({
         marginVertical: 5,
     },
     joinHeartContainer: {
-        flexDirection: 'row', // Align items in a row
-        justifyContent: 'space-between', // Space out the items with space between
-        alignItems: 'center', // Vertically align items
-        width: '100%', // Ensure the container takes up the full width
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
     },
     modalDate: {
         fontSize: 14,
@@ -247,12 +243,10 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         zIndex: 10,
     },
-
     status: {
         color: '#fff',
         fontWeight: 'bold',
         paddingVertical: 8,
-       
         borderRadius: 12,
         alignSelf: 'flex-start',
         fontSize: 12,
