@@ -12,7 +12,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
-import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove} from "firebase/firestore";
+import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, query, orderBy} from "firebase/firestore";
 import { auth, firestore } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
 
@@ -35,6 +35,11 @@ export default function Home() {
   const [commentText, setCommentText] = useState('');
   const [shareCaption, setShareCaption] = useState('');
   const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [postComments, setPostComments] = useState([]);
+  const [commentCount, setCommentCount] = useState(0);
+  const [comments, setComments] = useState([]);
+
+
   const toggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
   };
@@ -43,6 +48,9 @@ export default function Home() {
   const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
 
   useEffect(() => {
+    if (commentModalVisible && selectedPostId) {
+      fetchComments(selectedPostId);
+    }
 
     const user = auth.currentUser;
     if (user?.email) {
@@ -61,54 +69,63 @@ export default function Home() {
     const fetchNewsfeed = async () => {
       try {
         const snapshot = await getDocs(collection(firestore, 'newsfeed'));
-
-        const fetched = snapshot.docs.map(doc => {
-          const d = doc.data();
-
-          // — date handling —
-          const rawDate = d.date || d.timestamp;
-          const dateObj = rawDate?.toDate
-            ? rawDate.toDate()
-            : new Date(rawDate || Date.now());
-
-          // — normalize post images (same as before) —
-          const images = (d.images || []).map(img =>
-            img.startsWith('http')
-              ? img
-              : `data:image/jpeg;base64,${img}`
-          );
-
-          // — normalize profile image just like images —
-          const rawProfileImage = d.profileImage || '';
-          const profileImage = rawProfileImage.startsWith('http')
-            ? rawProfileImage
-            : rawProfileImage.length > 0
-              ? `data:image/jpeg;base64,${rawProfileImage}`
-              : ''; 
-
-          //console.log(rawProfileImage, " + ");
-
-          return {
-            id:        doc.id,
-            text:      d.text || '',
-            date:      dateObj,
-            images,
-            user: {
-              name:         d.userName || '',
-              profileImage,             // now guaranteed to be either a full URL or valid data-uri
-            },
-            likedBy: d.likedBy || []
-          };
-        });
-
+    
+        // Use async callback in map
+        const fetched = await Promise.all(
+          snapshot.docs.map(async (doc) => {
+            const d = doc.data();
+    
+            // Date handling
+            const rawDate = d.date || d.timestamp;
+            const dateObj = rawDate?.toDate
+              ? rawDate.toDate()
+              : new Date(rawDate || Date.now());
+    
+            // Normalize post images
+            const images = (d.images || []).map(img =>
+              img.startsWith('http')
+                ? img
+                : `data:image/jpeg;base64,${img}`
+            );
+    
+            // Normalize profile image
+            const rawProfileImage = d.profileImage || '';
+            const profileImage = rawProfileImage.startsWith('http')
+              ? rawProfileImage
+              : rawProfileImage.length > 0
+                ? `data:image/jpeg;base64,${rawProfileImage}`
+                : '';
+    
+            // 🔥 Get comment count for this post
+            const commentsSnapshot = await getDocs(
+              collection(firestore, 'newsfeed', doc.id, 'comments')
+            );
+            const commentCount = commentsSnapshot.size;
+    
+            return {
+              id: doc.id,
+              text: d.text || '',
+              date: dateObj,
+              images,
+              user: {
+                name: d.userName || '',
+                profileImage,
+              },
+              likedBy: d.likedBy || [],
+              commentCount, // 👈 added here
+            };
+          })
+        );
+    
         setNewsfeedPosts(fetched.reverse());
       } catch (e) {
         console.error('Error fetching newsfeed:', e);
       }
     };
+    
 
     fetchNewsfeed();
-  }, []);
+  }, [commentModalVisible, selectedPostId]);
 
 
 
@@ -168,32 +185,55 @@ export default function Home() {
     }
   };
 
-  const handleAddComment = () => {
+  const fetchComments = async (postId) => {
+    try {
+      const commentsSnapshot = await getDocs(
+        collection(firestore, 'newsfeed', postId, 'comments')
+      );
+      const fetchedComments = commentsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+  
+      console.log('Fetched comments:', fetchedComments);  // Log to check if comments are correct
+  
+      setComments(fetchedComments);  // Update state with fetched comments
+      setPostComments(fetchedComments);
+  
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+  
+  
+  
+
+  const handleAddComment = async () => {
     if (commentText.trim() === '') return;
   
-    const updatedPosts = newsfeedPosts.map(post => {
-      if (post.id === selectedPostId) {
-        return {
-          ...post,
-          comments: [
-            ...(post.comments || []), // Add default empty array if comments is undefined
-            {
-              id: Date.now(),
-              user: {
-                name: 'Andrew Robles',
-                profileImage: userProfileImage,
-              },
-              text: commentText,
-            },
-          ],
-        };
-      }
-      return post;
-    });
+    try {
+      const userProfileImage = 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png';
+      const commentData = {
+        text: commentText,
+        userName: userName, // fetched from Firestore earlier
+        profileImage: userProfileImage || '', // optional
+        timestamp: serverTimestamp(),
+      };
   
-    setNewsfeedPosts(updatedPosts);
-    setCommentText(''); // clear input after sending
+      // Add comment to Firestore
+      await addDoc(collection(firestore, 'newsfeed', selectedPostId, 'comments'), commentData);
+  
+      // Reset the comment input field
+      setCommentText('');
+  
+      // Immediately re-fetch the comments for the selected post to update the UI
+      fetchComments(selectedPostId); // Custom function to fetch comments
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
   };
+  
+
   const commentModalOpacity = useSharedValue(1);
 
   const commentModalAnimatedBackground = useAnimatedStyle(() => ({
@@ -225,6 +265,7 @@ export default function Home() {
     commentTranslateY.value = 0;
     commentBackdropOpacity.value = 1;
     setSelectedPostId(null);
+    setPostComments([]);
   };
 
   const commentTranslateY = useSharedValue(0);
@@ -408,16 +449,19 @@ export default function Home() {
                 </Text>
             </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              setSelectedPostId(post.id); // set selected post
-              setCommentModalVisible(true);
-            }}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color="#555" />
-            <Text style={styles.actionText}>Comment</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                setSelectedPostId(post.id); // set selected post
+                setCommentModalVisible(true);
+                fetchComments(post.id); 
+              }}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color="#555" />
+              <Text style={styles.actionText}>
+                {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
+              </Text>
+            </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton} onPress={() => setShareModalVisible(true)}>
             <Ionicons name="share-social-outline" size={20} color="#555" />
@@ -453,18 +497,23 @@ export default function Home() {
                       >
 
                         
-              <Text style={styles.commentsTitle}>Comments</Text>
-              {/* Comment List */}
-              <ScrollView>
-                {(post.comments || []).map((comment) => (
-                  <View key={comment.id} style={styles.commentCard}>
-                    {comment.user.profileImage ? (
-                      <Image source={{ uri: comment.user.profileImage }} style={styles.profileImagePost} />
+            <Text style={styles.commentsTitle}>Comments</Text>
+            {/* Comment List */}
+            <ScrollView>
+              {postComments.map((comment) => (
+                <View key={comment.id} style={styles.commentCard}>
+                  {comment.profileImage ? (
+                      <Image
+                        source={{ uri: comment.profileImage }}
+                        style={styles.profileImagePost}
+                      />
                     ) : (
                       <FontAwesome name="user-circle-o" size={38} color="#999" />
-                    )}
+                  )}
                     <View>
-                      <Text style={styles.commentUserName}>{comment.user.name}</Text>
+                    <Text style={styles.commentUserName}>
+                      {comment.userName || 'Anonymous'}
+                    </Text>
                       <Text style={styles.userComment}>{comment.text}</Text>
                     </View>
                   </View>
