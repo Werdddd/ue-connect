@@ -355,4 +355,10 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#E50914',
     },
+    pickImageButton: {
+        backgroundColor: '#E50914',
+        padding: 10,
+        borderRadius: 5,
+        marginTop: 10,
+    },
 });
