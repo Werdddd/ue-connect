@@ -134,15 +134,7 @@ export default function EventPageSAO() {
     };
 
 
-    const handleApprove = () => {
-        onApprove(events.id);
-        handleCloseModal();
-    };
 
-    const confirmReject = () => {
-        onReject(events.id, remark);
-        handleCloseModal();
-    };
 
     const handleReject = (id, remark) => {
         const updatedEvents = events.map(e =>
@@ -253,8 +245,11 @@ export default function EventPageSAO() {
                                 location: event.location,
                                 status: event.status
                             }}
+                            onApprove={() => openActionModal(event.id, 'Approved')}
+                            onReject={() => openActionModal(event.id, 'Rejected')}
                         />
                     ))}
+
 
                 </ScrollView>
 

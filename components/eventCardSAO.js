@@ -7,7 +7,6 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
     const [showRemarkInput, setShowRemarkInput] = useState(false);
     const [remark, setRemark] = useState('');
 
-
     const handleOpenModal = () => {
         setModalVisible(true);
     };

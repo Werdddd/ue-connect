@@ -68,6 +68,7 @@ export default function Event() {
             await addEvent(newEvent);
             await loadEvents();
             setIsModalVisible(false); 
+
             setNewTitle('');
             setNewDescription('');
             setNewDate('');
