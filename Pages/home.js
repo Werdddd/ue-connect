@@ -401,7 +401,7 @@ export default function Home() {
   
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const { firstName, lastName, profileImage } = userData;
+        const { firstName, lastName, profileImage, role} = userData;
   
         // If no profile image is found, use a default image
         const userProfileImage = profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
@@ -418,6 +418,7 @@ export default function Home() {
             id: userEmail,
             name: `${firstName} ${lastName}`,
             profileImage: userProfileImage,
+            role,
           },
           text: postText,
           images: selectedImages,
@@ -469,7 +470,7 @@ export default function Home() {
             <Text style={styles.postUserName}>{post.user.name}</Text>
             {post.user.role === ss && (
                 <Image
-                source={require('../assets/veri.png')}
+                source={require('../assets/switch2.png')}
                 style={{ width: 16, height: 16, marginLeft: 5 }}
                 />
             )}
