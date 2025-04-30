@@ -67,61 +67,78 @@ export default function Home() {
     getUserData();
 
     const fetchNewsfeed = async () => {
-      try {
+    try {
         const snapshot = await getDocs(collection(firestore, 'newsfeed'));
-    
-        // Use async callback in map
+
         const fetched = await Promise.all(
-          snapshot.docs.map(async (doc) => {
-            const d = doc.data();
-    
-            // Date handling
+        snapshot.docs.map(async (docSnap) => {
+            const d = docSnap.data();
+
+            // Handle date
             const rawDate = d.date || d.timestamp;
             const dateObj = rawDate?.toDate
-              ? rawDate.toDate()
-              : new Date(rawDate || Date.now());
-    
+            ? rawDate.toDate()
+            : new Date(rawDate || Date.now());
+
             // Normalize post images
             const images = (d.images || []).map(img =>
-              img.startsWith('http')
+            img.startsWith('http')
                 ? img
                 : `data:image/jpeg;base64,${img}`
             );
-    
-            // Normalize profile image
-            const rawProfileImage = d.profileImage || '';
-            const profileImage = rawProfileImage.startsWith('http')
-              ? rawProfileImage
-              : rawProfileImage.length > 0
-                ? `data:image/jpeg;base64,${rawProfileImage}`
-                : '';
-    
-            // 🔥 Get comment count for this post
+
+            // 🔥 Get comment count
             const commentsSnapshot = await getDocs(
-              collection(firestore, 'newsfeed', doc.id, 'comments')
+            collection(firestore, 'newsfeed', docSnap.id, 'comments')
             );
             const commentCount = commentsSnapshot.size;
-    
+
+            // 🔍 Get user profile from Users collection
+            let profileImage = 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png'; // default
+            let userName = d.userName || 'Anonymous';
+
+            if (d.userId) {
+            try {
+                const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
+                if (userDoc.exists()) {
+                const userData = userDoc.data();
+                userName = userData.firstName && userData.lastName
+                    ? `${userData.firstName} ${userData.lastName}`
+                    : userData.firstName || 'Anonymous';
+
+
+                profileImage = userData.profileImage || 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png';
+
+                
+                }
+
+                console.log("link", userData.profileImage);
+            } catch (err) {
+                //console.warn(`Failed to get user data for ${d.userId}`, err);
+            }
+            }
+
             return {
-              id: doc.id,
-              text: d.text || '',
-              date: dateObj,
-              images,
-              user: {
-                name: d.userName || '',
+            id: docSnap.id,
+            text: d.text || '',
+            date: dateObj,
+            images,
+            user: {
+                name: userName,
                 profileImage,
-              },
-              likedBy: d.likedBy || [],
-              commentCount, // 👈 added here
+            },
+            likedBy: d.likedBy || [],
+            commentCount,
             };
-          })
+        })
         );
-    
+
         setNewsfeedPosts(fetched.reverse());
-      } catch (e) {
+    } catch (e) {
         console.error('Error fetching newsfeed:', e);
-      }
+    }
     };
+
     
 
     fetchNewsfeed();
@@ -195,7 +212,7 @@ export default function Home() {
         ...doc.data()
       }));
   
-      console.log('Fetched comments:', fetchedComments);  // Log to check if comments are correct
+      //console.log('Fetched comments:', fetchedComments);  // Log to check if comments are correct
   
       setComments(fetchedComments);  // Update state with fetched comments
       setPostComments(fetchedComments);
@@ -402,11 +419,16 @@ export default function Home() {
         {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
-            {post.user.profileImage ? (
-              <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
+          {post.user.profileImage ? (
+            <Image
+                source={{ uri: post.user.profileImage }}
+                style={styles.profileImagePost}
+                resizeMode="cover"
+            />
             ) : (
-              <FontAwesome name="user-circle-o" size={35} color="#999" />
+            <FontAwesome name="user-circle-o" size={35} color="#999" />
             )}
+
             <View style={{ marginLeft: 10 }}>
               <Text style={styles.postUserName}>{post.user.name}</Text>
               <Text style={styles.postDate}>{formattedDate}</Text>
@@ -816,10 +838,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   profileImagePost: {
-    width: 20,       // 👈 increase or decrease as needed
-    height: 20,
+    width: 35,       // 👈 increase or decrease as needed
+    height: 35,
     borderRadius: 25,
-    marginRight: 10,
+    marginRight: 3,
   },
   
   profileIcon: {

@@ -9,12 +9,14 @@ import {
     TouchableWithoutFeedback,
     Keyboard,
     KeyboardAvoidingView,
-    Platform,
+    Platform, TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { getOwnUserProfile } from '../Backend/userOwnProfile';
+import { updateProfileImage, loadProfileImage } from '../Backend/changeProfile';
+import { auth } from '../Firebase'; // your auth config
 
 export default function UserOwnProfilePage() {
     const navigation = useNavigation();
@@ -22,7 +24,9 @@ export default function UserOwnProfilePage() {
 
     const [name, setName] = useState({ firstName: '', lastName: '' });
     const [year, setYear] = useState('');
+    const [profile, setProfile] = useState('');
     const [course, setCourse] = useState('');
+    const userEmail = auth.currentUser?.email;
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -31,13 +35,18 @@ export default function UserOwnProfilePage() {
                 setName({ firstName: data.firstName, lastName: data.lastName });
                 setYear(data.Year);
                 setCourse(data.Course);
+                setProfile(data.profileImage);
             } catch (error) {
                 console.error("Error fetching profile:", error.message);
             }
         };
 
         fetchProfile();
-    }, []);
+
+        if (userEmail) {
+            loadProfileImage(userEmail, setProfile);
+        }
+    }, [userEmail]);
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -57,10 +66,13 @@ export default function UserOwnProfilePage() {
                             showsVerticalScrollIndicator={false}
                         >
                             <View style={styles.profileContainer}>
+                            <TouchableOpacity onPress={() => updateProfileImage(userEmail, setProfile)}>
                                 <Image
-                                    source={{ uri: 'https://www.example.com/user-profile-pic.jpg' }}
+                                    source={{ uri: profile }}
                                     style={styles.userProfileImage}
                                 />
+                            </TouchableOpacity>
+
                                 <Text style={styles.userName}>
                                     {name.firstName && name.lastName
                                         ? `${name.firstName} ${name.lastName}`
