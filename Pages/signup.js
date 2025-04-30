@@ -101,8 +101,9 @@ export default function SignUp() {
 
 
   return (
+    <ScrollView>
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         {loading && (
           <View style={styles.loadingContainer}>
             <View style={styles.loadingBox}>
@@ -119,7 +120,6 @@ export default function SignUp() {
           <View
             keyboardShouldPersistTaps="handled"
           >
-
             <Image
               source={require('../assets/logo.png')}
               style={styles.logo}
@@ -127,42 +127,55 @@ export default function SignUp() {
 
             <Text style={styles.title}>Create Your Account</Text>
 
+
+            <View style={styles.tagRow}>
+              <View style={styles.tagRowflex}>
+                <Text style={styles.label} >First Name</Text>
+              </View>
+              <View style={styles.tagRowflex}>
+                <Text style={styles.label}>Last Name</Text>
+              </View>
+            </View>
             <View style={styles.nameRow}>
+
               <TextInput
                 style={[styles.input, styles.nameInput]}
-                placeholder="First Name"
+                placeholder="Enter First Name"
                 value={firstName}
                 onChangeText={setFirstName}
               />
               <TextInput
                 style={[styles.input, styles.nameInput, styles.lastNameInput]}
-                placeholder="Last Name"
+                placeholder="Enter Last Name"
                 value={lastName}
                 onChangeText={setLastName}
               />
             </View>
 
+            <Text style={styles.label} >Student Number</Text>
             <TextInput
               style={styles.input}
-              placeholder="Student Number"
+              placeholder="Enter Student Number"
               value={studentNumber}
               onChangeText={setStudentNumber}
               keyboardType="numeric"
             />
-
+            <Text style={styles.label} >UE Email Address</Text>
             <TextInput
               style={styles.input}
-              placeholder="UE Email Address"
+              placeholder="Enter your UE Email Address"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
 
+            <Text style={styles.label} >Password</Text>
             <View style={styles.passwordContainer}>
+              
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Password"
+                placeholder="Enter your Password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -173,7 +186,7 @@ export default function SignUp() {
                 </Text>
               </TouchableOpacity>
             </View>
-
+            <Text style={styles.label} >Confirm Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -245,9 +258,6 @@ export default function SignUp() {
                 </View>
               </View>
             </View>
-
-
-
             <TouchableOpacity style={styles.button} onPress={handleSignUp}>
               <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
@@ -263,8 +273,9 @@ export default function SignUp() {
           </View>
 
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </TouchableWithoutFeedback>
+    </ScrollView>
   );
 }
 
@@ -277,7 +288,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    marginBottom: 40,
+    marginBottom: 10,
     textAlign: 'center',
     fontWeight: 'bold',
   },
@@ -286,7 +297,7 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderWidth: 1,
     paddingHorizontal: 15,
-    marginBottom: 20,
+    marginBottom: 10,
     borderRadius: 8,
   },
   passwordContainer: {
@@ -311,6 +322,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FE070C',
     paddingVertical: 15,
     borderRadius: 8,
+    marginBottom: 20,
   },
   buttonText: {
     color: '#fff',
@@ -318,27 +330,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   logo: {
+    marginTop: 70,
     width: 220,
     height: 220,
-    marginBottom: 10,
     alignSelf: 'center',
   },
   signInContainer: {
-    marginTop: 20,
     textAlign: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
+    marginBottom: 70,
   },
   alreadyHaveAccount: {
     color: 'black',
   },
   signIn: {
     color: '#FE070C',
-    fontWeight: 'bold',
+    fontWeight: 'bold', 
   },
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  tagRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  tagRowflex: {
+    flex: 1,
+    margin: 0,
+    padding: 0,
   },
   nameInput: {
     flex: 1,
@@ -388,7 +409,5 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 0,
   },
-
-
 
 });
