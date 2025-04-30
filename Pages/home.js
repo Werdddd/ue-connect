@@ -39,6 +39,7 @@ export default function Home() {
   const [postComments, setPostComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
   const [comments, setComments] = useState([]);
+  const ss = "dd";
 
 
   const toggleSearch = () => {
@@ -466,7 +467,7 @@ export default function Home() {
 
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
             <Text style={styles.postUserName}>{post.user.name}</Text>
-            {post.user.role === 'dd' && (
+            {post.user.role === ss && (
                 <Image
                 source={require('../assets/veri.png')}
                 style={{ width: 16, height: 16, marginLeft: 5 }}
