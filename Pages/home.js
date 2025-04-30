@@ -268,7 +268,7 @@ export default function Home() {
       const commentData = {
         text: commentText,
         userName: userName, // fetched from Firestore earlier
-        profileImage: userProfileImage || '', // optional
+        profileImage: userProfileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg', // optional
         timestamp: serverTimestamp(),
         email: currentUserEmail,
       };
@@ -586,8 +586,8 @@ export default function Home() {
 
               {/* Input at Bottom */}
               <View style={styles.commentInputRow}>
-              {post.user.profileImage ? (
-                <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
+              {userProfileImage ? (
+                <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
               ) : (
                 <FontAwesome name="user-circle-o" size={35} color="#999" />
               )}
