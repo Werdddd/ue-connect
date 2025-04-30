@@ -14,6 +14,7 @@ export async function signUpUser({ firstName, lastName, studentNumber, email, pa
       lastName: lastName,
       role: 'user',
       timestamp: new Date(),
+      profileImage: 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
     });
 
     return { success: true };

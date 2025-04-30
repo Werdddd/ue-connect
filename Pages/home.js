@@ -18,7 +18,7 @@ import { savePost } from '../Backend/uploadPost';
 
 export default function Home() {
   const navigation = useNavigation();
-  const [userProfileImage, setUserProfileImage] = useState(null);
+  const [userProfileImage, setUserProfileImage] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [postText, setPostText] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
@@ -62,6 +62,16 @@ export default function Home() {
     if (userDoc.exists()) {
         const userData = userDoc.data();
         setusername(`${userData.firstName} ${userData.lastName}`);
+        if (userData?.profileImage) {
+            const isBase64 = !userData.profileImage.startsWith('http');
+            const imageSource = isBase64
+              ? `${userData.profileImage}`
+              : userData.profileImage;
+          
+            setUserProfileImage(imageSource);
+            //console.log("test", imageSource);
+          }
+          
     }
     };
     getUserData();
@@ -94,7 +104,7 @@ export default function Home() {
             const commentCount = commentsSnapshot.size;
 
             // 🔍 Get user profile from Users collection
-            let profileImage = 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png'; // default
+            let profileImage
             let userName = d.userName || 'Anonymous';
 
             if (d.userId) {
@@ -107,12 +117,12 @@ export default function Home() {
                     : userData.firstName || 'Anonymous';
 
 
-                profileImage = userData.profileImage || 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png';
+                profileImage = userData.profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
 
                 
                 }
 
-                console.log("link", userData.profileImage);
+                //console.log("link", userData.profileImage);
             } catch (err) {
                 //console.warn(`Failed to get user data for ${d.userId}`, err);
             }
@@ -203,24 +213,47 @@ export default function Home() {
   };
 
   const fetchComments = async (postId) => {
-    try {
-      const commentsSnapshot = await getDocs(
-        collection(firestore, 'newsfeed', postId, 'comments')
-      );
-      const fetchedComments = commentsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+  try {
+    const commentsSnapshot = await getDocs(
+      collection(firestore, 'newsfeed', postId, 'comments')
+    );
+
+    const commentsData = await Promise.all(
+      commentsSnapshot.docs.map(async (docSnapshot) => {
+        const comment = docSnapshot.data();
+        const userEmail = comment.email;
+
+        let profileImage = null;
+
+        if (userEmail) {
+          try {
+            const userDocRef = doc(firestore, 'Users', userEmail);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+              profileImage = userDoc.data().profileImage || null;
+            }
+          } catch (error) {
+            console.warn(`Error fetching user data for ${userEmail}:`, error);
+          }
+        }
+
+        return {
+          id: docSnapshot.id,
+          ...comment,
+          profileImage,
+        };
+      })
+    );
+
+    setComments(commentsData);
+    setPostComments(commentsData);
+
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+  }
+};
   
-      //console.log('Fetched comments:', fetchedComments);  // Log to check if comments are correct
-  
-      setComments(fetchedComments);  // Update state with fetched comments
-      setPostComments(fetchedComments);
-  
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-    }
-  };
   
   
   
@@ -229,12 +262,12 @@ export default function Home() {
     if (commentText.trim() === '') return;
   
     try {
-      const userProfileImage = 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png';
       const commentData = {
         text: commentText,
         userName: userName, // fetched from Firestore earlier
         profileImage: userProfileImage || '', // optional
         timestamp: serverTimestamp(),
+        email: currentUserEmail,
       };
   
       // Add comment to Firestore
@@ -368,7 +401,7 @@ export default function Home() {
         const { firstName, lastName, profileImage } = userData;
   
         // If no profile image is found, use a default image
-        const userProfileImage = profileImage || 'https://cdn-icons-png.flaticon.com/512/8762/8762984.png';
+        const userProfileImage = profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
   
         // Get current date (ensure it's a valid Date object)
         const postDate = new Date();
@@ -841,7 +874,7 @@ const styles = StyleSheet.create({
     width: 35,       // 👈 increase or decrease as needed
     height: 35,
     borderRadius: 25,
-    marginRight: 3,
+    marginRight: 1,
   },
   
   profileIcon: {
