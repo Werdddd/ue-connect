@@ -32,7 +32,7 @@ export default function OrganizationPage() {
     const [newOrg, setNewOrg] = useState({
         department: '',
         orgName: '',
-        memberCount: '0',
+        memberCount: '',
         members: '',
         shortdesc: '',
         logoUri: '',
@@ -91,7 +91,7 @@ export default function OrganizationPage() {
             const newOrgData = {
                 department: newOrg.department,
                 orgName: newOrg.orgName,
-                memberCount: parseInt(newOrg.memberCount),
+                memberCount: parseInt(0),
                 shortdesc: newOrg.shortdesc,
                 logoUri: newOrg.logoUri,
                 logoBase64: newOrg.logoBase64,
@@ -99,7 +99,7 @@ export default function OrganizationPage() {
                 location: newOrg.location,
                 email: newOrg.email,
                 websitelink: newOrg.websitelink,
-                members: ''
+                members: '',
             };
 
             await addOrganization(newOrgData);
