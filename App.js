@@ -21,6 +21,7 @@ import EventPageRSO from './Pages/eventPageRSO.js';
 import EventPageSAO from './Pages/eventPageSAO.js';
 import ChatPage from './Pages/chatPage.js';
 import ConversationPage from './Pages/ConversationPage.js';
+import TestPostCard from './Pages/testPostCard.js';
 
 const Stack = createStackNavigator();
 
@@ -48,6 +49,7 @@ export default function App() {
         <Stack.Screen name="EventPageSAO" component={EventPageSAO} />
         <Stack.Screen name="ChatPage" component={ChatPage} />
         <Stack.Screen name="ConversationPage" component={ConversationPage} />
+        <Stack.Screen name="TestPostCard" component={TestPostCard} />
 
       </Stack.Navigator>
     </NavigationContainer>
