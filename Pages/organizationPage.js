@@ -38,6 +38,7 @@ export default function OrganizationPage() {
         logoUri: '',
         logoBase64: '',
         fulldesc: '',
+        followers: '',
         location: '',
         email: '',
         websitelink: '',
@@ -100,6 +101,7 @@ export default function OrganizationPage() {
                 email: newOrg.email,
                 websitelink: newOrg.websitelink,
                 members: '',
+                followers: ''
             };
 
             await addOrganization(newOrgData);
@@ -109,7 +111,7 @@ export default function OrganizationPage() {
                 { id: prevOrgs.length + 1, ...newOrgData }
             ]);
 
-            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: ''});
+            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: '', followers: ''});
             setModalVisible(false);
 
         } catch (error) {

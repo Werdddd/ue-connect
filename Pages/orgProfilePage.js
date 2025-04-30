@@ -28,6 +28,7 @@ export default function OrgProfilePage() {
     const userEmail = currentUser.email;
 
     const [isMember, setIsMember] = useState(false);
+    const [isFollower, setFollowing] = useState(false)
 
 
     // const orgName = 'ACSS';
@@ -79,6 +80,54 @@ export default function OrgProfilePage() {
         };
         userCheck();
     }, [orgName, userEmail]);
+
+    useEffect(() => {
+        const followCheck = async() =>{
+            const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+            const orgDoc = querySnapshot.docs[0];
+            const data = orgDoc.data();
+
+            const followers = data.followers || [];
+            setFollowing(followers.includes(userEmail)); // <-- Update membership state
+            }
+        };
+        followCheck();
+    }, [orgName, userEmail]);
+
+    const toggleFollow = async (orgName, userEmail) => {
+        try {
+            const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const querySnapshot = await getDocs(q);
+        
+            if (!querySnapshot.empty) {
+                const orgDoc = querySnapshot.docs[0];
+                const orgRef = doc(firestore, 'organizations', orgDoc.id);
+        
+                const data = orgDoc.data();
+                const followers = data.followers || [];
+                const userIsFollower = followers.includes(userEmail);
+        
+                setFollowing(!userIsFollower);
+        
+                await updateDoc(orgRef, {
+                    followers: userIsFollower ? arrayRemove(userEmail) : arrayUnion(userEmail),
+                });
+        
+                console.log(
+                    userIsFollower
+                    ? `User ${userEmail} unfollowed organization ${orgName}`
+                    : `User ${userEmail} followed organization ${orgName}`
+                );
+            } else {
+                console.log('Organization not found');
+            }
+        } catch (error) {
+            console.error('Error updating followers:', error);
+        }
+    };
 
     const addUserToMembers = async (orgName, userEmail) => {
         try {
@@ -138,8 +187,8 @@ export default function OrgProfilePage() {
                                 <Text style={styles.shortDescription}>{description}</Text>
                                 
                                 <View style={styles.buttonRow}>
-                                    <TouchableOpacity style={styles.followButton}>
-                                        <Text style={styles.followButtonText}>Follow</Text>
+                                    <TouchableOpacity style={styles.followButton} onPress={() => toggleFollow(orgName, userEmail)}>
+                                        <Text style={styles.followButtonText}>{isFollower ? 'Unfollow': 'Follow'}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.messageButton}>
                                         <Text style={styles.messageButtonText}>Message</Text>
