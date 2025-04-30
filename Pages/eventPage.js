@@ -9,7 +9,7 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCard from '../components/eventCard';
-import { fetchEvents, addEvent } from '../Backend/eventPage'; // <-- import backend fetcher
+import { fetchEvents, addEvent } from '../Backend/eventPage'; 
 
 export default function Event() {
     const navigation = useNavigation();
@@ -25,7 +25,7 @@ export default function Event() {
     const [newTime, setNewTime] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [newParticipants, setNewParticipants] = useState('');
-    const [organization, setOrganization] = useState('');  // Default organization (this would come from logged-in data)
+    const [organization, setOrganization] = useState(''); 
 
     useEffect(() => {
         loadEvents();
@@ -35,9 +35,8 @@ export default function Event() {
         try {
             const data = await fetchEvents();
 
-            // Filter only the events with status 'approved'
             const approvedEvents = data.filter(event => event.status === 'Approved');
-            setEvents(approvedEvents); // Set the approved events to the state
+            setEvents(approvedEvents); 
         } catch (error) {
             console.error('Failed to load events:', error);
         }
@@ -49,7 +48,6 @@ export default function Event() {
             return;
         }
 
-        // Parsing participants to integer
         const participants = parseInt(newParticipants, 10);
         if (isNaN(participants)) {
             alert('Please enter a valid number for participants!');
@@ -63,14 +61,13 @@ export default function Event() {
             time: newTime,
             location: newLocation,
             participants: participants,
-            org: organization,  // From the logged-in organization
+            org: organization,
         };
 
         try {
             await addEvent(newEvent);
-            await loadEvents(); // refresh events after adding
-            setIsModalVisible(false); // close modal
-            // Clear inputs
+            await loadEvents();
+            setIsModalVisible(false); 
             setNewTitle('');
             setNewDescription('');
             setNewDate('');

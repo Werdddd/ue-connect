@@ -14,7 +14,8 @@ import { launchImageLibrary } from 'react-native-image-picker';
 // import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 export default function EventPageSAO() {
     const navigation = useNavigation();
@@ -55,7 +56,7 @@ export default function EventPageSAO() {
     const handleSelectBanner = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-        if (permissionResult.granted === false) {
+        if (!permissionResult.granted) {
             alert("Permission to access media library is required!");
             return;
         }
@@ -68,7 +69,27 @@ export default function EventPageSAO() {
         });
 
         if (!result.canceled) {
-            setSelectedBanner(result.assets[0]);
+            try {
+                const uri = result.assets[0].uri;
+
+                // For Compressing Image(Di kaya pag malaki)
+                const compressed = await ImageManipulator.manipulateAsync(
+                    uri,
+                    [{ resize: { width: 800 } }],
+                    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+                );
+
+                // Convert to base64
+                const base64 = await FileSystem.readAsStringAsync(compressed.uri, {
+                    encoding: FileSystem.EncodingType.Base64,
+                });
+
+                const dataUri = `data:image/jpeg;base64,${base64}`;
+                setSelectedBanner(dataUri);
+
+            } catch (error) {
+                console.error("Error processing image:", error);
+            }
         }
     };
 
@@ -133,7 +154,7 @@ export default function EventPageSAO() {
 
 
     const handleAddEvent = async () => {
-        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants) {
+        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants || !selectedBanner) {
             alert('Please fill out all fields!');
             return;
         }
@@ -147,6 +168,7 @@ export default function EventPageSAO() {
         const eventStatus = status || 'Applied';
 
         const newEvent = {
+            banner: selectedBanner,
             title: newTitle,
             description: newDescription,
             date: newDate,
@@ -219,9 +241,18 @@ export default function EventPageSAO() {
                     {filteredEvents.map((event) => (
                         <EventCardSAO
                             key={event.id}
-                            event={event}
-                            onApprove={() => openActionModal(event.id, 'Approved')}
-                            onReject={() => openActionModal(event.id, 'Rejected')}
+                            event={{
+                                id: event.id,
+                                banner: event.banner,
+                                seal: event.seal,
+                                title: event.title,
+                                date: event.date,
+                                time: event.time,
+                                description: event.description,
+                                participants: event.participants,
+                                location: event.location,
+                                status: event.status
+                            }}
                         />
                     ))}
 
@@ -310,7 +341,7 @@ export default function EventPageSAO() {
                                     </TouchableOpacity>
                                     {selectedBanner && (
                                         <Image
-                                            source={{ uri: selectedBanner.uri }}
+                                            source={{ uri: selectedBanner }}
                                             style={styles.bannerPreview}
                                             resizeMode="cover"
                                         />

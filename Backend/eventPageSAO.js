@@ -8,7 +8,7 @@ export async function fetchEvents() {
       id: doc.id,
       ...doc.data(),
     }));
-    console.log('Loaded events:', events);
+    //console.log('Loaded events:', events);
     return events;
   } catch (error) {
     console.error('Failed to load events:', error);
@@ -30,7 +30,7 @@ export async function addEvent(newEvent) {
       const docRef = doc(firestore, 'events', newEventID);
       await setDoc(docRef, eventWithStatus);
   
-      console.log('Event added with custom ID:', newEventID);
+      //console.log('Event added with custom ID:', newEventID);
       return newEventID;
     } catch (error) {
       console.error('Failed to add event:', error);

@@ -43,9 +43,13 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
     return (
         <View>
         <TouchableOpacity style={styles.card} onPress={handleOpenModal}>
-            {event.bannerUrl && (
-                <Image source={{ uri: event.bannerUrl }} style={styles.banner} resizeMode="cover" />
-            )}
+           {event.banner && (
+                           <Image
+                               source={{ uri: event.banner }}
+                               style={styles.banner}
+                               resizeMode="cover"
+                           />
+                       )}
             <View style={styles.infoContainer}>
                 <View style={styles.headerRow}>
                     <Image source={event.seal} style={styles.seal} />
