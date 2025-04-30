@@ -34,6 +34,7 @@ export default function Home() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [shareCaption, setShareCaption] = useState('');
+  const [role, setRole] = useState('');
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [postComments, setPostComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
@@ -63,91 +64,92 @@ export default function Home() {
         const userData = userDoc.data();
         setusername(`${userData.firstName} ${userData.lastName}`);
         if (userData?.profileImage) {
-            const isBase64 = !userData.profileImage.startsWith('http');
-            const imageSource = isBase64
-              ? `${userData.profileImage}`
-              : userData.profileImage;
-          
-            setUserProfileImage(imageSource);
-            //console.log("test", imageSource);
-          }
-          
+        const isBase64 = !userData.profileImage.startsWith('http');
+        const imageSource = isBase64
+            ? `${userData.profileImage}`
+            : userData.profileImage;
+        
+        setUserProfileImage(imageSource);
+        //console.log("test", imageSource);
+        }
+        setRole(userData.role);
+        console.log(role);
     }
     };
     getUserData();
 
     const fetchNewsfeed = async () => {
-    try {
-        const snapshot = await getDocs(collection(firestore, 'newsfeed'));
-
-        const fetched = await Promise.all(
-        snapshot.docs.map(async (docSnap) => {
-            const d = docSnap.data();
-
-            // Handle date
-            const rawDate = d.date || d.timestamp;
-            const dateObj = rawDate?.toDate
-            ? rawDate.toDate()
-            : new Date(rawDate || Date.now());
-
-            // Normalize post images
-            const images = (d.images || []).map(img =>
-            img.startsWith('http')
-                ? img
-                : `data:image/jpeg;base64,${img}`
-            );
-
-            // 🔥 Get comment count
-            const commentsSnapshot = await getDocs(
-            collection(firestore, 'newsfeed', docSnap.id, 'comments')
-            );
-            const commentCount = commentsSnapshot.size;
-
-            // 🔍 Get user profile from Users collection
-            let profileImage
-            let userName = d.userName || 'Anonymous';
-
-            if (d.userId) {
-            try {
-                const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
-                if (userDoc.exists()) {
-                const userData = userDoc.data();
-                userName = userData.firstName && userData.lastName
-                    ? `${userData.firstName} ${userData.lastName}`
-                    : userData.firstName || 'Anonymous';
-
-
-                profileImage = userData.profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
-
-                
+        try {
+          const snapshot = await getDocs(collection(firestore, 'newsfeed'));
+      
+          const fetched = await Promise.all(
+            snapshot.docs.map(async (docSnap) => {
+              const d = docSnap.data();
+      
+              // Handle date
+              const rawDate = d.date || d.timestamp;
+              const dateObj = rawDate?.toDate
+                ? rawDate.toDate()
+                : new Date(rawDate || Date.now());
+      
+              // Normalize post images
+              const images = (d.images || []).map((img) =>
+                img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
+              );
+      
+              // 🔥 Get comment count
+              const commentsSnapshot = await getDocs(
+                collection(firestore, 'newsfeed', docSnap.id, 'comments')
+              );
+              const commentCount = commentsSnapshot.size;
+      
+              // 🔍 Get user profile from Users collection
+              let profileImage =
+                'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+              let userName = d.userName || 'Anonymous';
+              let role = ''; // ⬅️ Initialize role
+      
+              if (d.userId) {
+                try {
+                  const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
+                  if (userDoc.exists()) {
+                    const userData = userDoc.data();
+      
+                    userName =
+                      userData.firstName && userData.lastName
+                        ? `${userData.firstName} ${userData.lastName}`
+                        : userData.firstName || 'Anonymous';
+      
+                    profileImage = userData.profileImage || profileImage;
+                    role = userData.role || ''; // ✅ Extract role
+                  }
+                } catch (err) {
+                  console.warn(`Failed to get user data for ${d.userId}`, err);
                 }
-
-                //console.log("link", userData.profileImage);
-            } catch (err) {
-                //console.warn(`Failed to get user data for ${d.userId}`, err);
-            }
-            }
-
-            return {
-            id: docSnap.id,
-            text: d.text || '',
-            date: dateObj,
-            images,
-            user: {
-                name: userName,
-                profileImage,
-            },
-            likedBy: d.likedBy || [],
-            commentCount,
-            };
-        })
-        );
-
-        setNewsfeedPosts(fetched.reverse());
-    } catch (e) {
-        console.error('Error fetching newsfeed:', e);
-    }
-    };
+              }
+      
+              return {
+                id: docSnap.id,
+                text: d.text || '',
+                date: dateObj,
+                images,
+                user: {
+                  name: userName,
+                  profileImage,
+                  role, // ✅ Add role to the returned post object
+                },
+                likedBy: d.likedBy || [],
+                commentCount,
+              };
+            })
+          );
+      
+          setNewsfeedPosts(fetched.reverse());
+        } catch (e) {
+          console.error('Error fetching newsfeed:', e);
+        }
+      };
+      
 
     
 
@@ -462,9 +464,14 @@ export default function Home() {
             <FontAwesome name="user-circle-o" size={35} color="#999" />
             )}
 
-            <View style={{ marginLeft: 10 }}>
-              <Text style={styles.postUserName}>{post.user.name}</Text>
-              <Text style={styles.postDate}>{formattedDate}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+            <Text style={styles.postUserName}>{post.user.name}</Text>
+            {post.user.role === 'dd' && (
+                <Image
+                source={require('../assets/veri.png')}
+                style={{ width: 16, height: 16, marginLeft: 5 }}
+                />
+            )}
             </View>
           </View>
           <TouchableOpacity>
@@ -1256,4 +1263,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
+  postUserName: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  postDate: {
+    fontSize: 12,
+    color: '#777',
+  }
 });
