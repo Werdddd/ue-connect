@@ -6,7 +6,7 @@ export async function signUpUser({ firstName, lastName, studentNumber, email, pa
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-
+   
     await setDoc(doc(firestore, "Users", email), {
       email: email,
       studentNumber: studentNumber,
