@@ -58,7 +58,8 @@ export default function AdminPage() {
                 >
                     <View style={styles.container}>
                         <Header scrollY={scrollY} />
-                        <ScrollView
+                        <View
+                            style={styles.flexcont}
                             onScroll={(event) => {
                                 setScrollY(event.nativeEvent.contentOffset.y);
                             }}
@@ -74,7 +75,6 @@ export default function AdminPage() {
                                     <Text style={styles.userYear}>{year || 'Your Year'}</Text>
                                     <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
                                 </View>
-                                
 
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity style={styles.followButton}>
@@ -86,10 +86,13 @@ export default function AdminPage() {
                                 </View>
                                 <View style={styles.underline} />
                             </View>
-                            <UserCard/>
-                        </ScrollView>
-                        <BottomNavBar />
+                            
+                            <View style={styles.userCardContainer}>
+                                <UserCard />
+                            </View>
+                        </View>
                     </View>
+                    <BottomNavBar />
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </TouchableWithoutFeedback>
@@ -113,8 +116,12 @@ const styles = StyleSheet.create({
     profileContainer: {
         alignItems: 'center',
         marginTop: 20,
-        
     },
+    userCardContainer: {
+        width: '100%',
+        height: '56%',
+    },
+
     userProfileImage: {
         width: 100,
         height: 100,
@@ -178,7 +185,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'top',
         marginTop: 10,
-       
+
         justifyContent: 'space-between',
         width: '50%',
     },

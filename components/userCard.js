@@ -3,7 +3,8 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, FlatList } from
 import { firestore, auth } from '../Firebase';
 import { doc, getDoc, query, collection, getDocs, where, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
-
+import { ScrollView } from 'react-native';
+import { Pressable } from 'react-native';
 
 export default function UserCard() {
     const [users, setUsers] = useState([]);
@@ -27,6 +28,7 @@ export default function UserCard() {
     }, []);
   
     const renderItem = ({ item }) => (
+      
       <View style={styles.card}>
         <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
         <Text style={styles.email}>{item.email}</Text>
@@ -36,11 +38,14 @@ export default function UserCard() {
     );
   
     return (
+     
       <FlatList
         data={users}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        keyboardShouldPersistTaps="handled"
       />
+      
     );
   }
   
