@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function EventCard({ event }) {
     const [modalVisible, setModalVisible] = useState(false);
-    const [joined, setJoined] = useState(false); 
+    const [joined, setJoined] = useState(false);
     const [favorited, setFavorited] = useState(false);
 
     const handleOpenModal = () => {
@@ -16,24 +16,24 @@ export default function EventCard({ event }) {
     };
 
     const handleJoinToggle = () => {
-        setJoined((prevJoined) => !prevJoined); 
+        setJoined((prevJoined) => !prevJoined);
     };
 
     const handleFavoriteToggle = () => {
-        setFavorited((prevFavorited) => !prevFavorited); 
+        setFavorited((prevFavorited) => !prevFavorited);
     };
 
     return (
         <View>
             {/* Event Card */}
             <TouchableOpacity style={styles.card} onPress={handleOpenModal}>
-            {event.bannerUrl && (
-                <Image
-                    source={{ uri: event.bannerUrl }}
-                    style={styles.banner}
-                    resizeMode="cover"
-                />
-            )}
+                {event.banner && (
+                    <Image
+                        source={{ uri: event.banner }}
+                        style={styles.banner}
+                        resizeMode="cover"
+                    />
+                )}
                 <View style={styles.infoContainer}>
                     <View style={styles.headerRow}>
                         <Image source={event.seal} style={styles.seal} />
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        alignItems: 'flex-start', 
+        alignItems: 'flex-start',
     },
     modalBanner: {
         width: '100%',
