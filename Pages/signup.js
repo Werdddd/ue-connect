@@ -397,6 +397,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 5,
   },
   pickerContainer: {
     borderWidth: 1,

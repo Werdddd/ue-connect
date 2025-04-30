@@ -80,7 +80,7 @@ export default function Login() {
               onChangeText={setStudentNumber}
               keyboardType="numeric"
             /> */}
-
+            <Text style={styles.label} >Student Number</Text>
             <TextInput
               style={styles.input}
               placeholder="UE Email Address"
@@ -89,7 +89,7 @@ export default function Login() {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-
+            <Text style={styles.label} >Student Number</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -106,7 +106,7 @@ export default function Login() {
             <TouchableOpacity onPress={() => console.log('Forgot Password pressed')}>
               <Text style={styles.forgotPassword}>Forgot Password?</Text>
             </TouchableOpacity>
-
+                
             <TouchableOpacity style={styles.button} onPress={handleLogin}>
               <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
@@ -218,5 +218,11 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  label: {
+    marginBottom: 5,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 5,
   },
 });
