@@ -32,12 +32,13 @@ export default function OrganizationPage() {
     const [newOrg, setNewOrg] = useState({
         department: '',
         orgName: '',
-        memberCount: '0',
+        memberCount: '',
         members: '',
         shortdesc: '',
         logoUri: '',
         logoBase64: '',
         fulldesc: '',
+        followers: '',
         location: '',
         email: '',
         websitelink: '',
@@ -91,7 +92,7 @@ export default function OrganizationPage() {
             const newOrgData = {
                 department: newOrg.department,
                 orgName: newOrg.orgName,
-                memberCount: parseInt(newOrg.memberCount),
+                memberCount: parseInt(0),
                 shortdesc: newOrg.shortdesc,
                 logoUri: newOrg.logoUri,
                 logoBase64: newOrg.logoBase64,
@@ -99,7 +100,8 @@ export default function OrganizationPage() {
                 location: newOrg.location,
                 email: newOrg.email,
                 websitelink: newOrg.websitelink,
-                members: ''
+                members: '',
+                followers: ''
             };
 
             await addOrganization(newOrgData);
@@ -109,7 +111,7 @@ export default function OrganizationPage() {
                 { id: prevOrgs.length + 1, ...newOrgData }
             ]);
 
-            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: ''});
+            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: '', followers: ''});
             setModalVisible(false);
 
         } catch (error) {

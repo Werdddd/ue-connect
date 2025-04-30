@@ -14,7 +14,7 @@ import OrganizationPage from './Pages/organizationPage.js';
 import Events from './Pages/eventPage.js';
 import Settings from './Pages/settings.js';
 import OrgProfilePage from './Pages/orgProfilePage.js';
-import UserProfilePage from './Pages/userProfilePage.js';
+import UserOwnProfilePage from './Pages/userOwnProfilePage.js';
 import EventPageRSO from './Pages/eventPageRSO.js';
 import EventPageSAO from './Pages/eventPageSAO.js';
 import ChatPage from './Pages/chatPage.js';
@@ -36,7 +36,7 @@ export default function App() {
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="OrganizationPage" component={OrganizationPage} />
         <Stack.Screen name="Template" component={Template} />
-        <Stack.Screen name="UserProfilePage" component={UserProfilePage} />
+        <Stack.Screen name="UserOwnProfilePage" component={UserOwnProfilePage} />
         <Stack.Screen name="OrgProfilePage" component={OrgProfilePage} />
         <Stack.Screen name="Events" component={Events} />
         <Stack.Screen name="Settings" component={Settings} />

@@ -8,48 +8,10 @@ import { Ionicons, MaterialIcons, Feather, Entypo } from '@expo/vector-icons'; /
 export default function UserProfilePage() {
     const navigation = useNavigation();
     const [scrollY, setScrollY] = useState(0);
-
-    // Commenting out the backend logic for now
-    // const [userData, setUserData] = useState(null);
-
-    // re-check values for user profile
+    
     const [name, setName] = useState('');
     const [year, setYear] = useState('');
     const [course, setCourse] = useState('');
-
-    // useEffect(() => {
-    //     // Simulate fetching data
-    //     const fetchData = async () => {
-    //         const data = {
-    //             name: 'John Doe',
-    //             year: '3rd Year',
-    //             course: 'Computer Science',
-    //         };
-    //         setUserData(data);
-    //     };
-    //     fetchData();
-    // }, []);
-
-    // re-check function
-    // useEffect(() => {
-    //     const fetchUserData = async () => {
-    //         try {
-    //             const docRef = doc(firestore, 'users', 'userId'); // Use the correct document ID for the user
-    //             const docSnap = await getDoc(docRef);
-    //             if (docSnap.exists()) {
-    //                 const data = docSnap.data();
-    //                 setName(data.name);
-    //                 setYear(data.year);
-    //                 setCourse(data.course);
-    //             } else {
-    //                 console.log('No such document!');
-    //             }
-    //         } catch (error) {
-    //             console.error('Error fetching user data:', error);
-    //         }
-    //     };
-    //     fetchUserData();
-    // }, []);
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -77,7 +39,6 @@ export default function UserProfilePage() {
                                     <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
                                 </View>
                                 
-
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity style={styles.followButton}>
                                         <Text style={styles.followButtonText}>Follow</Text>

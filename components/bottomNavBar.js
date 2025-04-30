@@ -41,20 +41,20 @@ const BottomNavBar = () => {
       </TouchableOpacity>
 
       {/* Settings / Profile */}
-      <TouchableOpacity onPress={() => navigation.navigate('UserProfilePage')}>
+      <TouchableOpacity onPress={() => navigation.navigate('UserOwnProfilePage')}>
         {userProfileImage ? (
           <Image 
             source={{ uri: userProfileImage }} 
             style={[
               styles.profileImage, 
-              isActive('UserProfilePage') && { borderColor: '#E50914', borderWidth: 2 }
+              isActive('UserOwnProfilePage') && { borderColor: '#E50914', borderWidth: 2 }
             ]}
           />
         ) : (
           <FontAwesome 
-            name={isActive('UserProfilePage') ? 'user-circle' : 'user-circle-o'}
+            name={isActive('UserOwnProfilePage') ? 'user-circle' : 'user-circle-o'}
             size={40}
-            color={isActive('UserProfilePage') ? '#E50914' : '#555'}
+            color={isActive('UserOwnProfilePage') ? '#E50914' : '#555'}
             style={styles.profileIcon}
           />
         )}
