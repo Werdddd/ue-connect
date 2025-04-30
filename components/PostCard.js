@@ -59,7 +59,7 @@ const PostCard = ({
             <Text style={styles.postUserName}>{post.user.name}</Text>
             {post.user.role === ss && (
               <Image
-                source={require('../assets/veri.png')}
+                source={require('../assets/switch2.png')}
                 style={{ width: 16, height: 16, marginLeft: 5 }}
               />
             )}
