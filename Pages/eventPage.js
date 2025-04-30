@@ -9,7 +9,7 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCard from '../components/eventCard';
-import { fetchEvents, addEvent } from '../Backend/eventPage'; 
+import { fetchEvents, addEvent } from '../Backend/eventPage';
 
 export default function Event() {
     const navigation = useNavigation();
@@ -25,7 +25,7 @@ export default function Event() {
     const [newTime, setNewTime] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [newParticipants, setNewParticipants] = useState('');
-    const [organization, setOrganization] = useState(''); 
+    const [organization, setOrganization] = useState('');
 
     useEffect(() => {
         loadEvents();
@@ -36,7 +36,7 @@ export default function Event() {
             const data = await fetchEvents();
 
             const approvedEvents = data.filter(event => event.status === 'Approved');
-            setEvents(approvedEvents); 
+            setEvents(approvedEvents);
         } catch (error) {
             console.error('Failed to load events:', error);
         }
@@ -67,7 +67,7 @@ export default function Event() {
         try {
             await addEvent(newEvent);
             await loadEvents();
-            setIsModalVisible(false); 
+            setIsModalVisible(false);
 
             setNewTitle('');
             setNewDescription('');
@@ -109,19 +109,35 @@ export default function Event() {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}>
                     <OrganizationBar onSelectOrganization={setSelectedOrg} />
-                    
+
                     <View style={styles.titleContainer}>
                         <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
                         <View style={styles.underline} />
                     </View>
-                    
+
 
                     {filteredEvents.map((event) => (
-                        <EventCard key={event.id} event={event} />
+                        <EventCard
+                            key={event.id}
+                            event={{
+                                id: event.id,
+                                banner: event.banner,
+                                seal: event.seal,
+                                title: event.title,
+                                date: event.date,
+                                time: event.time,
+                                description: event.description,
+                                participants: event.participants,
+                                location: event.location,
+                                status: event.status
+                            }}
+                            onApprove={() => openActionModal(event.id, 'Approved')}
+                            onReject={() => openActionModal(event.id, 'Rejected')}
+                        />
                     ))}
-                    
+
                 </ScrollView>
-                
+
                 <BottomNavBar />
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -194,7 +210,7 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 14,
         fontWeight: '500',
-      
+
         textAlign: 'left',
     },
     input: {
