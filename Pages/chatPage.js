@@ -16,7 +16,8 @@ export default function ChatPage() {
   const [chats, setChats] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
   const navigation = useNavigation();
-
+  const [messages, setMessages] = useState([]);
+  
   useEffect(() => {
     const fetchUsers = async () => {
       const snapshot = await getDocs(collection(firestore, 'Users'));
@@ -85,8 +86,8 @@ export default function ChatPage() {
     }
   };
 
-  console.log("Fetching chats for: ", currentUserId, selectedUserId);
-  console.log("All chats in state:", chats);
+  // console.log("Fetching chats for: ", currentUserId, selectedUserId);
+  // console.log("All chats in state:", chats);
   const getChatBetweenUsers = async () => {
     try {
       if (!currentUserId || !selectedUserId) return;
