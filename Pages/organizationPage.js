@@ -164,7 +164,7 @@ export default function OrganizationPage() {
                                 <OrganizationCard
                                     key={org.id}
                                     orgName={org.orgName}
-                                    memberCount={org.memberCount}
+                                    memberCount={org.members.length}
                                     shortdesc={org.shortdesc}
                                     logo={org.logoBase64}
                                 />
