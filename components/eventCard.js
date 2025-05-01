@@ -11,6 +11,8 @@ export default function EventCard({ event }) {
     const [joined, setJoined] = useState(false);
     const [favorited, setFavorited] = useState(false);
     const [approvedCount, setApprovedCount] = useState(0);
+    const [applicationStatus, setApplicationStatus] = useState(null); // 'applied' | 'approved' | null
+
     const auth = getAuth();
     const user = auth.currentUser;
 
@@ -35,6 +37,12 @@ export default function EventCard({ event }) {
                     const participantsList = eventData?.participantsList || {};
                     const isUserApplied = participantsList.hasOwnProperty(safeEmailKey);
                     setJoined(isUserApplied);
+
+                    if (isUserApplied) {
+                        const userStatus = participantsList[safeEmailKey]?.status || 'applied';
+                        setApplicationStatus(userStatus);
+                    }
+
 
 
                 }
@@ -105,14 +113,20 @@ export default function EventCard({ event }) {
                     </Text>
 
                     <View style={styles.buttonRow}>
-                        <TouchableOpacity
-                            style={[styles.joinButton, joined && styles.joinedButton]}
-                            onPress={handleJoinToggle}
-                        >
-                            <Text style={styles.joinButtonText}>
-                                {joined ? 'Applied' : 'Join Now'}
-                            </Text>
-                        </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[
+                            styles.joinButton,
+                            joined && styles.joinedButton,
+                            applicationStatus === 'Approved' && styles.approvedButton
+                        ]}
+                        onPress={handleJoinToggle}
+                        disabled={applicationStatus === 'Approved'} // Optional: prevent toggle if approved
+                    >
+                        <Text style={styles.joinButtonText}>
+                            {applicationStatus === 'Approved' ? 'Approved' : joined ? 'Applied' : 'Join Now'}
+                        </Text>
+                    </TouchableOpacity>
+
                         <TouchableOpacity onPress={handleFavoriteToggle}>
                             <Ionicons
                                 name={favorited ? 'heart' : 'heart-outline'}
@@ -332,4 +346,9 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         zIndex: 10,
     },
+    approvedButton: {
+        backgroundColor: 'green',
+        borderColor: 'darkgreen',
+    },
+    
 });
