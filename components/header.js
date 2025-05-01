@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Button, Modal} from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Button, Modal, Platform} from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native'; // ✅ Use hook for navigation
+import { useNavigation } from '@react-navigation/native'; 
 
 const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
-  const navigation = useNavigation(); // ✅ Solves "undefined navigation" error
+  const navigation = useNavigation(); 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [text, setText] = useState('');
@@ -85,7 +85,7 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 10,
+    marginTop: Platform.OS === 'ios' ? 10 : 40,
     paddingBottom: 5,
     height: 60,
     flexDirection: 'row',
