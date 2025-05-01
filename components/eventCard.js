@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { applyToEvent, removeApplicationFromEvent } from '../Backend/eventPage';
+import { getAuth } from 'firebase/auth';
+
+
 
 export default function EventCard({ event }) {
     const [modalVisible, setModalVisible] = useState(false);
     const [joined, setJoined] = useState(false);
     const [favorited, setFavorited] = useState(false);
+    const auth = getAuth();
+    const user = auth.currentUser;
 
     const handleOpenModal = () => {
         setModalVisible(true);
@@ -15,9 +21,31 @@ export default function EventCard({ event }) {
         setModalVisible(false);
     };
 
-    const handleJoinToggle = () => {
-        setJoined((prevJoined) => !prevJoined);
+    // const handleJoinToggle = () => {
+    //     setJoined((prevJoined) => !prevJoined);
+    // };
+
+    const handleJoinToggle = async () => {
+        if (!user) {
+            alert('You must be logged in to join an event.');
+            return;
+        }
+    
+        const userId = user.uid;
+    
+        try {
+            if (!joined) {
+                await applyToEvent(event.id, userId);
+            } else {
+                await removeApplicationFromEvent(event.id, userId);
+            }
+            setJoined(!joined);
+        } catch (error) {
+            console.error("Error updating participation:", error.message);
+            alert("Failed to update participation.");
+        }
     };
+    
 
     const handleFavoriteToggle = () => {
         setFavorited((prevFavorited) => !prevFavorited);

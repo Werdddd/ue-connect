@@ -1,5 +1,5 @@
 import { firestore } from '../Firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore'; // <-- import query and where
+import { collection, getDocs, query, where, doc, updateDoc, getDoc, deleteField } from 'firebase/firestore'; // <-- import query and where
 
 export async function fetchEvents() {
   try {
@@ -32,5 +32,40 @@ export async function addEvent(newEvent) {
   } catch (error) {
     console.error('Failed to add event:', error);
     throw error;
+  }
+}
+
+export async function applyToEvent(eventId, email) {
+  try {
+    // Fetch user data from the users collection
+    const userRef = doc(firestore, 'users', email);
+    const userSnap = await getDoc(userRef);
+
+    let userName = 'Unknown User';
+    if (userSnap.exists()) {
+      const user = userSnap.data();
+      const firstName = user.firstName || '';
+      const lastName = user.lastName || '';
+      userName = `${firstName} ${lastName}`.trim();
+    }
+
+    // Update the participantsList in the event
+    const eventRef = doc(firestore, 'events', eventId);
+    await updateDoc(eventRef, {
+      [`participantsList.${email}`]: userName,
+    });
+  } catch (error) {
+    throw new Error('Failed to apply to event: ' + error.message);
+  }
+}
+
+export async function removeApplicationFromEvent(eventId, email) {
+  try {
+    const eventRef = doc(firestore, "events", eventId);
+    await updateDoc(eventRef, {
+      [`participantsList.${email}`]: deleteField(),
+    });
+  } catch (error) {
+    throw new Error("Failed to remove application: " + error.message);
   }
 }
