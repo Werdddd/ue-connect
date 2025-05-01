@@ -32,29 +32,14 @@ export default function EventCard({ event }) {
             return;
         }
     
+        const useremail = user.email;
+    
         try {
-            const userDocRef = doc(firestore, 'Users', user.email);
-            const userSnap = await getDoc(userDocRef);
-    
-            if (!userSnap.exists()) {
-                alert('User data not found in Firestore.');
-                return;
-            }
-    
-            const userData = userSnap.data();
-            const studentNumber = userData.studentNumber;
-            
-            if (!studentNumber) {
-                alert("Student number is missing from user profile.");
-                return;
-            }
-    
             if (!joined) {
-                await applyToEvent(event.id, studentNumber);
+                await applyToEvent(event.id, useremail);
             } else {
-                await removeApplicationFromEvent(event.id, studentNumber);
+                await removeApplicationFromEvent(event.id, useremail);
             }
-    
             setJoined(!joined);
         } catch (error) {
             console.error("Error updating participation:", error.message);
