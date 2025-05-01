@@ -23,6 +23,7 @@ import ChatPage from './Pages/chatPage.js';
 import ConversationPage from './Pages/ConversationPage.js';
 import TestPostCard from './Pages/testPostCard.js';
 import AdminPage from './Pages/adminPage.js';
+import SearchResult from './Pages/searchResult.js';
 
 const Stack = createStackNavigator();
 
@@ -52,8 +53,7 @@ export default function App() {
         <Stack.Screen name="ConversationPage" component={ConversationPage} />
         <Stack.Screen name="TestPostCard" component={TestPostCard} />
         <Stack.Screen name="AdminPage" component={AdminPage} />
-
-
+        <Stack.Screen name="searchResult" component={SearchResult} />
       </Stack.Navigator>
     </NavigationContainer>
   );
