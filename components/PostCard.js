@@ -9,7 +9,8 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
-  Platform, StyleSheet
+  Platform, StyleSheet,
+  Pressable,
 } from 'react-native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
@@ -42,184 +43,186 @@ const PostCard = ({
   toggleLike
 }) => {
   return (
-    <View key={post.id} style={styles.postCard}>
-      {/* Post Header */}
-      <View style={styles.postHeader}>
-        <View style={styles.postUserInfo}>
-          {post.user.profileImage ? (
-            <Image
-              source={{ uri: post.user.profileImage }}
-              style={styles.profileImagePost}
-              resizeMode="cover"
-            />
-          ) : (
-            <FontAwesome name="user-circle-o" size={35} color="#999" />
-          )}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-            <Text style={styles.postUserName}>{post.user.name}</Text>
-            {post.user.role === ss && (
+    <Pressable>
+      <View key={post.id} style={styles.postCard}>
+        {/* Post Header */}
+        <View style={styles.postHeader}>
+          <View style={styles.postUserInfo}>
+            {post.user.profileImage ? (
               <Image
-                source={require('../assets/switch2.png')}
-                style={{ width: 16, height: 16, marginLeft: 5 }}
+                source={{ uri: post.user.profileImage }}
+                style={styles.profileImagePost}
+                resizeMode="cover"
               />
+            ) : (
+              <FontAwesome name="user-circle-o" size={35} color="#999" />
             )}
-          </View>
-        </View>
-        <TouchableOpacity>
-          <Entypo name="dots-three-horizontal" size={20} color="#333" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Post Content */}
-      <View style={styles.postBody}>
-        {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
-        {hasImages && (
-          <View style={styles.postImagesContainer}>
-            {post.images.filter(uri => uri).map((uri, idx) => (
-            <Image key={idx} source={{ uri }} style={styles.postImage} />
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* Post Actions */}
-      <View style={styles.postActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => toggleLike(post.id, post.likedBy)}
-        >
-          <Ionicons
-            name={isLiked ? 'heart' : 'heart-outline'}
-            size={20}
-            color={isLiked ? 'red' : '#555'}
-          />
-          <Text style={styles.actionText}>
-            {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => {
-            setSelectedPostId(post.id);
-            setCommentModalVisible(true);
-            fetchComments(post.id);
-          }}
-        >
-          <Ionicons name="chatbubble-outline" size={20} color="#555" />
-          <Text style={styles.actionText}>
-            {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={() => setShareModalVisible(true)}>
-          <Ionicons name="share-social-outline" size={20} color="#555" />
-          <Text style={styles.actionText}>Share</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Comment Modal */}
-      <Modal
-        visible={commentModalVisible}
-        animationType="none"
-        transparent={true}
-        onRequestClose={handleCommentBackdropPress}
-      >
-        <TouchableWithoutFeedback onPress={handleCommentBackdropPress}>
-          <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
-            <PanGestureHandler
-              onGestureEvent={(event) => {
-                commentTranslateY.value = event.nativeEvent.translationY;
-                commentBackdropOpacity.value = 1 - event.nativeEvent.translationY / 300;
-              }}
-              onEnded={handleCommentGesture}
-            >
-              <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
-                <KeyboardAvoidingView
-                  style={{ flex: 1 }}
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  keyboardVerticalOffset={Platform.OS === 'ios' ? 390 : 0}
-                >
-                  <ScrollView
-                    contentContainerStyle={{ flexGrow: 1 }}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                  >
-                    <Text style={styles.commentsTitle}>Comments</Text>
-                    <ScrollView>
-                      {postComments.map((comment) => (
-                        <View key={comment.id} style={styles.commentCard}>
-                          {comment.profileImage ? (
-                            <Image
-                              source={{ uri: comment.profileImage }}
-                              style={styles.profileImagePost}
-                            />
-                          ) : (
-                            <FontAwesome name="user-circle-o" size={38} color="#999" />
-                          )}
-                          <View>
-                            <Text style={styles.commentUserName}>
-                              {comment.userName || 'Anonymous'}
-                            </Text>
-                            <Text style={styles.userComment}>{comment.text}</Text>
-                          </View>
-                        </View>
-                      ))}
-                    </ScrollView>
-
-                    <View style={styles.commentInputRow}>
-                      {post.user.profileImage ? (
-                        <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
-                      ) : (
-                        <FontAwesome name="user-circle-o" size={35} color="#999" />
-                      )}
-                      <TextInput
-                        style={styles.commentInput}
-                        placeholder="Add a comment..."
-                        value={commentText}
-                        onChangeText={setCommentText}
-                      />
-                      <TouchableOpacity onPress={handleAddComment}>
-                        <Ionicons name="send" size={24} color="#ff0000" />
-                      </TouchableOpacity>
-                    </View>
-                  </ScrollView>
-                </KeyboardAvoidingView>
-              </Animated.View>
-            </PanGestureHandler>
-          </Animated.View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* Share Modal */}
-      <Modal
-        visible={shareModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShareModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.shareModalContent}>
-            <View style={styles.shareHeader}>
-              <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
-              <Text style={styles.shareUsername}>Username</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+              <Text style={styles.postUserName}>{post.user.name}</Text>
+              {post.user.role === ss && (
+                <Image
+                  source={require('../assets/switch2.png')}
+                  style={{ width: 16, height: 16, marginLeft: 5 }}
+                />
+              )}
             </View>
-
-            <TextInput
-              style={styles.shareCaptionInput}
-              placeholder="Write a caption..."
-              multiline
-              value={shareCaption}
-              onChangeText={setShareCaption}
-            />
-
-            <TouchableOpacity style={styles.shareButton} onPress={() => { /* share logic */ }}>
-              <Text style={styles.shareButtonText}>Share Now</Text>
-            </TouchableOpacity>
           </View>
+          <TouchableOpacity>
+            <Entypo name="dots-three-horizontal" size={20} color="#333" />
+          </TouchableOpacity>
         </View>
-      </Modal>
-    </View>
+
+        {/* Post Content */}
+        <View style={styles.postBody}>
+          {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
+          {hasImages && (
+            <View style={styles.postImagesContainer}>
+              {post.images.filter(uri => uri).map((uri, idx) => (
+                <Image key={idx} source={{ uri }} style={styles.postImage} />
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Post Actions */}
+        <View style={styles.postActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => toggleLike(post.id, post.likedBy)}
+          >
+            <Ionicons
+              name={isLiked ? 'heart' : 'heart-outline'}
+              size={20}
+              color={isLiked ? 'red' : '#555'}
+            />
+            <Text style={styles.actionText}>
+              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setSelectedPostId(post.id);
+              setCommentModalVisible(true);
+              fetchComments(post.id);
+            }}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color="#555" />
+            <Text style={styles.actionText}>
+              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton} onPress={() => setShareModalVisible(true)}>
+            <Ionicons name="share-social-outline" size={20} color="#555" />
+            <Text style={styles.actionText}>Share</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Comment Modal */}
+        <Modal
+          visible={commentModalVisible}
+          animationType="none"
+          transparent={true}
+          onRequestClose={handleCommentBackdropPress}
+        >
+          <TouchableWithoutFeedback onPress={handleCommentBackdropPress}>
+            <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
+              <PanGestureHandler
+                onGestureEvent={(event) => {
+                  commentTranslateY.value = event.nativeEvent.translationY;
+                  commentBackdropOpacity.value = 1 - event.nativeEvent.translationY / 300;
+                }}
+                onEnded={handleCommentGesture}
+              >
+                <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
+                  <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 390 : 0}
+                  >
+                    <ScrollView
+                      contentContainerStyle={{ flexGrow: 1 }}
+                      keyboardShouldPersistTaps="handled"
+                      showsVerticalScrollIndicator={false}
+                    >
+                      <Text style={styles.commentsTitle}>Comments</Text>
+                      <ScrollView>
+                        {postComments.map((comment) => (
+                          <View key={comment.id} style={styles.commentCard}>
+                            {comment.profileImage ? (
+                              <Image
+                                source={{ uri: comment.profileImage }}
+                                style={styles.profileImagePost}
+                              />
+                            ) : (
+                              <FontAwesome name="user-circle-o" size={38} color="#999" />
+                            )}
+                            <View>
+                              <Text style={styles.commentUserName}>
+                                {comment.userName || 'Anonymous'}
+                              </Text>
+                              <Text style={styles.userComment}>{comment.text}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </ScrollView>
+
+                      <View style={styles.commentInputRow}>
+                        {post.user.profileImage ? (
+                          <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
+                        ) : (
+                          <FontAwesome name="user-circle-o" size={35} color="#999" />
+                        )}
+                        <TextInput
+                          style={styles.commentInput}
+                          placeholder="Add a comment..."
+                          value={commentText}
+                          onChangeText={setCommentText}
+                        />
+                        <TouchableOpacity onPress={handleAddComment}>
+                          <Ionicons name="send" size={24} color="#ff0000" />
+                        </TouchableOpacity>
+                      </View>
+                    </ScrollView>
+                  </KeyboardAvoidingView>
+                </Animated.View>
+              </PanGestureHandler>
+            </Animated.View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* Share Modal */}
+        <Modal
+          visible={shareModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShareModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.shareModalContent}>
+              <View style={styles.shareHeader}>
+                <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
+                <Text style={styles.shareUsername}>Username</Text>
+              </View>
+
+              <TextInput
+                style={styles.shareCaptionInput}
+                placeholder="Write a caption..."
+                multiline
+                value={shareCaption}
+                onChangeText={setShareCaption}
+              />
+
+              <TouchableOpacity style={styles.shareButton} onPress={() => { /* share logic */ }}>
+                <Text style={styles.shareButtonText}>Share Now</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </Pressable>
   );
 };
 
@@ -268,7 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 1,
   },
-  
+
   profileIcon: {
     fontSize: 30,    // 👈 matches the profileImage size
     marginRight: 10,
@@ -276,7 +279,7 @@ const styles = StyleSheet.create({
   postInputContainer: {
     flex: 1,
     justifyContent: 'center',
-    
+
   },
 
   postContentContainer: {
@@ -286,7 +289,7 @@ const styles = StyleSheet.create({
     padding: 10,
     minHeight: '60%',
     marginBottom: 20,
-    
+
   },
   textOnly: {
     fontSize: 16,
@@ -316,7 +319,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     marginBottom: 10,
   },
-  
+
   placeholderText: {
     color: '#777',
     fontSize: 16,
@@ -366,7 +369,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  
+
   textInput: {
     flex: 1,
     borderColor: '#ccc',
@@ -377,9 +380,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     minHeight: 390,
     fontSize: 16,
-    
+
   },
-  
+
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -393,14 +396,14 @@ const styles = StyleSheet.create({
     width: '30%',
     marginBottom: 20,
   },
-  
+
   optionText: {
     marginTop: 5,
     textAlign: 'center',
     fontSize: 12,
     color: '#333',
   },
-  
+
   discardModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -448,7 +451,7 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: '#fff',
     borderRadius: 15,
-    
+
     marginBottom: 15,
     padding: 15,
     shadowColor: '#000',
@@ -468,7 +471,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   postUserName: {
-    
+
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -518,28 +521,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginTop: 10,
   },
-  
+
   modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  
+
   commentModalContent: {
     height: '60%',
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    
+
   },
-  
+
   commentCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 15,
   },
-  
+
   commentsTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -549,7 +552,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#555',
     borderBottomWidth: 1,
   },
-  
+
   commentUserName: {
     marginLeft: 10,
     fontSize: 16,
@@ -562,7 +565,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '400',
   },
-  
+
   commentInputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -573,7 +576,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     marginBottom: 10,
   },
-  
+
   commentInput: {
     flex: 1,
     backgroundColor: '#f0f0f0',
@@ -582,7 +585,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginHorizontal: 10,
   },
-  
+
   shareModalContent: {
     height: '50%',
     backgroundColor: '#fff',
@@ -590,25 +593,25 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 15,
   },
-  
+
   shareHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 15,
   },
-  
+
   shareProfilePic: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 10,
   },
-  
+
   shareUsername: {
     fontWeight: 'bold',
     fontSize: 16,
   },
-  
+
   shareCaptionInput: {
     flex: 1,
     minHeight: 100,
@@ -618,14 +621,14 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 20,
   },
-  
+
   shareButton: {
     backgroundColor: '#007bff',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
   },
-  
+
   shareButtonText: {
     color: '#fff',
     fontWeight: 'bold',

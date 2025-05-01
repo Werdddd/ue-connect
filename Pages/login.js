@@ -80,7 +80,7 @@ export default function Login() {
               onChangeText={setStudentNumber}
               keyboardType="numeric"
             /> */}
-            <Text style={styles.label} >Student Number</Text>
+            <Text style={styles.label} >UE Email Address</Text>
             <TextInput
               style={styles.input}
               placeholder="UE Email Address"
@@ -89,7 +89,7 @@ export default function Login() {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <Text style={styles.label} >Student Number</Text>
+            <Text style={styles.label} >Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
