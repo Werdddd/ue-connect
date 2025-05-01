@@ -75,8 +75,8 @@ const PostCard = ({
         {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
         {hasImages && (
           <View style={styles.postImagesContainer}>
-            {post.images.map((uri, idx) => (
-              <Image key={idx} source={{ uri }} style={styles.postImage} />
+            {post.images.filter(uri => uri).map((uri, idx) => (
+            <Image key={idx} source={{ uri }} style={styles.postImage} />
             ))}
           </View>
         )}

@@ -16,7 +16,10 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { getOwnUserProfile } from '../Backend/userOwnProfile';
 import { updateProfileImage, loadProfileImage } from '../Backend/changeProfile';
-import { auth } from '../Firebase'; // your auth config
+import { auth, firestore } from '../Firebase'; // your auth config
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+
+import PostCard from '../components/PostCard'; 
 
 export default function UserOwnProfilePage() {
     const navigation = useNavigation();
@@ -26,6 +29,7 @@ export default function UserOwnProfilePage() {
     const [year, setYear] = useState('');
     const [profile, setProfile] = useState('');
     const [course, setCourse] = useState('');
+    const [userPosts, setUserPosts] = useState([]);
     const userEmail = auth.currentUser?.email;
 
     useEffect(() => {
@@ -42,11 +46,97 @@ export default function UserOwnProfilePage() {
         };
 
         fetchProfile();
+        
 
         if (userEmail) {
             loadProfileImage(userEmail, setProfile);
+            fetchUserPosts();
         }
     }, [userEmail]);
+
+
+const fetchUserPosts = async () => {
+  if (!userEmail) return;
+
+  try {
+    // 1) Query only this user's posts
+    const q = query(
+      collection(firestore, 'newsfeed'),
+      where('userId', '==', userEmail)
+    );
+    const snap = await getDocs(q);
+
+    // 2) For each post, fetch its author record from Users
+    const enriched = await Promise.all(
+      snap.docs.map(async (docSnap) => {
+        const data = docSnap.data();
+
+        // Convert Firestore Timestamp → JS Date
+        const dateObj = data.date?.toDate
+          ? data.date.toDate()
+          : new Date(data.date || Date.now());
+
+        // Normalize images
+        const images = (data.images || []).map(img =>
+          img.startsWith('http')
+            ? img
+            : `data:image/jpeg;base64,${img}`
+        );
+
+        // Fetch user profile
+        let userProfile = {
+          name: 'Anonymous',
+          profileImage: 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
+          role: ''
+        };
+        if (data.userId) {
+          const userDoc = await getDoc(doc(firestore, 'Users', data.userId));
+          if (userDoc.exists()) {
+            const u = userDoc.data();
+
+            console.log("test");
+            userProfile = {
+              name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Anonymous',
+              profileImage: u.profileImage
+                ? u.profileImage.startsWith('http')
+                  ? u.profileImage
+                  : `${u.profileImage}`
+                : userProfile.profileImage,
+              role: u.role || ''
+            };
+          }
+        }
+
+        // Count comments
+        const commentsSnap = await getDocs(
+          collection(firestore, 'newsfeed', docSnap.id, 'comments')
+        );
+        const commentCount = commentsSnap.size;
+
+        return {
+          id: docSnap.id,
+          text: data.text || '',
+          date: dateObj,
+          images,
+          likedBy: data.likedBy || [],
+          commentCount,
+          user: userProfile
+        };
+      })
+    );
+
+    // 3) Reverse if you want newest first
+    setUserPosts(enriched.reverse());
+  } catch (err) {
+    console.error('Error fetching user posts:', err);
+  }
+};
+
+      
+      const dummyFunctions = () => {};
+      const dummyStateSetter = () => {};
+      const dummySharedValue = { value: 0 }; // for reanimated values
+      const dummyAnimatedStyle = {}; // optional for basic test
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -84,12 +174,42 @@ export default function UserOwnProfilePage() {
                                 </View>
                                 <View style={styles.underline} />
                             </View>
+                            {userPosts.map((post) => (
+                            <PostCard
+                                key={post.id}
+                                post={post}
+                                ss={"dd"}
+                                hasText={!!post.text}
+                                hasImages={post.images?.length > 0}
+                                isLiked={post.likedBy.includes(userEmail)}
+                                commentModalVisible={false}
+                                shareModalVisible={false}
+                                postComments={[]}
+                                commentText=""
+                                shareCaption=""
+                                setCommentModalVisible={dummyStateSetter}
+                                setShareModalVisible={dummyStateSetter}
+                                setSelectedPostId={dummyStateSetter}
+                                fetchComments={dummyFunctions}
+                                handleCommentBackdropPress={dummyFunctions}
+                                handleCommentGesture={dummyFunctions}
+                                commentBackdropAnimatedStyle={dummyAnimatedStyle}
+                                commentAnimatedStyle={dummyAnimatedStyle}
+                                commentTranslateY={dummySharedValue}
+                                commentBackdropOpacity={dummySharedValue}
+                                setCommentText={dummyStateSetter}
+                                handleAddComment={dummyFunctions}
+                                setShareCaption={dummyStateSetter}
+                                toggleLike={dummyFunctions}
+                            />
+                            ))}
                         </ScrollView>
                         <BottomNavBar />
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </TouchableWithoutFeedback>
+        
     );
 }
 
