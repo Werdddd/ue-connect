@@ -2,7 +2,7 @@ import { auth, firestore } from '../Firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
-export async function signUpUser({ firstName, lastName, studentNumber, email, password }) {
+export async function signUpUser({ firstName, lastName, studentNumber, email, password, year, course }) {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -12,6 +12,8 @@ export async function signUpUser({ firstName, lastName, studentNumber, email, pa
       studentNumber: studentNumber,
       firstName: firstName,
       lastName: lastName,
+      Course: course,
+      Year: year,
       role: 'user',
       timestamp: new Date(),
       profileImage: 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',

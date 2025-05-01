@@ -83,7 +83,7 @@ export default function SignUp() {
 
     setLoading(true);
     try {
-      const result = await signUpUser({ firstName, lastName, studentNumber, email, password });
+      const result = await signUpUser({ firstName, lastName, studentNumber, email, password, year, course });
 
       if (result.success) {
         navigation.navigate('Login');

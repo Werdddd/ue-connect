@@ -79,80 +79,87 @@ export default function Home() {
     };
     getUserData();
 
-    const fetchNewsfeed = async () => {
-        try {
-          const snapshot = await getDocs(collection(firestore, 'newsfeed'));
-      
-          const fetched = await Promise.all(
-            snapshot.docs.map(async (docSnap) => {
-              const d = docSnap.data();
-      
-              // Handle date
-              const rawDate = d.date || d.timestamp;
-              const dateObj = rawDate?.toDate
-                ? rawDate.toDate()
-                : new Date(rawDate || Date.now());
-      
-              // Normalize post images
-              const images = (d.images || []).map((img) =>
-                img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
-              );
-      
-              // 🔥 Get comment count
-              const commentsSnapshot = await getDocs(
-                collection(firestore, 'newsfeed', docSnap.id, 'comments')
-              );
-              const commentCount = commentsSnapshot.size;
-      
-              // 🔍 Get user profile from Users collection
-              let profileImage =
-                'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
-              let userName = d.userName || 'Anonymous';
-              let role = ''; // ⬅️ Initialize role
-      
-              if (d.userId) {
-                try {
-                  const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
-                  if (userDoc.exists()) {
-                    const userData = userDoc.data();
-      
-                    userName =
-                      userData.firstName && userData.lastName
-                        ? `${userData.firstName} ${userData.lastName}`
-                        : userData.firstName || 'Anonymous';
-      
-                    profileImage = userData.profileImage || profileImage;
-                    role = userData.role || ''; // ✅ Extract role
-                  }
-                } catch (err) {
-                  console.warn(`Failed to get user data for ${d.userId}`, err);
-                }
-              }
-      
-              return {
-                id: docSnap.id,
-                text: d.text || '',
-                date: dateObj,
-                images,
-                user: {
-                  name: userName,
-                  profileImage,
-                  role, // ✅ Add role to the returned post object
-                },
-                likedBy: d.likedBy || [],
-                commentCount,
-              };
-            })
+    // FETCH NEWSFEED
+const fetchNewsfeed = async () => {
+    try {
+      const snapshot = await getDocs(collection(firestore, 'newsfeed'));
+  
+      const fetched = await Promise.all(
+        snapshot.docs.map(async (docSnap) => {
+          const d = docSnap.data();
+  
+          // Handle date
+          const rawDate = d.date || d.timestamp;
+          const dateObj = rawDate?.toDate
+            ? rawDate.toDate()
+            : new Date(rawDate || Date.now());
+  
+          // Normalize post images
+          const images = (d.images || []).map((img) =>
+            img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
           );
-      
-          setNewsfeedPosts(fetched.reverse());
-        } catch (e) {
-          console.error('Error fetching newsfeed:', e);
-        }
-      };
-      
-
-    
+  
+          // Get comment count
+          const commentsSnapshot = await getDocs(
+            collection(firestore, 'newsfeed', docSnap.id, 'comments')
+          );
+          const commentCount = commentsSnapshot.size;
+  
+          // Get user profile from Users collection
+          let profileImage =
+            'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+          let userName = d.userName || 'Anonymous';
+          let role = '';
+  
+          if (d.userId) {
+            try {
+              const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+  
+                userName =
+                  userData.firstName && userData.lastName
+                    ? `${userData.firstName} ${userData.lastName}`
+                    : userData.firstName || 'Anonymous';
+  
+                profileImage = userData.profileImage || profileImage;
+                role = userData.role || '';
+              }
+            } catch (err) {
+              console.warn(`Failed to get user data for ${d.userId}`, err);
+            }
+          }
+  
+          return {
+            id: docSnap.id,
+            text: d.text || '',
+            date: dateObj,
+            images,
+            user: {
+              name: userName,
+              profileImage,
+              role,
+            },
+            likedBy: d.likedBy || [],
+            commentCount,
+            pinned: d.pinned === true, // ✅ Include pinned flag
+          };
+        })
+      );
+  
+      // ✅ Sort pinned posts first, then by date
+      const sortedPosts = fetched.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return b.date - a.date;
+      });
+  
+      setNewsfeedPosts(sortedPosts);
+    } catch (e) {
+      console.error('Error fetching newsfeed:', e);
+    }
+  };
+  
 
     fetchNewsfeed();
   }, [commentModalVisible, selectedPostId]);
@@ -452,35 +459,44 @@ export default function Home() {
 
     
     return (
-      <View key={post.id} style={styles.postCard}>
+        <View key={post.id} style={styles.postCard}>
         {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
-          {post.user.profileImage ? (
-            <Image
+            {post.user.profileImage ? (
+              <Image
                 source={{ uri: post.user.profileImage }}
                 style={styles.profileImagePost}
                 resizeMode="cover"
-            />
+              />
             ) : (
-            <FontAwesome name="user-circle-o" size={35} color="#999" />
+              <FontAwesome name="user-circle-o" size={35} color="#999" />
             )}
-
+  
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-            <Text style={styles.postUserName}>{post.user.name}</Text>
-            {post.user.role === ss && (
+              <Text style={styles.postUserName}>{post.user.name}</Text>
+              {post.user.role === ss && (
                 <Image
-                source={require('../assets/switch2.png')}
-                style={{ width: 16, height: 16, marginLeft: 5 }}
+                  source={require('../assets/switch2.png')}
+                  style={{ width: 16, height: 16, marginLeft: 5 }}
                 />
-            )}
+              )}
             </View>
           </View>
+  
+          {/* Pinned Icon */}
+          {post.pinned && (
+            <Image
+                source={require('../assets/pin.png')}
+                style={styles.pinIcon}
+            />
+            )}
+  
           <TouchableOpacity>
             <Entypo name="dots-three-horizontal" size={20} color="#333" />
           </TouchableOpacity>
         </View>
-
+  
         {/* Post Content */}
         <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
@@ -496,42 +512,42 @@ export default function Home() {
             </View>
           )}
         </View>
-
+  
         {/* Post Actions */}
-            <View style={styles.postActions}>
-            <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => toggleLike(post.id, post.likedBy)}
-            >
-                <Ionicons
-                name={isLiked ? 'heart' : 'heart-outline'}
-                size={20}
-                color={isLiked ? 'red' : '#555'}
-                />
-                <Text style={styles.actionText}>
-                {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
-                </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => {
-                setSelectedPostId(post.id); // set selected post
-                setCommentModalVisible(true);
-                fetchComments(post.id); 
-              }}
-            >
-              <Ionicons name="chatbubble-outline" size={20} color="#555" />
-              <Text style={styles.actionText}>
-                {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
-              </Text>
-            </TouchableOpacity>
-
+        <View style={styles.postActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => toggleLike(post.id, post.likedBy)}
+          >
+            <Ionicons
+              name={isLiked ? 'heart' : 'heart-outline'}
+              size={20}
+              color={isLiked ? 'red' : '#555'}
+            />
+            <Text style={styles.actionText}>
+              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+  
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setSelectedPostId(post.id);
+              setCommentModalVisible(true);
+              fetchComments(post.id);
+            }}
+          >
+            <Ionicons name="chatbubble-outline" size={20} color="#555" />
+            <Text style={styles.actionText}>
+              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+  
           <TouchableOpacity style={styles.actionButton} onPress={() => setShareModalVisible(true)}>
             <Ionicons name="share-social-outline" size={20} color="#555" />
             <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
-        </View>
+      </View>
 
         <Modal
           visible={commentModalVisible}
@@ -1272,5 +1288,14 @@ const styles = StyleSheet.create({
   postDate: {
     fontSize: 12,
     color: '#777',
-  }
+  },
+  pinIcon: {
+    position: 'absolute',
+    top: -28,
+    right: -28,
+    width: 33,
+    height: 33,
+    zIndex: 10,
+  },
+  
 });
