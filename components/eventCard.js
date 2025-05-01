@@ -3,7 +3,8 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } fr
 import { Ionicons } from '@expo/vector-icons';
 import { applyToEvent, removeApplicationFromEvent } from '../Backend/eventPage';
 import { getAuth } from 'firebase/auth';
-
+import { getDoc, doc } from 'firebase/firestore';
+import { firestore } from '../Firebase'; 
 
 
 export default function EventCard({ event }) {
@@ -31,21 +32,36 @@ export default function EventCard({ event }) {
             return;
         }
     
-        const userId = user.uid;
-    
         try {
-            if (!joined) {
-                await applyToEvent(event.id, userId);
-            } else {
-                await removeApplicationFromEvent(event.id, userId);
+            const userDocRef = doc(firestore, 'Users', user.email);
+            const userSnap = await getDoc(userDocRef);
+    
+            if (!userSnap.exists()) {
+                alert('User data not found in Firestore.');
+                return;
             }
+    
+            const userData = userSnap.data();
+            const studentNumber = userData.studentNumber;
+            
+            if (!studentNumber) {
+                alert("Student number is missing from user profile.");
+                return;
+            }
+    
+            if (!joined) {
+                await applyToEvent(event.id, studentNumber);
+            } else {
+                await removeApplicationFromEvent(event.id, studentNumber);
+            }
+    
             setJoined(!joined);
         } catch (error) {
             console.error("Error updating participation:", error.message);
             alert("Failed to update participation.");
         }
     };
-    
+
 
     const handleFavoriteToggle = () => {
         setFavorited((prevFavorited) => !prevFavorited);

@@ -35,10 +35,9 @@ export async function addEvent(newEvent) {
   }
 }
 
-export async function applyToEvent(eventId, email) {
+export async function applyToEvent(eventId, studentNumber) {
   try {
-    // Fetch user data from the users collection
-    const userRef = doc(firestore, 'users', email);
+    const userRef = doc(firestore, 'Users', studentNumber);
     const userSnap = await getDoc(userRef);
 
     let userName = 'Unknown User';
@@ -52,7 +51,7 @@ export async function applyToEvent(eventId, email) {
     // Update the participantsList in the event
     const eventRef = doc(firestore, 'events', eventId);
     await updateDoc(eventRef, {
-      [`participantsList.${email}`]: userName,
+      [`participantsList.${studentNumber}`]: userName,
     });
   } catch (error) {
     throw new Error('Failed to apply to event: ' + error.message);
