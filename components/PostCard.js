@@ -40,7 +40,14 @@ const PostCard = ({
   setCommentText,
   handleAddComment,
   setShareCaption,
-  toggleLike
+  toggleLike,
+  handleToggleOptions,
+  handleDeletePost,
+  showOptions,
+  onOptionsPress,
+  onDeletePost,
+  setShowOptions,
+
 }) => {
   return (
     <Pressable>
@@ -67,9 +74,23 @@ const PostCard = ({
               )}
             </View>
           </View>
-          <TouchableOpacity>
-            <Entypo name="dots-three-horizontal" size={20} color="#333" />
+          <TouchableOpacity
+            onPress={() => onOptionsPress(post.id)}
+            style={{ padding: 5 }}
+          >
+            <Entypo name="dots-three-vertical" size={18} color="black" />
           </TouchableOpacity>
+
+          {showOptions === post.id &&(
+            <View style={styles.optionsMenu}>
+              <TouchableOpacity
+                onPress={() => onDeletePost(post.id)}
+                style={styles.optionButton}
+              >
+                <Text style={styles.optionText}>Delete Post</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Post Content */}
@@ -658,5 +679,32 @@ const styles = StyleSheet.create({
   postDate: {
     fontSize: 12,
     color: '#777',
-  }
+  },
+  optionsMenu: {
+    position: 'absolute', 
+    top: 0,                
+    right: 0,              
+    backgroundColor: '#fff', 
+    borderRadius: 5,       
+    elevation: 5,          
+    shadowColor: '#000',  
+    shadowOpacity: 0.3,    
+    shadowRadius: 4,       
+    paddingVertical: 0,  
+    paddingHorizontal: 0,         
+  },
+  optionButton: {
+    paddingVertical: 10,  
+    paddingHorizontal: 15, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#ccc',
+  },
+  optionText: {
+    fontSize: 16,         
+    color: '#333',      
+  },
+  optionsButton: {
+    padding: 5,          
+    backgroundColor: 'transparent',
+  },
 });
