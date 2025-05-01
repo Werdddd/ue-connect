@@ -174,14 +174,19 @@ export default function EventCard({ event }) {
 
                             <Text style={styles.modalLocation}>Location: {event.location}</Text>
                             <View style={styles.joinHeartContainer}>
-                                <TouchableOpacity
-                                    style={[styles.joinButton, joined && styles.joinedButton]}
-                                    onPress={handleJoinToggle}
-                                >
-                                    <Text style={styles.joinButtonText}>
-                                        {joined ? 'Applied' : 'Join Now'}
-                                    </Text>
-                                </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.joinButton,
+                                    joined && styles.joinedButton,
+                                    applicationStatus === 'Approved' && styles.approvedButton
+                                ]}
+                                onPress={handleJoinToggle}
+                                disabled={applicationStatus === 'Approved'} // Optional: prevent toggle if approved
+                            >
+                                <Text style={styles.joinButtonText}>
+                                    {applicationStatus === 'Approved' ? 'Approved' : joined ? 'Applied' : 'Join Now'}
+                                </Text>
+                            </TouchableOpacity>
 
                                 <TouchableOpacity onPress={handleFavoriteToggle} style={styles.favoriteButton}>
                                     <Ionicons

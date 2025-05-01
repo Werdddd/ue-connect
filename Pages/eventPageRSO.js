@@ -10,6 +10,7 @@ import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCardRSO from '../components/eventCardRSO';
 import { fetchEvents, addEvent } from '../Backend/eventPageRSO'; 
+import { getSuggestedDateTime } from '../Backend/eventPageRSO';
 import { launchImageLibrary } from 'react-native-image-picker';
 // import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -173,6 +174,20 @@ export default function EventPageRSO() {
         ? events
         : events.filter(event => event.org === selectedOrg);
 
+    const [suggestedDateTime, setSuggestedDateTime] = useState(null);
+
+        useEffect(() => {
+            const fetchSuggestion = async () => {
+              const suggestion = await getSuggestedDateTime();
+              setSuggestedDateTime(suggestion);
+            };
+          
+            fetchSuggestion();
+          }, []);
+          
+        
+    
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView
@@ -248,30 +263,64 @@ export default function EventPageRSO() {
                                 value={newDescription}
                                 onChangeText={setNewDescription}
                             />
+                            
                             <View style={styles.dateTimeRow}>
+                                {/* Date Input */}
                                 <View style={styles.dateTimeColumn}>
                                     <Text style={styles.label}>Event Date</Text>
                                     <TextInput
-                                        placeholder="April 25, 2025"
-                                        placeholderTextColor="#D3D3D3"
-                                        style={styles.input}
-                                        value={newDate}
-                                        onChangeText={setNewDate}
+                                    placeholder="April 25, 2025"
+                                    placeholderTextColor="#D3D3D3"
+                                    style={styles.input}
+                                    value={newDate}
+                                    onChangeText={setNewDate}
                                     />
                                 </View>
+
+                                {/* Time Input */}
                                 <View style={styles.dateTimeColumn}>
                                     <Text style={styles.label}>Event Time</Text>
                                     <TextInput
-                                        placeholder="8:00 AM - 12:00 PM"
-                                        placeholderTextColor="#D3D3D3"
-                                        style={styles.input}
-                                        value={newTime}
-                                        onChangeText={setNewTime}
+                                    placeholder="8:00 AM - 12:00 PM"
+                                    placeholderTextColor="#D3D3D3"
+                                    style={styles.input}
+                                    value={newTime}
+                                    onChangeText={setNewTime}
                                     />
                                 </View>
-                            </View>
+                                </View>
 
-                            <Text style={styles.label}>Event Location</Text>
+                                {/* Suggestions Below Inputs */}
+                                {suggestedDateTime?.suggestedTimes?.length > 0 && (
+                                <View style={styles.suggestionContainer}>
+                                    <Text style={styles.suggestionLabel}>Suggestions:</Text>
+                                    <View style={styles.suggestionGrid}>
+                                    {suggestedDateTime.suggestedTimes.map((item, index) => {
+                                        const [date, time] = item.split(" • ");
+                                        return (
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={styles.suggestionButton}
+                                            onPress={() => {
+                                            setNewDate(date.trim());
+                                            setNewTime(time.trim());
+                                            }}
+                                        >
+                                            <Text style={styles.suggestionText}>{date}</Text>
+                                            <Text style={styles.suggestionText}>{time}</Text>
+                                        </TouchableOpacity>
+                                        );
+                                    })}
+                                    </View>
+                                </View>
+                                )}
+
+
+
+
+
+                        <Text style={[styles.label, { marginTop: 10 }]}>Event Location</Text>
+
                             <TextInput
                                 placeholder="MPH 2, Engineering Building"
                                 placeholderTextColor="#D3D3D3"
@@ -334,12 +383,18 @@ export default function EventPageRSO() {
                             </View>
 
                             <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => setIsModalVisible(false)}
-                                >
-                                    <Text style={styles.buttonText}>Cancel</Text>
-                                </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.cancelButton}
+                                onPress={() => {
+                                    setIsModalVisible(false);
+                                    // Clear the date and time inputs as well
+                                    setNewDate('');
+                                    setNewTime('');
+                                    
+                                }}
+                            >
+                                <Text style={styles.buttonText}>Cancel</Text>
+                            </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.addButton}
                                     onPress={handleAddEvent}
@@ -488,6 +543,41 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         gap: 10,
     },
+    suggestionContainer: {
+        marginTop: 5,
+      },
+      
+      suggestionLabel: {
+        fontWeight: '400',
+        marginBottom: 6,
+        fontStyle: 'italic',
+        fontSize: 12,
+        color: '#555',
+      },
+      
+      suggestionGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10, // Use margin for RN versions that don't support gap
+      },
+      
+      suggestionButton: {
+        backgroundColor: '#f5f5f5',
+        paddingVertical: 5,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        
+        width: '48%', // Two per row
+      },
+      
+      suggestionText: {
+        fontSize: 12,
+        color: '#333',
+        textAlign: 'center',
+      },
+      
 
     uploadSection: {
         flex: 1,

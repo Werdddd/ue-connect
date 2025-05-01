@@ -130,6 +130,7 @@ export default function EventCardRSO({ event }) {
         }
       };
       
+      
   
     return (
       <View>
@@ -289,8 +290,13 @@ const styles = StyleSheet.create({
     },
     description: {
         fontSize: 14,
-        color: '#666',
-        marginBottom: 15,
+       
+        marginBottom: 10,
+    },
+    Participants: {
+        fontSize: 14,
+        
+        marginBottom: 10,
     },
     buttonRow: {
         flexDirection: 'row',
