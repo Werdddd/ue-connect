@@ -52,46 +52,24 @@ export default function AdminPage() {
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <SafeAreaView style={styles.safeArea}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.container}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
                 >
-                    <View style={styles.container}>
-                        <Header scrollY={scrollY} />
-                        <View
-                            style={styles.flexcont}
-                            onScroll={(event) => {
-                                setScrollY(event.nativeEvent.contentOffset.y);
-                            }}
-                            scrollEventThrottle={16}
-                            contentContainerStyle={styles.scrollContent}
-                            showsVerticalScrollIndicator={false}>
-                            {/* User Profile Content */}
-                            <View style={styles.profileContainer}>
-                                {/* Add a placeholder image or use user's actual image */}
-                                <Image source={{ uri: 'https://www.example.com/user-profile-pic.jpg' }} style={styles.userProfileImage} />
-                                <Text style={styles.userName}>{name || 'Your Name'}</Text>
-                                <View style={styles.infoDetailRow}>
-                                    <Text style={styles.userYear}>{year || 'Your Year'}</Text>
-                                    <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
-                                </View>
+                <Header scrollY={scrollY} />
 
-                                <View style={styles.buttonRow}>
-                                    <TouchableOpacity style={styles.followButton}>
-                                        <Text style={styles.followButtonText}>Follow</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.messageButton}>
-                                        <Text style={styles.messageButtonText}>Message</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={styles.underline} />
-                            </View>
-                            
-                            <View style={styles.userCardContainer}>
-                                <UserCard />
-                            </View>
-                        </View>
-                    </View>
+                
+
+                {/* User Profile Content */}
+                <View style={styles.profileContainer}>                               
+                    <Text style={styles.saoHeader}>{'Student Affairs Office Admin Panel'}</Text>
+                    <Text style={styles.saoSubtitle}>{'Manage student activities, records, and organizational affairs seamlessly'}</Text>                 
+                    <View style={styles.underline} />
+                </View>
+                <View style={styles.userCardContainer}>
+                    <UserCard />
+                </View>
+                        
                     <BottomNavBar />
                 </KeyboardAvoidingView>
             </SafeAreaView>
@@ -104,6 +82,10 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
     },
+    flexcont: {
+        flex: 1,
+    },
+    
     container: {
         flex: 1,
         backgroundColor: '#fff',
@@ -118,9 +100,16 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     userCardContainer: {
+        flex: 1,
         width: '100%',
-        height: '56%',
+     
     },
+
+    cardScrollContent: {
+        flexGrow: 1,
+        paddingBottom: 80,
+    },
+    
 
     userProfileImage: {
         width: 100,
@@ -130,17 +119,18 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ccc',
     },
-    userName: {
+    saoHeader: {
         fontSize: 18,
         fontWeight: 'bold',
         textAlign: 'center',
         marginBottom: 5,
     },
-    userYear: {
+    saoSubtitle: {
         fontSize: 14,
         textAlign: 'center',
         color: '#777',
         marginBottom: 5,
+        paddingHorizontal: 20,
     },
     userCourse: {
         fontSize: 14,
@@ -179,7 +169,7 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: '#555',
         width: '100%',
-        marginTop: 2,
+        marginTop: 4,
     },
     infoDetailRow: {
         flexDirection: 'row',

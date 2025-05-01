@@ -1,274 +1,484 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Button } from 'react-native';
-import { firestore, auth } from '../Firebase';
-import { doc, getDoc, query, collection, getDocs, where, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
-import { ScrollView } from 'react-native';
-import { Pressable } from 'react-native';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+  TextInput,
+  Button, ScrollView
+} from "react-native";
+import { firestore } from "../Firebase";
+import {
+  doc,
+  getDocs,
+  query,
+  collection,
+  where,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
+import Icon from "react-native-vector-icons/MaterialIcons";
 
-// Custom hook to manage user data
+// Custom hook to fetch users
 const useUsers = () => {
-    const [users, setUsers] = useState([]);
-  
-    useEffect(() => {
-      const fetchUsers = async () => {
-        try {
-          const q = query(collection(firestore, 'Users'), where('studentNumber', '!=', null));
-          const querySnapshot = await getDocs(q);
-          const data = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setUsers(data);
-        } catch (error) {
-          console.error('Error fetching users:', error);
-        }
-      };
-  
-      fetchUsers();
-    }, []);
-  
-    return users;
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const q = query(
+          collection(firestore, "Users"),
+          where("studentNumber", "!=", null)
+        );
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setUsers(data);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  return users;
+};
+
+// Custom hook for editing first name
+const useFirstModal = () => {
+  const [firstModalVisible, setfirstModalVisible] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [pathName, setPathName] = useState("");
+
+  const openModal = (name) => {
+    setNewName(name);
+    setPathName(name);
+    setfirstModalVisible(true);
   };
-  
-  // Custom hook for modal management
-    const useFirstModal = () => {
-        const [firstModalVisible, setfirstModalVisible] = useState(false);
-        const [newName, setNewName] = useState('');
-        const [pathName, setPathName] = useState('');
-  
-        const openModal = (name) => {
-            setNewName(name);
-            setPathName(name); // Set the pathName to the current name
-            setfirstModalVisible(true);
-        };
-  
-        const closeModal = () => {
-            setfirstModalVisible(false);
-        };
-  
-    const saveFirstName = async () => {
-        console.log(pathName);
-        console.log(newName);
-        try{
-            const q = query(collection(firestore, 'Users'), where('firstName', '==', pathName));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                // Assuming there's only one document with the given firstName
-                querySnapshot.forEach(async (docSnapshot) => {
-                  const docRef = doc(firestore, 'Users', docSnapshot.id); // Get document reference by ID
-          
-                  // Now update the firstName in Firestore
-                  await updateDoc(docRef, {
-                    firstName: newName, // Update the firstName field to the new value
-                  });
-          
-                  console.log(`Updated firstName for user with ID: ${docSnapshot.id}`);
-                    });
-                } else {
-                    console.log("No user found with that first name.");
-                }
-            }catch (error) {
-                console.error("Error updating first name:", error);
-            }
-            closeModal(); // Close the modal after saving
-        };
-  
-        return {
-        firstModalVisible,
-        newName,
-        pathName,
-        openModal,
-        closeModal,
-        saveFirstName,
-        setNewName,
-        };
-    };
 
-    const useLastModal = () => {
-        const [lastModalVisible, setlastModalVisible] = useState(false);
-        const [newLastName, setLastName] = useState('');
-        const [pathLastName, setPathName] = useState('');
-  
-        const openLastModal = (last) => {
-            setLastName(last);
-            setPathName(last); // Set the pathName to the current name
-            setlastModalVisible(true);
-        };
-  
-        const closeLastModal = () => {
-            setlastModalVisible(false);
-        };
-  
-    const saveLastName = async () => {
-        console.log(pathLastName);
-        console.log(newLastName);
-        try{
-            const q = query(collection(firestore, 'Users'), where('lastName', '==', pathLastName));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-                // Assuming there's only one document with the given firstName
-                querySnapshot.forEach(async (docSnapshot) => {
-                  const docRef = doc(firestore, 'Users', docSnapshot.id); // Get document reference by ID
-          
-                  // Now update the firstName in Firestore
-                  await updateDoc(docRef, {
-                    lastName: newLastName, // Update the firstName field to the new value
-                  });
-          
-                  console.log(`Updated lastName for user with ID: ${docSnapshot.id}`);
-                    });
-                } else {
-                    console.log("No user found with that last name.");
-                }
-            }catch (error) {
-                console.error("Error updating last name:", error);
-            }
-            closeLastModal(); // Close the modal after saving
-        };
-  
-        return {
-            lastModalVisible,
-            newLastName,
-            pathLastName,
-            openLastModal,
-            closeLastModal,
-            saveLastName,
-            setLastName,
-        };
-    };
-  
-  export default function UserCard() {
-    const users = useUsers();  // Get users
+  const closeModal = () => {
+    setfirstModalVisible(false);
+  };
 
-    const {
-      firstModalVisible,
-      newName,
-      openModal,
-      closeModal,
-      saveFirstName,
-      setNewName,
-    } = useFirstModal();  // Modal state management
+  const saveFirstName = async () => {
+    try {
+      const q = query(
+        collection(firestore, "Users"),
+        where("firstName", "==", pathName)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        querySnapshot.forEach(async (docSnapshot) => {
+          const docRef = doc(firestore, "Users", docSnapshot.id);
+          await updateDoc(docRef, {
+            firstName: newName,
+          });
+        });
+      } else {
+        console.log("No user found with that first name.");
+      }
+    } catch (error) {
+      console.error("Error updating first name:", error);
+    }
+    closeModal();
+  };
 
-    const {
-        lastModalVisible,
-        newLastName,
-        openLastModal,
-        closeLastModal,
-        saveLastName,
-        setLastName,
-      } = useLastModal(); 
-  
-    const renderItem = ({ item }) => (
-      <Pressable>
-        <View style={styles.card}>
-          <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity onPress={() => openModal(item.firstName)}>
-              <Text style={styles.name}>{item.firstName}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => openLastModal(item.lastName)}>
-              <Text style={styles.name}>{item.lastName}</Text>
-            </TouchableOpacity>
-          </View>
+  return {
+    firstModalVisible,
+    newName,
+    pathName,
+    openModal,
+    closeModal,
+    saveFirstName,
+    setNewName,
+  };
+};
+
+// Custom hook for editing last name
+const useLastModal = () => {
+  const [lastModalVisible, setlastModalVisible] = useState(false);
+  const [newLastName, setLastName] = useState("");
+  const [pathLastName, setPathName] = useState("");
+
+  const openLastModal = (last) => {
+    setLastName(last);
+    setPathName(last);
+    setlastModalVisible(true);
+  };
+
+  const closeLastModal = () => {
+    setlastModalVisible(false);
+  };
+
+  const saveLastName = async () => {
+    try {
+      const q = query(
+        collection(firestore, "Users"),
+        where("lastName", "==", pathLastName)
+      );
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        querySnapshot.forEach(async (docSnapshot) => {
+          const docRef = doc(firestore, "Users", docSnapshot.id);
+          await updateDoc(docRef, {
+            lastName: newLastName,
+          });
+        });
+      } else {
+        console.log("No user found with that last name.");
+      }
+    } catch (error) {
+      console.error("Error updating last name:", error);
+    }
+    closeLastModal();
+  };
+
+  return {
+    lastModalVisible,
+    newLastName,
+    pathLastName,
+    openLastModal,
+    closeLastModal,
+    saveLastName,
+    setLastName,
+  };
+};
+
+export default function UserCard() {
+  const users = useUsers();
+
+  // Local states inside the component
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editStudentNumber, setEditStudentNumber] = useState("");
+  const [editRole, setEditRole] = useState("");
+
+  const {
+    firstModalVisible,
+    newName,
+    openModal,
+    closeModal,
+    saveFirstName,
+    setNewName,
+  } = useFirstModal();
+
+  const {
+    lastModalVisible,
+    newLastName,
+    openLastModal,
+    closeLastModal,
+    saveLastName,
+    setLastName,
+  } = useLastModal();
+
+  const handleEdit = (user) => {
+    setSelectedUser(user);
+    setEditFirstName(user.firstName);
+    setEditLastName(user.lastName);
+    setEditStudentNumber(user.studentNumber);
+    setEditRole(user.role);
+    setEditModalVisible(true);
+  };
+
+  const openDeleteModal = (user) => {
+    setSelectedUser(user);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteDoc(doc(firestore, "Users", selectedUser.id));
+      setDeleteModalVisible(false);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardContent}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>
+            {item.firstName} {item.lastName}
+          </Text>
           <Text style={styles.email}>{item.email}</Text>
-          <TouchableOpacity>
-            <Text style={styles.role}>Role: {item.role}</Text>
+          <Text style={styles.role}>Role: {item.role}</Text>
+          <Text style={styles.studentNumber}>
+            Student #: {item.studentNumber}
+          </Text>
+        </View>
+        <View style={styles.iconButtons}>
+          <TouchableOpacity onPress={() => handleEdit(item)}>
+            <Icon name="edit" size={24} color="#4CAF50" />
           </TouchableOpacity>
-          <TouchableOpacity>
-            <Text style={styles.studentNumber}>Student #: {item.studentNumber}</Text>
+          <TouchableOpacity onPress={() => openDeleteModal(item)}>
+            <Icon
+              name="delete"
+              size={24}
+              color="#F44336"
+              style={{ marginTop: 8 }}
+            />
           </TouchableOpacity>
         </View>
-      </Pressable>
-    );
-  
-    return (
-      <>
-        <FlatList
-          data={users}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          keyboardShouldPersistTaps="handled"
-        />
-  
-        {/* Modal for editing the first name */}
-        <Modal
-          visible={firstModalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={closeModal}
-        >
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Edit First Name</Text>
-              <TextInput
-                style={styles.input}
-                value={newName}
-                onChangeText={setNewName}
-              />
-              <Button title="Save" onPress={saveFirstName} />
-              <Button title="Cancel" onPress={closeModal} />
-            </View>
-          </View>
-        </Modal>
+      </View>
+    </View>
+  );
 
-        <Modal
-          visible={lastModalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={closeLastModal}
-        >
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Edit Last Name</Text>
-              <TextInput
-                style={styles.input}
-                value={newLastName}
-                onChangeText={setLastName}
-              />
-              <Button title="Save" onPress={saveLastName} />
-              <Button title="Cancel" onPress={closeLastModal} />
+  return (
+    <>
+     <FlatList
+      data={users}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={renderItem}
+      contentContainerStyle={{ paddingBottom: 20 }}
+      ListEmptyComponent={<Text>No users found.</Text>}
+    />
+
+
+      {/* Edit Modal */}
+      <Modal visible={editModalVisible} transparent animationType="slide">
+  <View style={styles.modalBackground}>
+    <View style={styles.modalContainer}>
+      <Text style={styles.modalTitle}>Edit User</Text>
+
+      {/* Name Row */}
+      <View style={styles.nameRow}>
+        <View style={styles.nameContainer}>
+          <Text style={styles.label}>First Name</Text>
+          <TextInput
+            value={editFirstName}
+            onChangeText={setEditFirstName}
+            placeholder="First Name"
+            style={styles.input}
+          />
+        </View>
+        <View style={styles.nameContainer}>
+          <Text style={styles.label}>Last Name</Text>
+          <TextInput
+            value={editLastName}
+            onChangeText={setEditLastName}
+            placeholder="Last Name"
+            style={styles.input}
+          />
+        </View>
+      </View>
+
+      {/* Student Number and Role */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Student Number</Text>
+        <TextInput
+          value={editStudentNumber}
+          onChangeText={setEditStudentNumber}
+          placeholder="Student Number"
+          style={styles.input}
+        />
+      </View>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Role</Text>
+        <TextInput
+          value={editRole}
+          onChangeText={setEditRole}
+          placeholder="Role"
+          style={styles.input}
+        />
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.buttonRow}>
+      <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.saveBtn}>
+            <Text style={styles.btnText}>Save</Text>
+          </TouchableOpacity>
+      <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.cancelBtn}>
+            <Text style={styles.btnText}>Cancel</Text> 
+          </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
+      {/* Delete Modal */}
+      <Modal visible={deleteModalVisible} transparent animationType="fade">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text style={{textAlign: 'center', marginBottom: 10}}>Are you sure you want to delete this user?</Text>
+            <View style={styles.buttonRow}>
+            <TouchableOpacity onPress={confirmDelete} style={styles.deleteBtn}>
+                  <Text style={styles.btnText}>Delete</Text>
+                </TouchableOpacity>
+            <TouchableOpacity onPress={() => setDeleteModalVisible(false)} style={styles.cancelBtn}>
+                  <Text style={styles.btnText}>Cancel</Text> 
+                </TouchableOpacity>
             </View>
+            
           </View>
-        </Modal>
-      </>
-    );
+        </View>
+      </Modal>
+
+      {/* First Name Modal */}
+      <Modal visible={firstModalVisible} transparent animationType="slide">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text>Edit First Name</Text>
+            <TextInput
+              value={newName}
+              onChangeText={setNewName}
+              style={styles.input}
+            />
+            <Button title="Save" onPress={saveFirstName} />
+            <Button title="Cancel" onPress={closeModal} />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Last Name Modal */}
+      <Modal visible={lastModalVisible} transparent animationType="slide">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text>Edit Last Name</Text>
+            <TextInput
+              value={newLastName}
+              onChangeText={setLastName}
+              style={styles.input}
+            />
+            <Button title="Save" onPress={saveLastName} />
+            <Button title="Cancel" onPress={closeLastModal} />
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
 }
 const styles = StyleSheet.create({
   card: {
-    padding: 16,
-    marginVertical: 8,
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: "#fff",
+    margin: 10,
+    padding: 10,
+    borderRadius: 8,
     elevation: 2,
   },
+
+  cardContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  iconButtons: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+
   name: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   email: {
-    color: 'gray',
+    fontSize: 14,
   },
   role: {
-    marginTop: 4,
+    fontSize: 14,
   },
   studentNumber: {
-    marginTop: 2,
+    fontSize: 14,
   },
   modalBackground: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContainer: {
-    width: '80%',
+    width: "80%",
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 14,
+    marginBottom: 5,
+    color: "#333",
+  },
+  nameContainer: {
+    flex: 1,
+    marginBottom: 1,
+    width: "48%",
+  },
+  inputContainer: {
+    
+    marginBottom: 1,
+  },
+  nameRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 5,
+    gap: 10,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  saveBtn: {
+    backgroundColor: "#4CAF50",
+    padding: 10,
+    borderRadius: 5,
+    width: "48%",
+    textAlign: "center",
+  },
+  deleteBtn: {
+    backgroundColor: "#4CAF50",
+    padding: 10,
+    borderRadius: 5,
+    width: "48%",
+    textAlign: "center",
+  },
+  cancelBtn: {
+    backgroundColor: "#F44336",
+    padding: 10,
+    borderRadius: 5,
+    width: "48%",
+    textAlign: "center",
+  },
+  btnText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
