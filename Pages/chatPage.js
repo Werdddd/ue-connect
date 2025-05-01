@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput, Keyboard, TouchableWithoutFeedback, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { collection, getDocs, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where, } from 'firebase/firestore';
 import { auth, firestore } from '../Firebase';
 import { formatDistanceToNow } from 'date-fns';
 import BottomNavBar from '../components/bottomNavBar';
 import Header from '../components/header';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation hook
+import { useNavigation } from '@react-navigation/native'; 
 
 export default function ChatPage() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [messageText, setMessageText] = useState('');
-  const [users, setUsers] = useState([]);
+  const [Users, setUsers] = useState([]);
   const [chats, setChats] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const navigation = useNavigation(); // Hook to handle navigation
+  const navigation = useNavigation();
 
-  // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       const snapshot = await getDocs(collection(firestore, 'Users'));
@@ -30,27 +29,34 @@ export default function ChatPage() {
     fetchUsers();
   }, []);
 
-  // Get current user
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
-      setCurrentUserId(user.uid);
+      setCurrentUserId(user.email); 
     }
   }, []);
 
-  // Listen to chats
+  useEffect(() => {
+    const unsubscribeAuth = auth.onAuthStateChanged(user => {
+      if (user) {
+        setCurrentUserId(user.email);
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+  
   useEffect(() => {
     if (!currentUserId) return;
-
+  
     const q = query(collection(firestore, 'chats'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const filteredChats = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(chat => chat.users && chat.users[currentUserId]);
-
+        .filter(chat => chat.Users && chat.Users[currentUserId]);
+  
       setChats(filteredChats);
     });
-
+  
     return () => unsubscribe();
   }, [currentUserId]);
 
@@ -64,14 +70,11 @@ export default function ChatPage() {
     if (!selectedUserId || !messageText.trim() || !currentUserId) return;
 
     try {
-      // Check if a chat already exists between the two users
       const existingChat = await getChatBetweenUsers(currentUserId, selectedUserId);
-      
+
       if (existingChat) {
-        // If chat exists, add the new message to the chat
         await sendMessage(existingChat.id);
       } else {
-        // If chat doesn't exist, create a new chat and send the message
         const newChat = await createNewChat(selectedUserId);
         await sendMessage(newChat.id);
       }
@@ -82,19 +85,36 @@ export default function ChatPage() {
     }
   };
 
-  const getChatBetweenUsers = async (user1, user2) => {
-    const q = query(collection(firestore, 'chats'), where('users', '==', { [user1]: true, [user2]: true }));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      return querySnapshot.docs[0];
+  console.log("Fetching chats for: ", currentUserId, selectedUserId);
+  console.log("All chats in state:", chats);
+  const getChatBetweenUsers = async () => {
+    try {
+      if (!currentUserId || !selectedUserId) return;
+  
+      const chatQuery = query(
+        collection(firestore, 'chatRooms'),
+        where(`Users.${currentUserId}`, '==', true),
+        where(`Users.${selectedUserId}`, '==', true)
+      );
+  
+      const querySnapshot = await getDocs(chatQuery);
+  
+      if (!querySnapshot.empty) {
+        const chatRoom = querySnapshot.docs[0].data();
+        setMessages(chatRoom.messages || []);
+      } else {
+        console.log('No chat found between users');
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Error fetching chat:', error);
     }
-    return null;
   };
 
   const createNewChat = async (selectedUserId) => {
     const chatRef = collection(firestore, 'chats');
     const newChat = await addDoc(chatRef, {
-      users: {
+      Users: {
         [currentUserId]: true,
         [selectedUserId]: true,
       },
@@ -116,7 +136,6 @@ export default function ChatPage() {
       createdAt: serverTimestamp(),
     });
 
-    // Update the lastMessage field in the chat document
     const chatRef = doc(firestore, 'chats', chatId);
     await setDoc(chatRef, {
       lastMessage: {
@@ -128,106 +147,113 @@ export default function ChatPage() {
   };
 
   const getOtherUserInfo = (chat) => {
-    const otherId = Object.keys(chat.users).find(uid => uid !== currentUserId);
-    return users.find(u => u.id === otherId);
+    const otherId = Object.keys(chat.Users).find(id => id !== currentUserId);
+    return Users.find(u => u.id === otherId); 
   };
 
-  // Navigate to the ConversationPage when a chat card is pressed
   const handleCardPress = (chatId) => {
     navigation.navigate('ConversationPage', { chatId });
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerContainer}>
-          <Text style={styles.headerText}>Your Messages</Text>
-          <TouchableOpacity style={styles.newConversationButton} onPress={toggleModal}>
-            <Text style={styles.newConversationText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Chat Cards */}
-        {chats.length > 0 ? (
-          chats.map(chat => {
-            const otherUser = getOtherUserInfo(chat);
-            return (
-              <TouchableOpacity key={chat.id} style={styles.chatCard} onPress={() => handleCardPress(chat.id)}>
-                <Text style={styles.chatName}>
-                  {otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'Unknown User'}
-                </Text>
-                <Text style={styles.chatMessage} numberOfLines={1}>
-                  {chat.lastMessage?.text || 'No messages yet'}
-                </Text>
-                <Text style={styles.timestamp}>
-                  {chat.lastMessage?.createdAt?.toDate
-                    ? formatDistanceToNow(chat.lastMessage.createdAt.toDate(), { addSuffix: true })
-                    : ''}
-                </Text>
-              </TouchableOpacity>
-            );
-          })
-        ) : (
-          <Text>No conversations found</Text>
-        )}
-      </ScrollView>
-      <BottomNavBar />
-
-      {/* Modal */}
-      <Modal
-        visible={shareModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={toggleModal}
+    <ScrollView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Start a New Conversation</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <SafeAreaView style={styles.safeArea} keyboardShouldPersistTaps="handled">
+            <Header />
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+              <View style={styles.headerContainer}>
+                <Text style={styles.headerText}>Your Messages</Text>
+                <TouchableOpacity style={styles.newConversationButton} onPress={toggleModal}>
+                  <Text style={styles.newConversationText}>+</Text>
+                </TouchableOpacity>
+              </View>
 
-            <Text style={styles.label}>Select Recipient:</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={selectedUserId}
-                onValueChange={(itemValue) => setSelectedUserId(itemValue)}
-              >
-                <Picker.Item label="Select a user..." value="" />
-                {users
-                  .filter(u => u.id !== currentUserId)
-                  .map(user => (
-                    <Picker.Item
-                      key={user.id}
-                      label={`${user.firstName} ${user.lastName}`}
-                      value={user.id}
-                    />
-                  ))}
-              </Picker>
-            </View>
+              {chats.length > 0 ? (
+                chats.map(chat => {
+                  const otherUser = getOtherUserInfo(chat);
+                  return (
+                    <TouchableOpacity key={chat.id} style={styles.chatCard} onPress={() => handleCardPress(chat.id)}>
+                      <Text style={styles.chatName}>
+                        {otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'Unknown User'}
+                      </Text>
+                      <Text style={styles.chatMessage} numberOfLines={1}>
+                        {chat.lastMessage?.text || 'No messages yet'}
+                      </Text>
+                      <Text style={styles.timestamp}>
+                        {chat.lastMessage?.createdAt?.toDate
+                          ? formatDistanceToNow(chat.lastMessage.createdAt.toDate(), { addSuffix: true })
+                          : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <Text>No conversations found</Text>
+              )}
+            </ScrollView>
+            <BottomNavBar />
 
-            <Text style={styles.label}>Message:</Text>
-            <TextInput
-              style={styles.textInput}
-              value={messageText}
-              onChangeText={setMessageText}
-              placeholder="Type your message..."
-              multiline
-            />
-
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={handleStartConversation}
-              disabled={!selectedUserId || !messageText.trim()}
+            <Modal
+              keyboardShouldPersistTaps="handled"
+              visible={shareModalVisible}
+              animationType="slide"
+              transparent={true}
+              onRequestClose={toggleModal}
             >
-              <Text style={styles.sendButtonText}>Send Message</Text>
-            </TouchableOpacity>
+              <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Start a New Conversation</Text>
 
-            <TouchableOpacity style={styles.closeButton} onPress={toggleModal}>
-              <Text style={styles.closeButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+                  <Text style={styles.label}>Select Recipient:</Text>
+                  <View style={styles.pickerWrapper}>
+                    <Picker
+                      selectedValue={selectedUserId}
+                      onValueChange={(itemValue) => setSelectedUserId(itemValue)}
+                    >
+                      <Picker.Item label="Select a user..." value="" />
+                      {Users
+                        .filter(u => u.id !== currentUserId)
+                        .map(user => (
+                          <Picker.Item
+                            key={user.id}
+                            label={`${user.firstName} ${user.lastName}`}
+                            value={user.id}
+                          />
+                        ))}
+                    </Picker>
+                  </View>
+
+                  <Text style={styles.label}>Message:</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={messageText}
+                    onChangeText={setMessageText}
+                    placeholder="Type your message..."
+                    multiline
+                  />
+
+                  <TouchableOpacity
+                    style={styles.sendButton}
+                    onPress={handleStartConversation}
+                    disabled={!selectedUserId || !messageText.trim()}
+                  >
+                    <Text style={styles.sendButtonText}>Send Message</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.closeButton} onPress={toggleModal}>
+                    <Text style={styles.closeButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </SafeAreaView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </ScrollView>
   );
 }
 
@@ -248,7 +274,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   headerText: {
-    fontSize: 24,  // Increased size for "Your Messages"
+    fontSize: 24,  
     fontWeight: 'bold',
   },
   newConversationButton: {
@@ -262,7 +288,7 @@ const styles = StyleSheet.create({
   },
   newConversationText: {
     color: '#fff',
-    fontSize: 30,  // Adjusted to center the "+" sign
+    fontSize: 30, 
     fontWeight: 'bold',
   },
   chatCard: {
