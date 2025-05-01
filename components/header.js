@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Button, Modal} from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native'; // ✅ Use hook for navigation
 
@@ -7,6 +7,16 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
   const navigation = useNavigation(); // ✅ Solves "undefined navigation" error
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const [text, setText] = useState('');
+
+  const openSearch = () => {
+    setIsSearchActive(true);
+  };
+
+  const closeSearch = () => {
+    setIsSearchActive(false);
+    setSearchQuery('');
+  }
 
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -27,7 +37,7 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
         <Text style={styles.title}>UE Connect</Text>
       </View>
       <View style={styles.rightSection}>
-        <TouchableOpacity onPress={() => setIsSearchActive(!isSearchActive)}>
+        <TouchableOpacity onPress={openSearch}>
           <Feather name="search" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
         <TouchableOpacity>
@@ -46,6 +56,29 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
           onChangeText={handleSearch}
         />
       )}
+
+      <Modal
+        visible={isSearchActive}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.overlay}>
+          <View style={styles.modalBox}>
+            <TextInput
+              style={styles.input}
+              placeholder="Search..."
+              value={text}
+              onChangeText={setText}
+            />
+            <Button 
+            title="Search"
+            onPress={() => {
+            closeSearch();
+            navigation.navigate('searchResult', { searchText: text });
+            }}/>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -103,6 +136,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     zIndex: 20,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBox: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#aaa',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
   },
 });
 
