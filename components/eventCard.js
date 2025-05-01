@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { applyToEvent, removeApplicationFromEvent } from '../Backend/eventPage';
@@ -6,13 +6,37 @@ import { getAuth } from 'firebase/auth';
 import { getDoc, doc } from 'firebase/firestore';
 import { firestore } from '../Firebase'; 
 
-
 export default function EventCard({ event }) {
     const [modalVisible, setModalVisible] = useState(false);
     const [joined, setJoined] = useState(false);
     const [favorited, setFavorited] = useState(false);
     const auth = getAuth();
     const user = auth.currentUser;
+
+    // Check if user is applied to the event when component mounts
+    useEffect(() => {
+        const checkIfJoined = async () => {
+            if (!user) return;
+    
+            const useremail = user.email;
+            const safeEmailKey = useremail.replace(/\./g, '_'); // Ensuring safeEmailKey is used
+    
+            try {
+                const eventRef = doc(firestore, 'events', event.id); // Reference to the event
+                const eventDoc = await getDoc(eventRef);
+    
+                if (eventDoc.exists()) {
+                    const eventData = eventDoc.data();
+                    const isUserApplied = eventData?.participantsList?.hasOwnProperty(safeEmailKey);
+                    setJoined(isUserApplied); // Check if the user is in the participants list
+                }
+            } catch (error) {
+                console.error("Error checking participation:", error.message);
+            }
+        };
+    
+        checkIfJoined();
+    }, [user, event.id]);
 
     const handleOpenModal = () => {
         setModalVisible(true);
@@ -22,18 +46,14 @@ export default function EventCard({ event }) {
         setModalVisible(false);
     };
 
-    // const handleJoinToggle = () => {
-    //     setJoined((prevJoined) => !prevJoined);
-    // };
-
     const handleJoinToggle = async () => {
         if (!user) {
             alert('You must be logged in to join an event.');
             return;
         }
-    
+
         const useremail = user.email;
-    
+
         try {
             if (!joined) {
                 await applyToEvent(event.id, useremail);
@@ -46,7 +66,6 @@ export default function EventCard({ event }) {
             alert("Failed to update participation.");
         }
     };
-
 
     const handleFavoriteToggle = () => {
         setFavorited((prevFavorited) => !prevFavorited);
@@ -145,6 +164,7 @@ export default function EventCard({ event }) {
         </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     card: {

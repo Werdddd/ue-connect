@@ -1,3 +1,4 @@
+
 import { firestore } from '../Firebase';
 import { collection, getDocs, query, where, doc, updateDoc, getDoc, deleteField } from 'firebase/firestore'; // <-- import query and where
 
@@ -34,7 +35,6 @@ export async function addEvent(newEvent) {
     throw error;
   }
 }
-
 export async function applyToEvent(eventId, email) {
   try {
     // Fetch user data from the users collection
@@ -50,21 +50,23 @@ export async function applyToEvent(eventId, email) {
       userName = `${firstName} ${lastName}`.trim();
     }
 
-    // Update the participantsList in the event
+    // Update the participantsList in the event with "Applied" status by default
     const eventRef = doc(firestore, 'events', eventId);
     await updateDoc(eventRef, {
-  [`participantsList.${safeEmailKey}`]: userName,
-});
+      [`participantsList.${safeEmailKey}`]: { name: userName, status: 'Applied' }, // Added status here
+    });
   } catch (error) {
     throw new Error('Failed to apply to event: ' + error.message);
   }
 }
 
+
 export async function removeApplicationFromEvent(eventId, email) {
   try {
+    const safeEmailKey = email.replace(/\./g, '_');
     const eventRef = doc(firestore, "events", eventId);
     await updateDoc(eventRef, {
-      [`participantsList.${email}`]: deleteField(),
+      [`participantsList.${safeEmailKey}`]: deleteField(), // Ensure this is consistent with the safeEmailKey
     });
   } catch (error) {
     throw new Error("Failed to remove application: " + error.message);
