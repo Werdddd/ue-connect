@@ -15,6 +15,10 @@ export async function signUpUser({ firstName, lastName, studentNumber, email, pa
       Course: course,
       Year: year,
       role: 'user',
+      group: false,
+      followers: [],
+      following: [],
+      orgs: [],
       timestamp: new Date(),
       profileImage: 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
     });

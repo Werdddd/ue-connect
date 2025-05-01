@@ -74,7 +74,7 @@ export default function Home() {
         //console.log("test", imageSource);
         }
         setRole(userData.role);
-        console.log(role);
+        //console.log(role);
     }
     };
     getUserData();
@@ -899,7 +899,7 @@ const styles = StyleSheet.create({
     width: 35,       // 👈 increase or decrease as needed
     height: 35,
     borderRadius: 25,
-    marginRight: 1,
+    marginRight: 0,
   },
   
   profileIcon: {
