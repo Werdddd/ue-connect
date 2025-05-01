@@ -20,6 +20,7 @@ import { Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
 
+
 export default function SignUp() {
   const navigation = useNavigation();
   const [year, setYear] = useState('');
@@ -213,8 +214,8 @@ export default function SignUp() {
                     onValueChange={(itemValue) => setYear(itemValue)}
                     style={styles.picker}
                   >
-                    <Picker.Item label="Select Year" value="" />
-                    <Picker.Item label="1st Year" value="1st Year" />
+                    <Picker.Item style={styles.pickeropts} label="Select Year" value="" />
+                    <Picker.Item style={styles.pickeropts} label="1st Year" value="1st Year" />
                     <Picker.Item label="2nd Year" value="2nd Year" />
                     <Picker.Item label="3rd Year" value="3rd Year" />
                     <Picker.Item label="4th Year" value="4th Year" />
@@ -403,12 +404,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
+    height: 60,
     overflow: 'hidden',
   },
   picker: {
-    height: 50,
-    width: '100%',
+    marginTop: Platform.OS === 'ios' ? -79 : 0,
     paddingVertical: 0,
+    overflow: 'hidden',
   },
-
 });
