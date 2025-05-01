@@ -21,136 +21,7 @@ import {
 } from "firebase/firestore";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-// Custom hook to fetch users
-const useUsers = () => {
-  const [users, setUsers] = useState([]);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const q = query(
-          collection(firestore, "Users"),
-          where("studentNumber", "!=", null)
-        );
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setUsers(data);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  return users;
-};
-
-// Custom hook for editing first name
-const useFirstModal = () => {
-  const [firstModalVisible, setfirstModalVisible] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [pathName, setPathName] = useState("");
-
-  const openModal = (name) => {
-    setNewName(name);
-    setPathName(name);
-    setfirstModalVisible(true);
-  };
-
-  const closeModal = () => {
-    setfirstModalVisible(false);
-  };
-
-  const saveFirstName = async () => {
-    try {
-      const q = query(
-        collection(firestore, "Users"),
-        where("firstName", "==", pathName)
-      );
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        querySnapshot.forEach(async (docSnapshot) => {
-          const docRef = doc(firestore, "Users", docSnapshot.id);
-          await updateDoc(docRef, {
-            firstName: newName,
-          });
-        });
-      } else {
-        console.log("No user found with that first name.");
-      }
-    } catch (error) {
-      console.error("Error updating first name:", error);
-    }
-    closeModal();
-  };
-
-  return {
-    firstModalVisible,
-    newName,
-    pathName,
-    openModal,
-    closeModal,
-    saveFirstName,
-    setNewName,
-  };
-};
-
-// Custom hook for editing last name
-const useLastModal = () => {
-  const [lastModalVisible, setlastModalVisible] = useState(false);
-  const [newLastName, setLastName] = useState("");
-  const [pathLastName, setPathName] = useState("");
-
-  const openLastModal = (last) => {
-    setLastName(last);
-    setPathName(last);
-    setlastModalVisible(true);
-  };
-
-  const closeLastModal = () => {
-    setlastModalVisible(false);
-  };
-
-  const saveLastName = async () => {
-    try {
-      const q = query(
-        collection(firestore, "Users"),
-        where("lastName", "==", pathLastName)
-      );
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        querySnapshot.forEach(async (docSnapshot) => {
-          const docRef = doc(firestore, "Users", docSnapshot.id);
-          await updateDoc(docRef, {
-            lastName: newLastName,
-          });
-        });
-      } else {
-        console.log("No user found with that last name.");
-      }
-    } catch (error) {
-      console.error("Error updating last name:", error);
-    }
-    closeLastModal();
-  };
-
-  return {
-    lastModalVisible,
-    newLastName,
-    pathLastName,
-    openLastModal,
-    closeLastModal,
-    saveLastName,
-    setLastName,
-  };
-};
-
 export default function UserCard() {
-  const users = useUsers();
 
   // Local states inside the component
   const [selectedUser, setSelectedUser] = useState(null);
@@ -162,23 +33,32 @@ export default function UserCard() {
   const [editStudentNumber, setEditStudentNumber] = useState("");
   const [editRole, setEditRole] = useState("");
 
-  const {
-    firstModalVisible,
-    newName,
-    openModal,
-    closeModal,
-    saveFirstName,
-    setNewName,
-  } = useFirstModal();
+  const [users, setUsers] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const {
-    lastModalVisible,
-    newLastName,
-    openLastModal,
-    closeLastModal,
-    saveLastName,
-    setLastName,
-  } = useLastModal();
+  const fetchUsers = async () => {
+    try {
+      setRefreshing(true);
+      const q = query(
+        collection(firestore, "Users"),
+        where("studentNumber", "!=", null)
+      );
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setUsers(data);
+      setRefreshing(false);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
 
   const handleEdit = (user) => {
     setSelectedUser(user);
@@ -198,8 +78,38 @@ export default function UserCard() {
     try {
       await deleteDoc(doc(firestore, "Users", selectedUser.id));
       setDeleteModalVisible(false);
+      fetchUsers(); // Refresh list
     } catch (error) {
       console.error("Error deleting user:", error);
+    }
+  };
+
+  const saveEdit = async () => {
+    const studentNumberPattern = /^\d{11}$/;
+    const validRoles = ["user", "leader"];
+
+    if (!studentNumberPattern.test(editStudentNumber)) {
+      alert("Student Number must be exactly 11 digits.");
+      return;
+    }
+
+    if (!validRoles.includes(editRole.toLowerCase())) {
+      alert("Role must be either 'user' or 'leader'.");
+      return;
+    }
+
+    try {
+      const docRef = doc(firestore, "Users", selectedUser.id);
+      await updateDoc(docRef, {
+        firstName: editFirstName,
+        lastName: editLastName,
+        studentNumber: editStudentNumber,
+        role: editRole,
+      });
+      setEditModalVisible(false);
+      fetchUsers(); // Refresh list
+    } catch (error) {
+      console.error("Error updating user:", error);
     }
   };
 
@@ -294,7 +204,7 @@ export default function UserCard() {
 
       {/* Action Buttons */}
       <View style={styles.buttonRow}>
-      <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.saveBtn}>
+      <TouchableOpacity onPress={saveEdit} style={styles.saveBtn}>
             <Text style={styles.btnText}>Save</Text>
           </TouchableOpacity>
       <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.cancelBtn}>
@@ -319,38 +229,6 @@ export default function UserCard() {
                 </TouchableOpacity>
             </View>
             
-          </View>
-        </View>
-      </Modal>
-
-      {/* First Name Modal */}
-      <Modal visible={firstModalVisible} transparent animationType="slide">
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text>Edit First Name</Text>
-            <TextInput
-              value={newName}
-              onChangeText={setNewName}
-              style={styles.input}
-            />
-            <Button title="Save" onPress={saveFirstName} />
-            <Button title="Cancel" onPress={closeModal} />
-          </View>
-        </View>
-      </Modal>
-
-      {/* Last Name Modal */}
-      <Modal visible={lastModalVisible} transparent animationType="slide">
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text>Edit Last Name</Text>
-            <TextInput
-              value={newLastName}
-              onChangeText={setLastName}
-              style={styles.input}
-            />
-            <Button title="Save" onPress={saveLastName} />
-            <Button title="Cancel" onPress={closeLastModal} />
           </View>
         </View>
       </Modal>
