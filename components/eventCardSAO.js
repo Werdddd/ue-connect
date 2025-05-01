@@ -70,7 +70,13 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
                     </TouchableOpacity>
 
                     <ScrollView contentContainerStyle={styles.modalContent}>
-                        <Image source={event.banner} style={styles.modalBanner} />
+                    {event.banner && (
+                           <Image
+                               source={{ uri: event.banner }}
+                               style={styles.banner}
+                               resizeMode="cover"
+                           />
+                       )}
                         <Text style={styles.modalTitle}>{event.title}</Text>
 
                         <View style={styles.dateTimeContainer}>

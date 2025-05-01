@@ -10,6 +10,7 @@ export default function EventCard({ event }) {
     const [modalVisible, setModalVisible] = useState(false);
     const [joined, setJoined] = useState(false);
     const [favorited, setFavorited] = useState(false);
+    const [approvedCount, setApprovedCount] = useState(0);
     const auth = getAuth();
     const user = auth.currentUser;
 
@@ -19,16 +20,23 @@ export default function EventCard({ event }) {
             if (!user) return;
     
             const useremail = user.email;
-            const safeEmailKey = useremail.replace(/\./g, '_'); // Ensuring safeEmailKey is used
+            const safeEmailKey = useremail.replace(/\./g, '_');
     
             try {
-                const eventRef = doc(firestore, 'events', event.id); // Reference to the event
+                const eventRef = doc(firestore, 'events', event.id);
                 const eventDoc = await getDoc(eventRef);
     
                 if (eventDoc.exists()) {
                     const eventData = eventDoc.data();
-                    const isUserApplied = eventData?.participantsList?.hasOwnProperty(safeEmailKey);
-                    setJoined(isUserApplied); // Check if the user is in the participants list
+                    const participants = eventData?.participants || 0;
+                    setApprovedCount(participants);
+
+                    // Check if user is in participantsList (if still needed for join status)
+                    const participantsList = eventData?.participantsList || {};
+                    const isUserApplied = participantsList.hasOwnProperty(safeEmailKey);
+                    setJoined(isUserApplied);
+
+
                 }
             } catch (error) {
                 console.error("Error checking participation:", error.message);
@@ -37,6 +45,7 @@ export default function EventCard({ event }) {
     
         checkIfJoined();
     }, [user, event.id]);
+    
 
     const handleOpenModal = () => {
         setModalVisible(true);
@@ -91,6 +100,10 @@ export default function EventCard({ event }) {
                         </View>
                     </View>
                     <Text style={styles.description}>{event.description}</Text>
+                    <Text style={styles.description}>
+                        Participants: {approvedCount}
+                    </Text>
+
                     <View style={styles.buttonRow}>
                         <TouchableOpacity
                             style={[styles.joinButton, joined && styles.joinedButton]}
@@ -126,7 +139,13 @@ export default function EventCard({ event }) {
                         </TouchableOpacity>
 
                         <ScrollView contentContainerStyle={styles.modalContent}>
-                            <Image source={event.banner} style={styles.modalBanner} />
+                        {event.banner && (
+                            <Image
+                                source={{ uri: event.banner }}
+                                style={styles.banner}
+                                resizeMode="cover"
+                            />
+                        )}
                             <Text style={styles.modalTitle}>{event.title}</Text>
 
                             <View style={styles.dateTimeContainer}>
@@ -136,8 +155,9 @@ export default function EventCard({ event }) {
 
                             <Text style={styles.modalDescription}>{event.description}</Text>
                             <Text style={styles.modalParticipants}>
-                                Participants: {event.participants}
+                                Participants: {approvedCount}
                             </Text>
+
                             <Text style={styles.modalLocation}>Location: {event.location}</Text>
                             <View style={styles.joinHeartContainer}>
                                 <TouchableOpacity

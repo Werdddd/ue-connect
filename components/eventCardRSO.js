@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView, Button } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; 
 import * as ImagePicker from 'expo-image-picker';
@@ -91,16 +91,10 @@ export default function EventCardRSO({ event }) {
               [`participantsList.${safeEmailKey}`]: deleteField(),
             });
       
-            // Update local state: remove from participants list and decrement appliedCount
+            // Update local state
             const updated = participants.filter(p => p.email !== email);
             setParticipants(updated);
             setAppliedCount(prev => Math.max(0, prev - 1));
-      
-            // Fetch the updated approved count from Firestore
-            const eventDoc = await getDoc(eventRef);
-            const participantsList = eventDoc.data()?.participantsList || {};
-            const approvedCount = Object.values(participantsList).filter(p => p.status === 'Approved').length;
-            setApprovedCount(approvedCount);
       
           } else if (action === 'Approved') {
             // Update status to "Approved"
@@ -108,7 +102,7 @@ export default function EventCardRSO({ event }) {
               [`participantsList.${safeEmailKey}.status`]: 'Approved',
             });
       
-            // Update local state to reflect "Approved" status
+            // Update local state
             const updated = participants.map(p => {
               if (p.email === email && p.status !== 'Approved') {
                 return { ...p, status: 'Approved' };
@@ -116,16 +110,21 @@ export default function EventCardRSO({ event }) {
               return p;
             });
             setParticipants(updated);
-      
-            // Increment applied count (moving user from applied to approved)
             setAppliedCount(prev => Math.max(0, prev - 1));
-      
-            // Fetch the updated approved count from Firestore
-            const eventDoc = await getDoc(eventRef);
-            const participantsList = eventDoc.data()?.participantsList || {};
-            const approvedCount = Object.values(participantsList).filter(p => p.status === 'Approved').length;
-            setApprovedCount(approvedCount);
           }
+      
+          // Recalculate approved count and update in Firestore
+          const updatedDoc = await getDoc(eventRef);
+          const updatedList = updatedDoc.data()?.participantsList || {};
+          const newApprovedCount = Object.values(updatedList).filter(p => p.status === 'Approved').length;
+      
+          setApprovedCount(newApprovedCount);
+      
+          // Update participants (number) field in Firestore
+          await updateDoc(eventRef, {
+            participants: newApprovedCount,
+          });
+      
         } catch (error) {
           console.error('Error updating participant status:', error);
         }
@@ -152,6 +151,7 @@ export default function EventCardRSO({ event }) {
               </View>
             </View>
             <Text style={styles.description}>{event.description}</Text>
+            <Text style={styles.Participants}>Participants: {approvedCount}</Text>
             <View style={styles.buttonRow}>
               <Text style={[styles.status, getStatusStyle(event.status)]}>
                 {event.status}
@@ -174,7 +174,13 @@ export default function EventCardRSO({ event }) {
               </TouchableOpacity>
   
               <ScrollView contentContainerStyle={styles.modalContent}>
-                <Image source={event.banner} style={styles.modalBanner} />
+              {event.banner && (
+                    <Image
+                    source={{ uri: event.banner }}
+                    style={styles.banner}
+                    resizeMode="cover"
+                    />
+                )}
                 <Text style={styles.modalTitle}>{event.title}</Text>
                 <View style={styles.dateTimeContainer}>
                   <Text style={styles.modalDate}>{event.date}</Text>
