@@ -6,7 +6,7 @@ import { auth, firestore } from '../Firebase';
 import { formatDistanceToNow } from 'date-fns';
 import BottomNavBar from '../components/bottomNavBar';
 import Header from '../components/header';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation hook
+import { useNavigation } from '@react-navigation/native'; 
 
 export default function ChatPage() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -29,7 +29,6 @@ export default function ChatPage() {
     fetchUsers();
   }, []);
 
-  // Get current user
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
@@ -37,7 +36,6 @@ export default function ChatPage() {
     }
   }, []);
 
-  // Listen to chats
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged(user => {
       if (user) {
@@ -72,14 +70,11 @@ export default function ChatPage() {
     if (!selectedUserId || !messageText.trim() || !currentUserId) return;
 
     try {
-      // Check if a chat already exists between the two users
       const existingChat = await getChatBetweenUsers(currentUserId, selectedUserId);
 
       if (existingChat) {
-        // If chat exists, add the new message to the chat
         await sendMessage(existingChat.id);
       } else {
-        // If chat doesn't exist, create a new chat and send the message
         const newChat = await createNewChat(selectedUserId);
         await sendMessage(newChat.id);
       }
@@ -141,7 +136,6 @@ export default function ChatPage() {
       createdAt: serverTimestamp(),
     });
 
-    // Update the lastMessage field in the chat document
     const chatRef = doc(firestore, 'chats', chatId);
     await setDoc(chatRef, {
       lastMessage: {
@@ -157,7 +151,6 @@ export default function ChatPage() {
     return Users.find(u => u.id === otherId); 
   };
 
-  // Navigate to the ConversationPage when a chat card is pressed
   const handleCardPress = (chatId) => {
     navigation.navigate('ConversationPage', { chatId });
   };
@@ -179,7 +172,6 @@ export default function ChatPage() {
                 </TouchableOpacity>
               </View>
 
-              {/* Chat Cards */}
               {chats.length > 0 ? (
                 chats.map(chat => {
                   const otherUser = getOtherUserInfo(chat);
@@ -205,7 +197,6 @@ export default function ChatPage() {
             </ScrollView>
             <BottomNavBar />
 
-            {/* Modal */}
             <Modal
               keyboardShouldPersistTaps="handled"
               visible={shareModalVisible}
@@ -283,7 +274,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   headerText: {
-    fontSize: 24,  // Increased size for "Your Messages"
+    fontSize: 24,  
     fontWeight: 'bold',
   },
   newConversationButton: {
@@ -297,7 +288,7 @@ const styles = StyleSheet.create({
   },
   newConversationText: {
     color: '#fff',
-    fontSize: 30,  // Adjusted to center the "+" sign
+    fontSize: 30, 
     fontWeight: 'bold',
   },
   chatCard: {
