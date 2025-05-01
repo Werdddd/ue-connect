@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import UserCard from '../components/userCard';
+import { TextInput } from 'react-native-gesture-handler';
 
 export default function AdminPage() {
     const navigation = useNavigation();
@@ -15,39 +16,7 @@ export default function AdminPage() {
     const [year, setYear] = useState('');
     const [course, setCourse] = useState('');
 
-    // useEffect(() => {
-    //     // Simulate fetching data
-    //     const fetchData = async () => {
-    //         const data = {
-    //             name: 'John Doe',
-    //             year: '3rd Year',
-    //             course: 'Computer Science',
-    //         };
-    //         setUserData(data);
-    //     };
-    //     fetchData();
-    // }, []);
-
-    // re-check function
-    // useEffect(() => {
-    //     const fetchUserData = async () => {
-    //         try {
-    //             const docRef = doc(firestore, 'users', 'userId'); // Use the correct document ID for the user
-    //             const docSnap = await getDoc(docRef);
-    //             if (docSnap.exists()) {
-    //                 const data = docSnap.data();
-    //                 setName(data.name);
-    //                 setYear(data.year);
-    //                 setCourse(data.course);
-    //             } else {
-    //                 console.log('No such document!');
-    //             }
-    //         } catch (error) {
-    //             console.error('Error fetching user data:', error);
-    //         }
-    //     };
-    //     fetchUserData();
-    // }, []);
+    const [searchText, setSearchText] = useState("");
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -67,7 +36,7 @@ export default function AdminPage() {
                     <View style={styles.underline} />
                 </View>
                 <View style={styles.userCardContainer}>
-                    <UserCard />
+                    <UserCard searchText={searchText}/>
                 </View>
                         
                     <BottomNavBar />

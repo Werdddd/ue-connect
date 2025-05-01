@@ -35,6 +35,7 @@ export default function UserCard() {
 
   const [users, setUsers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
   const fetchUsers = async () => {
     try {
@@ -59,6 +60,15 @@ export default function UserCard() {
     fetchUsers();
   }, []);
 
+  const filteredUsers = users.filter(user => {
+    const query = searchText ? searchText.toLowerCase() : ''; // Handle the case when no search text is provided
+    return (
+      user.firstName?.toLowerCase().includes(query) ||
+      user.lastName?.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
+      user.studentNumber?.includes(query)
+    );
+  });
 
   const handleEdit = (user) => {
     setSelectedUser(user);
@@ -113,6 +123,10 @@ export default function UserCard() {
     }
   };
 
+  const handleSearchSubmit = () => {
+    console.log("Search term:", searchText); // Log the search term when Enter is pressed
+  };
+
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <View style={styles.cardContent}>
@@ -145,75 +159,80 @@ export default function UserCard() {
 
   return (
     <>
-     <FlatList
-      data={users}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={renderItem}
-      contentContainerStyle={{ paddingBottom: 20 }}
-      ListEmptyComponent={<Text>No users found.</Text>}
-    />
+      <TextInput
+        value={searchText}
+        onChangeText={(text) => setSearchText(text)}  // Assuming `setSearchText` is passed or declared
+        onSubmitEditing={handleSearchSubmit}
+        placeholder="Search users..."
+      />
 
-
+      <FlatList
+        data={filteredUsers}  // Use filteredUsers instead of the original users
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderItem}
+        ListEmptyComponent={<Text>No users found.</Text>}
+      />
+      
       {/* Edit Modal */}
       <Modal visible={editModalVisible} transparent animationType="slide">
-  <View style={styles.modalBackground}>
-    <View style={styles.modalContainer}>
-      <Text style={styles.modalTitle}>Edit User</Text>
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Edit User</Text>
 
-      {/* Name Row */}
-      <View style={styles.nameRow}>
-        <View style={styles.nameContainer}>
-          <Text style={styles.label}>First Name</Text>
-          <TextInput
-            value={editFirstName}
-            onChangeText={setEditFirstName}
-            placeholder="First Name"
-            style={styles.input}
-          />
+            {/* Name Row */}
+            <View style={styles.nameRow}>
+              <View style={styles.nameContainer}>
+                <Text style={styles.label}>First Name</Text>
+                <TextInput
+                  value={editFirstName}
+                  onChangeText={setEditFirstName}
+                  placeholder="First Name"
+                  style={styles.input}
+                />
+              </View>
+              <View style={styles.nameContainer}>
+                <Text style={styles.label}>Last Name</Text>
+                <TextInput
+                  value={editLastName}
+                  onChangeText={setEditLastName}
+                  placeholder="Last Name"
+                  style={styles.input}
+                />
+              </View>
+            </View>
+
+            {/* Student Number and Role */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Student Number</Text>
+              <TextInput
+                value={editStudentNumber}
+                onChangeText={setEditStudentNumber}
+                placeholder="Student Number"
+                style={styles.input}
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Role</Text>
+              <TextInput
+                value={editRole}
+                onChangeText={setEditRole}
+                placeholder="Role"
+                style={styles.input}
+              />
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity onPress={saveEdit} style={styles.saveBtn}>
+                <Text style={styles.btnText}>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.cancelBtn}>
+                <Text style={styles.btnText}>Cancel</Text> 
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-        <View style={styles.nameContainer}>
-          <Text style={styles.label}>Last Name</Text>
-          <TextInput
-            value={editLastName}
-            onChangeText={setEditLastName}
-            placeholder="Last Name"
-            style={styles.input}
-          />
-        </View>
-      </View>
-
-      {/* Student Number and Role */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Student Number</Text>
-        <TextInput
-          value={editStudentNumber}
-          onChangeText={setEditStudentNumber}
-          placeholder="Student Number"
-          style={styles.input}
-        />
-      </View>
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Role</Text>
-        <TextInput
-          value={editRole}
-          onChangeText={setEditRole}
-          placeholder="Role"
-          style={styles.input}
-        />
-      </View>
-
-      {/* Action Buttons */}
-      <View style={styles.buttonRow}>
-      <TouchableOpacity onPress={saveEdit} style={styles.saveBtn}>
-            <Text style={styles.btnText}>Save</Text>
-          </TouchableOpacity>
-      <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.cancelBtn}>
-            <Text style={styles.btnText}>Cancel</Text> 
-          </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-</Modal>
+      </Modal>
 
       {/* Delete Modal */}
       <Modal visible={deleteModalVisible} transparent animationType="fade">
@@ -221,20 +240,20 @@ export default function UserCard() {
           <View style={styles.modalContainer}>
             <Text style={{textAlign: 'center', marginBottom: 10}}>Are you sure you want to delete this user?</Text>
             <View style={styles.buttonRow}>
-            <TouchableOpacity onPress={confirmDelete} style={styles.deleteBtn}>
-                  <Text style={styles.btnText}>Delete</Text>
-                </TouchableOpacity>
-            <TouchableOpacity onPress={() => setDeleteModalVisible(false)} style={styles.cancelBtn}>
-                  <Text style={styles.btnText}>Cancel</Text> 
-                </TouchableOpacity>
+              <TouchableOpacity onPress={confirmDelete} style={styles.deleteBtn}>
+                <Text style={styles.btnText}>Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setDeleteModalVisible(false)} style={styles.cancelBtn}>
+                <Text style={styles.btnText}>Cancel</Text> 
+              </TouchableOpacity>
             </View>
-            
           </View>
         </View>
       </Modal>
     </>
   );
 }
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",

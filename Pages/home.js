@@ -436,7 +436,7 @@ const fetchNewsfeed = async () => {
         setLoading(true);
         const postId = await savePost(newPost.user, postText, selectedImages);
         //const postId = 2202;
-        console.log(newPost);
+        //console.log(newPost);
         setNewsfeedPosts([{ ...newPost, id: postId }, ...newsfeedPosts]);
         discardPost(
           

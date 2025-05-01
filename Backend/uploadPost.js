@@ -55,6 +55,7 @@ export const savePost = async (user, postText, images) => {
     images: imageBase64List,
     timestamp: serverTimestamp(),
     likedBy: [],
+    pinned: false,
   };
 
   // Save the post to Firestore
