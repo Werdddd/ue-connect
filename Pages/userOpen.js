@@ -329,13 +329,13 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         color: '#777',
-        marginBottom: 5,
+        marginBottom: 0,
     },
     userCourse: {
         fontSize: 14,
         textAlign: 'center',
         color: '#777',
-        marginBottom: 20,
+        marginBottom: 0,
     },
     texts: {
         fontSize: 14,
@@ -400,6 +400,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'top',
         marginTop: 0,
+        marginBottom: 0,
         justifyContent: 'space-between',
         width: '50%',
     },
