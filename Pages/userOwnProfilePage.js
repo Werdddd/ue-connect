@@ -52,6 +52,9 @@ export default function UserOwnProfilePage() {
     const [year, setYear] = useState('');
     const [profile, setProfile] = useState('');
     const [course, setCourse] = useState('');
+    const [following, setFollowing] = useState(0);
+    const [followers, setFollowers] = useState(0);
+    const [organization, setOrganization] = useState(0);
     const [userPosts, setUserPosts] = useState([]);
     const userEmail = auth.currentUser?.email;
 
@@ -63,6 +66,9 @@ export default function UserOwnProfilePage() {
                 setYear(data.Year);
                 setCourse(data.Course);
                 setProfile(data.profileImage);
+                setFollowing(data.following.length);
+                setFollowers(data.followers.length);
+                setOrganization(data.orgs.length);
             } catch (error) {
                 console.error("Error fetching profile:", error.message);
             }
@@ -193,6 +199,16 @@ export default function UserOwnProfilePage() {
                                             ? `${name.firstName} ${name.lastName}`
                                             : 'Your Name'}
                                     </Text>
+                                    <View style={styles.followDataRow}>
+                                        <Text style={styles.textsNumber1}>{following}</Text>
+                                        <Text style={styles.textsNumber2}>{followers}</Text>
+                                        <Text style={styles.textsNumber3}>{organization}</Text>
+                                    </View>
+                                    <View style={styles.followDetailRow}>
+                                        <Text style={styles.texts}>{'Following'}</Text>
+                                        <Text style={styles.texts}>{'Followers'}</Text>
+                                        <Text style={styles.texts}>{'Organizations'}</Text>
+                                    </View>
                                     <View style={styles.infoDetailRow}>
                                         <Text style={styles.userYear}>{year || 'Your Year'}</Text>
                                         <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
@@ -288,6 +304,58 @@ const styles = StyleSheet.create({
         color: '#777',
         marginBottom: 20,
     },
+    texts: {
+        fontSize: 14,
+        textAlign: 'center',
+        color: '#777',
+        marginBottom: 8,
+        // borderColor: '#000',
+        // borderStyle: 'solid',
+        // borderWidth: 1,
+        width: '30%',
+    },
+    textsNumber1: {
+        fontSize: 14,
+        textAlign: 'center',
+        color: '#000',
+        marginBottom: -14,
+        fontWeight: 800,
+        // borderColor: '#000',
+        // borderStyle: 'solid',
+        // borderWidth: 1,
+        width: '20%',
+        marginLeft: -10,
+        //marginLeft: 0
+    },
+    textsNumber2: {
+        fontSize: 14,
+        textAlign: 'center',
+        color: '#000',
+        marginBottom: -14,
+        fontWeight: 800,
+        // borderColor: '#000',
+        // borderStyle: 'solid',
+        // borderWidth: 1,
+        width: '20%',
+        marginLeft: -2,
+        //width: '10%',
+        //marginLeft: 0
+    },
+    textsNumber3: {
+        fontSize: 14,
+        textAlign: 'center',
+        color: '#000',
+        marginBottom: -14,
+        fontWeight: 800,
+        // borderColor: '#000',
+        // borderStyle: 'solid',
+        // borderWidth: 1,
+        width: '20%',
+        marginLeft: 0,
+        marginRight: -12,
+        //width: '10%',
+        //marginLeft: 0
+    },
     underline: {
         alignSelf: 'center',
         height: 1,
@@ -298,9 +366,23 @@ const styles = StyleSheet.create({
     infoDetailRow: {
         flexDirection: 'row',
         alignItems: 'top',
-        marginTop: 10,
+        marginTop: 0,
         justifyContent: 'space-between',
         width: '50%',
     },
+    followDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'top',
+        marginTop: 10,
+        justifyContent: 'space-between',
+        width: '90%',
+    },
+    followDataRow: {
+        flexDirection: 'row',
+        alignItems: 'top',
+        marginTop: 10,
+        justifyContent: 'space-between',
+        width: '70%',
+    }
 
 });
