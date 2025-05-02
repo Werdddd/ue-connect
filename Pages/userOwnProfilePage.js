@@ -296,13 +296,13 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         color: '#777',
-        marginBottom: 5,
+        marginBottom: 7,
     },
     userCourse: {
         fontSize: 14,
         textAlign: 'center',
         color: '#777',
-        marginBottom: 20,
+        marginBottom: 7,
     },
     texts: {
         fontSize: 14,
