@@ -135,6 +135,7 @@ const fetchNewsfeed = async () => {
             text: d.text || '',
             date: dateObj,
             images,
+            userId: d.userId,
             user: {
               name: userName,
               profileImage,
@@ -463,15 +464,28 @@ const fetchNewsfeed = async () => {
         {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
-            {post.user.profileImage ? (
-              <Image
-                source={{ uri: post.user.profileImage }}
-                style={styles.profileImagePost}
-                resizeMode="cover"
-              />
-            ) : (
-              <FontAwesome name="user-circle-o" size={35} color="#999" />
-            )}
+          <TouchableOpacity
+            onPress={() => {
+              if (currentUserEmail !== post.userId) {
+                navigation.navigate('UserOpen', {
+                  postId: post.id,
+                  postEmail: post.userId, // assuming userId is their email
+                });
+              } else {
+                navigation.navigate('UserOwnProfilePage');
+              }
+  }}
+            >
+              {post.user.profileImage ? (
+                <Image
+                  source={{ uri: post.user.profileImage }}
+                  style={styles.profileImagePost}
+                  resizeMode="cover"
+                />
+              ) : (
+                <FontAwesome name="user-circle-o" size={35} color="#999" />
+              )}
+            </TouchableOpacity>
   
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
               <Text style={styles.postUserName}>{post.user.name}</Text>

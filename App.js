@@ -24,6 +24,7 @@ import ConversationPage from './Pages/ConversationPage.js';
 import TestPostCard from './Pages/testPostCard.js';
 import AdminPage from './Pages/adminPage.js';
 import SearchResult from './Pages/searchResult.js';
+import UserOpen from './Pages/userOpen.js';
 
 const Stack = createStackNavigator();
 
@@ -32,7 +33,7 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="EventPageSAOr" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Landing" component={Landing} />
         <Stack.Screen name="Tutorial" component={Tutorial} />
         <Stack.Screen name="Start" component={Start} />
@@ -54,6 +55,8 @@ export default function App() {
         <Stack.Screen name="TestPostCard" component={TestPostCard} />
         <Stack.Screen name="AdminPage" component={AdminPage} />
         <Stack.Screen name="searchResult" component={SearchResult} />
+        <Stack.Screen name="UserOpen" component={UserOpen} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );
