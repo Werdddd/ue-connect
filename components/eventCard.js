@@ -101,6 +101,13 @@ export default function EventCard({ event }) {
                 )}
                 <View style={styles.infoContainer}>
                     <View style={styles.headerRow}>
+                    {/* {event.seal && (
+                        <Image
+                            source={{ uri: event.seal }}
+                            style={styles.seal}
+                            resizeMode="cover"
+                        />
+                    )} */}
                         <Image source={event.seal} style={styles.seal} />
                         <View style={styles.titleDateContainer}>
                             <Text style={styles.title}>{event.title}</Text>
@@ -236,6 +243,8 @@ const styles = StyleSheet.create({
         height: 40,
         borderRadius: 20,
         marginRight: 10,
+        border: 1,
+        borderColor: '#ddd',
     },
     titleDateContainer: {
         flex: 1,

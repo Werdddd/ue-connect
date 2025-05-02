@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     View, Text, TouchableOpacity, SafeAreaView,
     KeyboardAvoidingView, Platform, ScrollView, StyleSheet,
-    Modal, TextInput, Image
+    Modal, TextInput, Image, Linking
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
@@ -35,6 +35,9 @@ export default function EventPageRSO() {
     const [status, setStatus] = useState('');
     const [selectedBanner, setSelectedBanner] = useState(null);
     const [selectedProposal, setSelectedProposal] = useState(null);
+
+    const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
+    const [proposalLink, setProposalLink] = useState('');
 
     useEffect(() => {
         loadEvents();
@@ -105,16 +108,35 @@ export default function EventPageRSO() {
         }
     };
 
-    const handleSelectProposal = async () => {
-        try {
-            const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
-            if (result.type === 'success') {
-                setSelectedProposal(result);
-            }
-        } catch (error) {
-            console.error("Error picking proposal file:", error);
+    const handleSelectProposal = () => {
+        if (selectedProposal) {
+          setProposalLink(selectedProposal.uri); // edit existing
+        } else {
+          setProposalLink(''); // new proposal
         }
+        setIsProposalModalVisible(true);
+      };
+      
+    
+    //   const handleProposalLinkInput = (text) => {
+    //     setProposalLink(text); // Update the proposal link
+    //   };
+    
+      const handleSaveProposalLink = () => {
+        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' }); // Save the proposal link
+        setIsProposalModalVisible(false); // Close modal after saving
+      };
+
+
+    const handleProposalLinkInput = (link) => {
+        setSelectedProposal({
+            name: "Google Drive Proposal Link",
+            uri: link,
+        });
     };
+    
+
+    
 
     const handleAddEvent = async () => {
         if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants || !selectedBanner) {
@@ -140,6 +162,8 @@ export default function EventPageRSO() {
             participants: participants,
             org: organization,  
             status: eventStatus, 
+            proposalLink: selectedProposal?.uri || null,
+            proposalName: selectedProposal?.name || null,
         };
 
         try {
@@ -154,6 +178,7 @@ export default function EventPageRSO() {
             setNewLocation('');
             setNewParticipants('');
             setStatus('');
+            setSelectedProposal(null); // Clear selected proposal
         } catch (error) {
             console.error('Error adding event:', error);
         }
@@ -164,8 +189,10 @@ export default function EventPageRSO() {
         switch (selectedOrg) {
             case 'All': return 'All Events';
             case 'CSC': return 'Central Student Council';
-            case 'GDSC': return 'Google Developer Student Clubs';
+            case 'COE': return 'College of Engineering';
             case 'CFAD': return 'College of Fine Arts and Science';
+            case 'CBA': return 'College of Business Administration';
+            case 'CAS': return 'College of Arts and Science';
             default: return '';
         }
     };
@@ -229,6 +256,7 @@ export default function EventPageRSO() {
                                 participants: event.participants,
                                 location: event.location,
                                 status: event.status
+                                
                             }}
                         />
                     ))}
@@ -245,6 +273,14 @@ export default function EventPageRSO() {
                     onRequestClose={() => setIsModalVisible(false)}
                 >
                     <View style={styles.modalContainer}>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.modalContentWrapper} // Added a wrapper style for layout adjustments
+                    >
+                         <ScrollView
+                            
+                            keyboardShouldPersistTaps="handled" // To ensure tapping outside input still dismisses keyboard
+                        >
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>Create Event</Text>
                             <Text style={styles.label}>Event Title</Text>
@@ -359,32 +395,84 @@ export default function EventPageRSO() {
 
                                 <View style={styles.uploadSection}>
                                     <Text style={styles.label}>Event Proposal</Text>
+                                   
+                                    
+
+                                    
+
                                     <TouchableOpacity
                                         style={styles.uploadButton}
-                                        onPress={handleSelectProposal}
-                                    >
+                                        onPress={handleSelectProposal} // Opens the modal to add/edit proposal link
+                                        >
                                         <Text style={styles.buttonText}>
-                                            {selectedProposal ? 'Change File' : 'Upload Proposal'}
+                                            {selectedProposal ? 'Change Proposal' : 'Upload Proposal'}
                                         </Text>
                                     </TouchableOpacity>
 
-                                    {selectedProposal && (
-                                        <View style={{ marginTop: 8 }}>
-                                            <Text style={styles.proposalText}>
-                                                📄 {selectedProposal?.uri?.split('/').pop() ?? 'No name found'}
-                                            </Text>
 
-
-                                        </View>
-                                    )}
 
                                 </View>
+                                {/* Modal for Proposal Link Input */}
+                                <Modal
+                                    animationType="slide"
+                                    transparent={true}
+                                    visible={isProposalModalVisible}
+                                    onRequestClose={() => setIsProposalModalVisible(false)} // Close the modal
+                                >
+                                    <View style={styles.modalContainer}>
+                                    <View style={styles.modalContent}>
+                                        <Text style={styles.modalTitle}>Enter Proposal Link</Text>
+
+                                        
+
+                                        <TextInput
+                                        placeholder="Enter Google Drive link"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={proposalLink}
+                                        onChangeText={setProposalLink}
+                                        />
+
+
+                                        {proposalLink && (
+                                        <View style={styles.previewContainer}>
+                                            <Text style={styles.previewTitle}>Preview Link:</Text>
+                                            <TouchableOpacity onPress={() => Linking.openURL(proposalLink)}>
+                                            <Text style={styles.previewLink}>{proposalLink}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        )}
+
+                                        <View style={styles.proposalModalButtons}>
+                                        <TouchableOpacity
+                                            style={[styles.proposalmodalButton, styles.cancelButton]}
+                                            onPress={() => {
+                                                setIsProposalModalVisible(false);
+                                                setProposalLink('null');
+                                                 // or '' depending on how preview is handled
+                                              }}
+                                              
+                                              
+                                        >
+                                            <Text style={styles.buttonText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.proposalmodalButton, styles.saveButton]}
+                                            onPress={handleSaveProposalLink}
+                                        >
+                                            <Text style={styles.buttonText}>Save</Text>
+                                        </TouchableOpacity>
+                                        </View>
+
+                                    </View>
+                                    </View>
+                                </Modal>
 
                             </View>
 
                             <View style={styles.modalButtons}>
                             <TouchableOpacity
-                                style={styles.cancelButton}
+                                style={styles.cancelButtons}
                                 onPress={() => {
                                     setIsModalVisible(false);
                                     // Clear the date and time inputs as well
@@ -403,6 +491,8 @@ export default function EventPageRSO() {
                                 </TouchableOpacity>
                             </View>
                         </View>
+                        </ScrollView>
+                        </KeyboardAvoidingView>
                     </View>
                 </Modal>
             </KeyboardAvoidingView>
@@ -503,30 +593,31 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginTop: 15,
     },
-    cancelButton: {
-        backgroundColor: '#ccc',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 5,
-    },
+    
     addButton: {
-        backgroundColor: '#E50914',
+        backgroundColor: '#4CAF50',
+      
         paddingVertical: 10,
         paddingHorizontal: 20,
         borderRadius: 5,
+        width: '48%',
+        marginTop: 5,
+        textAlign: 'center',
     },
     buttonText: {
         color: 'white',
         fontWeight: 'bold',
+        textAlign: 'center',
     },
 
     uploadButton: {
         backgroundColor: '#E50914',
         paddingVertical: 10,
-        paddingHorizontal: 20,
+       
         borderRadius: 5,
         width: '100%',
         marginTop: 5,
+        textAlign: 'center',
     },
     bannerPreview: {
         width: '100%',
@@ -594,5 +685,52 @@ const styles = StyleSheet.create({
         fontSize: 24,
         color: '#000',
         fontStyle: 'italic',
-    }
+    },
+
+    proposalModalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+      },
+      proposalmodalButton: {
+        flex: 1,
+        paddingVertical: 10,
+        marginHorizontal: 5,
+        borderRadius: 5,
+        alignItems: 'center',
+      },
+      cancelButton: {
+        backgroundColor: '#E50914',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+        width: '45%',
+        marginTop: 5,
+        textAlign: 'center',
+      },
+      cancelButtons: {
+        backgroundColor: '#E50914',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+        width: '48%',
+        marginTop: 5,
+        textAlign: 'center',
+      },
+      saveButton: {
+        backgroundColor: '#4CAF50',
+      
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+        width: '45%',
+        marginTop: 5,
+        textAlign: 'center',
+      },
+      buttonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        textAlign: 'center',
+      },
+      
 });
