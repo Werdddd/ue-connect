@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView,TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; 
 
@@ -6,6 +6,35 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
     const [modalVisible, setModalVisible] = useState(false);
     const [showRemarkInput, setShowRemarkInput] = useState(false);
     const [remark, setRemark] = useState('');
+    const [selectedProposal, setSelectedProposal] = useState(null);
+    const [proposalLink, setProposalLink] = useState('');
+
+    const handleSelectProposal = () => {
+        if (selectedProposal) {
+          setProposalLink(selectedProposal.uri); // edit existing
+        } else {
+          setProposalLink(''); // new proposal
+        }
+        setIsProposalModalVisible(true);
+      };
+      
+    
+    //   const handleProposalLinkInput = (text) => {
+    //     setProposalLink(text); // Update the proposal link
+    //   };
+    
+      const handleSaveProposalLink = () => {
+        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' }); // Save the proposal link
+        setIsProposalModalVisible(false); // Close modal after saving
+      };
+
+
+    const handleProposalLinkInput = (link) => {
+        setSelectedProposal({
+            name: "Google Drive Proposal Link",
+            uri: link,
+        });
+    };
 
     const handleOpenModal = () => {
         setModalVisible(true);
@@ -38,6 +67,12 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
             default: return { backgroundColor: 'orange' };
         }
     };
+
+    useEffect(() => {
+        if (event?.proposalLink) {
+          setProposalLink(event.proposalLink);
+        }
+      }, [event]);
       
     return (
         <View>
@@ -87,6 +122,22 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
                         <Text style={styles.modalDescription}>{event.description}</Text>
                         <Text style={styles.modalParticipants}>Participants: {event.participants}</Text>
                         <Text style={styles.modalLocation}>Location: {event.location}</Text>
+                        <View style={styles.previewContainer}>
+                        <Text style={styles.previewTitle}>Preview Link:</Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                if (proposalLink) {
+                                    Linking.openURL(proposalLink);
+                                } else {
+                                    alert('No proposal link provided.');
+                                }
+                                }}
+                            >
+                                <Text style={styles.previewLink}>
+                                {proposalLink || 'No proposal link provided.'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
 
