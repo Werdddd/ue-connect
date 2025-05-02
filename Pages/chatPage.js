@@ -131,20 +131,42 @@ export default function ChatPage() {
   };
 
   const sendMessage = async (chatId) => {
-    await addDoc(collection(firestore, `chats/${chatId}/messages`), {
-      senderId: currentUserId,
-      text: messageText.trim(),
-      createdAt: serverTimestamp(),
-    });
-
-    const chatRef = doc(firestore, 'chats', chatId);
-    await setDoc(chatRef, {
-      lastMessage: {
-        text: messageText.trim(),
+    try {
+      // 1. Add the message to the messages subcollection
+      await addDoc(collection(firestore, `chats/${chatId}/messages`), {
         senderId: currentUserId,
+        text: messageText.trim(),
         createdAt: serverTimestamp(),
-      },
-    }, { merge: true });
+      });
+  
+      // 2. Update the lastMessage field in the chat document
+      const chatRef = doc(firestore, 'chats', chatId);
+      await setDoc(chatRef, {
+        lastMessage: {
+          text: messageText.trim(),
+          senderId: currentUserId,
+          createdAt: serverTimestamp(),
+        },
+      }, { merge: true });
+  
+      // 3. Get chat data to find the recipient
+      const chatDoc = await getDoc(chatRef);
+      const chatData = chatDoc.data();
+      if (chatData && chatData.Users) {
+        const recipientId = Object.keys(chatData.Users).find(id => id !== currentUserId);
+  
+        // 4. Send the notification
+        if (recipientId) {
+          await sendNotification({
+            userId: recipientId,
+            type: 'message',
+            content: `You have a new message from ${currentUserId}`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   const getOtherUserInfo = (chat) => {

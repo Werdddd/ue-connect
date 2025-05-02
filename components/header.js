@@ -40,7 +40,7 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
         <TouchableOpacity onPress={openSearch}>
           <Feather name="search" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('NotificationScreen')}>
           <Ionicons name="notifications-outline" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('ChatPage')}>

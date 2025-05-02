@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, query, orderBy} from "firebase/firestore";
 import { auth, firestore } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
+import { sendNotification } from '../Backend/notifications'; // adjust path as needed
 
 export default function Home() {
   const navigation = useNavigation();
@@ -342,6 +343,7 @@ const fetchNewsfeed = async () => {
     const hasLiked = likedBy.includes(currentUserEmail);
   
     try {
+      // Update the like in Firestore
       await updateDoc(postRef, {
         likedBy: hasLiked
           ? arrayRemove(currentUserEmail)
@@ -361,9 +363,26 @@ const fetchNewsfeed = async () => {
             : p
         )
       );
-      
+  
+      // 🔔 Only send notification on NEW like
+      if (!hasLiked) {
+        const postSnap = await getDoc(postRef);
+        const postData = postSnap.data();
+  
+        const postOwner = postData.userId; // depends on your schema
+  
+        // Don't notify yourself
+        if (postOwner && postOwner !== currentUserEmail) {
+          await sendNotification({
+            userId: postOwner, // This can be UID or email — use same ID type as your users
+            type: 'like',
+            content: `${currentUserEmail} liked your post.`,
+          });
+        }
+      }
+  
     } catch (e) {
-      console.error('Error updating like:', e);
+      console.error('Error updating like or sending notification:', e);
     }
   };  
   

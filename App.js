@@ -25,6 +25,7 @@ import TestPostCard from './Pages/testPostCard.js';
 import AdminPage from './Pages/adminPage.js';
 import SearchResult from './Pages/searchResult.js';
 import UserOpen from './Pages/userOpen.js';
+import NotificationScreen from './Pages/NotificationScreen.js';
 
 const Stack = createStackNavigator();
 
@@ -56,6 +57,7 @@ export default function App() {
         <Stack.Screen name="AdminPage" component={AdminPage} />
         <Stack.Screen name="searchResult" component={SearchResult} />
         <Stack.Screen name="UserOpen" component={UserOpen} />
+        <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>
