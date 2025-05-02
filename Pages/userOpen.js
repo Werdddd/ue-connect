@@ -16,11 +16,12 @@ import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { auth, firestore } from '../Firebase'; // your auth config
-import { collection, getDocs, query, where, doc, getDoc, deleteDoc } from 'firebase/firestore';
-import { Entypo } from '@expo/vector-icons';
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot} from 'firebase/firestore';
 import { useRoute } from '@react-navigation/native';
-
 import PostCard from '../components/PostCard';
+import { followUser } from '../Backend/follow'; 
+import { unfollowUser } from '../Backend/unfollow'; 
+
 
 export default function UserOwnProfilePage() {
     const navigation = useNavigation();
@@ -33,42 +34,57 @@ export default function UserOwnProfilePage() {
     const [following, setFollowing] = useState(0);
     const [followers, setFollowers] = useState(0);
     const [organization, setOrganization] = useState(0);
+    const [group, setGroup] = useState(false);
     const [userPosts, setUserPosts] = useState([]);
     const route = useRoute();
     const { postEmail } = route.params;
     const userEmail = postEmail;
+    const [currentUserEmail, setCurrentUserEmail] = useState('')
+    const [followed, setFollowed] = useState(false);
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const userRef = doc(firestore, 'Users', userEmail); // 'Users' collection, doc ID is the email
-                const userSnap = await getDoc(userRef);
-        
-                if (userSnap.exists()) {
-                  const data = userSnap.data();
-                  setName({ firstName: data.firstName, lastName: data.lastName });
-                  setYear(data.Year);
-                  setCourse(data.Course);
-                  setProfile(data.profileImage);
-                  setFollowing(data.following?.length || 0);
-                  setFollowers(data.followers?.length || 0);
-                  setOrganization(data.orgs?.length || 0);
-                } else {
-                  console.log('No such user document!');
-                }
-              } catch (error) {
-                console.error('Error fetching profile:', error.message);
-              }
-        };
-
-        fetchProfile();
-
-
-        if (userEmail) {
-            fetchUserPosts();
+        const user = auth.currentUser;
+        if (user?.email) {
+          setCurrentUserEmail(user.email);
         }
-    }, [userEmail]);
+      }, []);
+      
 
+    useEffect(() => {
+    let unsubscribe;
+    
+    const subscribeToProfile = () => {
+        const userRef = doc(firestore, 'Users', userEmail);
+    
+        unsubscribe = onSnapshot(userRef, (userSnap) => {
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            setName({ firstName: data.firstName, lastName: data.lastName });
+            setYear(data.Year);
+            setCourse(data.Course);
+            setProfile(data.profileImage);
+            setFollowing(data.following?.length || 0);
+            setFollowers(data.followers?.length || 0);
+            setOrganization(data.orgs?.length || 0);
+            setGroup(data.group);
+            setFollowed(data.followers?.includes(currentUserEmail));
+        } else {
+            console.log('No such user document!');
+        }
+        }, (error) => {
+        console.error('Error fetching real-time profile:', error.message);
+        });
+    };
+    
+    if (userEmail && currentUserEmail) {
+        subscribeToProfile();
+        fetchUserPosts(); // Still OK to run once here
+    }
+    
+    return () => {
+        if (unsubscribe) unsubscribe();
+    };
+    }, [userEmail, currentUserEmail]);
 
     const fetchUserPosts = async () => {
         if (!userEmail) return;
@@ -147,6 +163,26 @@ export default function UserOwnProfilePage() {
         }
     };
 
+    const handleFollow = async () => {
+        const res = await followUser(currentUserEmail, userEmail);
+        if (res.success) {
+            setFollowed(true);
+            fetchProfile();
+        } else {
+            console.error('Follow failed:', res.error);
+        }
+    };
+    const handleUnfollow = async () => {
+        const res = await unfollowUser(currentUserEmail, userEmail);
+        if (res.success) {
+          setFollowed(false);
+          fetchProfile();
+        } else {
+          console.error('Unfollow failed:', res.error);
+        }
+      };
+      
+
 
     const dummyFunctions = () => { };
     const dummyStateSetter = () => { };
@@ -193,9 +229,22 @@ export default function UserOwnProfilePage() {
                                         <Text style={styles.texts}>{'Followers'}</Text>
                                         <Text style={styles.texts}>{'Organizations'}</Text>
                                     </View>
+                                    {!group && (
                                     <View style={styles.infoDetailRow}>
                                         <Text style={styles.userYear}>{year || 'Your Year'}</Text>
                                         <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
+                                    </View>
+                                    )}
+                                    <View style={styles.followContainer}>
+                                    {followed ? (
+                                        <TouchableOpacity style={styles.followingButton} onPress={handleUnfollow}>
+                                        <Text style={styles.followingButtonText}>Following</Text>
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity style={styles.followButton} onPress={handleFollow}>
+                                        <Text style={styles.followButtonText}>Follow</Text>
+                                        </TouchableOpacity>
+                                    )}
                                     </View>
                                     <View style={styles.underline} />
                                 </View>
@@ -367,6 +416,36 @@ const styles = StyleSheet.create({
         marginTop: 10,
         justifyContent: 'space-between',
         width: '70%',
-    }
+    },
+    followContainer: {
+        alignItems: 'center',
+        marginTop: 10,
+        marginBottom: 8,
+      },
+
+      followButton: {
+        backgroundColor: '#E50914',
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+      },
+      
+      followButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+      },
+      followingButton: {
+        backgroundColor: '#fff',
+        borderColor: '#E50914',
+        borderWidth: 1,
+        paddingVertical: 7,
+        paddingHorizontal: 18,
+        borderRadius: 20,
+      },
+      
+      followingButtonText: {
+        color: '#E50914',
+        fontWeight: '600',
+      }
 
 });
