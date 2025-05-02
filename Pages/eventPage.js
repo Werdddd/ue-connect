@@ -84,8 +84,10 @@ export default function Event() {
         switch (selectedOrg) {
             case 'All': return 'All Events';
             case 'CSC': return 'Central Student Council';
-            case 'GDSC': return 'Google Developer Student Clubs';
+            case 'COE': return 'College of Engineering';
             case 'CFAD': return 'College of Fine Arts and Science';
+            case 'CBA': return 'College of Business Administration';
+            case 'CAS': return 'College of Arts and Science';
             default: return '';
         }
     };
