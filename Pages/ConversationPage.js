@@ -121,7 +121,7 @@ export default function ConversationPage() {
             key={message.id}
             style={[
               styles.messageBubble,
-              message.senderId === currentUserId ? styles.sentMessage : styles.receivedMessage,
+              message.senderId !== currentUserId ? styles.receivedMessage : styles.sentMessage,
             ]}
           >
             <Text style={[styles.messageText, message.senderId === currentUserId ? { color: '#fff' } : { color: '#000' }]}>
