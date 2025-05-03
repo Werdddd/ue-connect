@@ -192,22 +192,24 @@ export default function OrgProfilePage() {
                                 <Text style={styles.shortDescription}>{description}</Text>
 
                                 <View style={styles.buttonRow}>
-                                    <TouchableOpacity style={styles.followButton} onPress={() => toggleFollow(orgName, userEmail)}>
-                                        <Text style={styles.followButtonText}>{isFollower ? 'Unfollow' : 'Follow'}</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.messageButton}>
-                                        <Text style={styles.messageButtonText}>Message</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.joinButton}
-                                        onPress={() => addUserToApplication(orgName, userEmail)}
-                                        disabled={isMember} 
-                                    >
-                                        <Text style={styles.joinButtonText}>
-                                            {isMember ? 'Joined' : isApplied ? 'Applied' : 'Join'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
+                                <TouchableOpacity
+                                    style={styles.joinButton}
+                                    onPress={() => addUserToApplication(orgName, userEmail)}
+                                    disabled={isMember}>
+                                    <Text style={styles.joinButtonText}>
+                                        {isMember ? 'Joined' : isApplied ? 'Applied' : 'Join'}
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.messageButton}>
+                                    <Text style={styles.messageButtonText}>Message</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.switchContainer}>
+                            <TouchableOpacity style={styles.switchAccountButton} onPress={() => console.log('Switch Account')}>
+                            <Ionicons name="swap-horizontal" size={20} color="#ff0000" style={{ marginRight: 8 }} />
+                            <Text style={styles.switchAccountText}>Switch Account</Text>
+                            </TouchableOpacity>
+                            </View>
                                 <View style={styles.underline} />
                                 <View style={styles.section}>
                                     <Text style={styles.sectionTitle}>Organization Details</Text>
@@ -292,7 +294,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-around',
         width: '100%',
-        marginBottom: 25,
+        marginBottom: 10,
     },
     followButton: {
         backgroundColor: '#E0E0E0',
@@ -307,22 +309,30 @@ const styles = StyleSheet.create({
     messageButton: {
         backgroundColor: '#E0E0E0',
         paddingVertical: 8,
-        paddingHorizontal: 20,
+        paddingHorizontal: 15,
         borderRadius: 8,
+        width: '48%',
+        textAlign: 'center',
     },
     messageButtonText: {
         color: '#000',
         fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: 14,
     },
     joinButton: {
         backgroundColor: '#d32f2f',
         paddingVertical: 8,
-        paddingHorizontal: 20,
+        paddingHorizontal: 15,
         borderRadius: 8,
+        width: '48%',
+        textAlign: 'center',
     },
     joinButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+        textAlign: 'center',
+        fontSize: 14,
     },
     section: {
         width: '100%',
@@ -369,4 +379,28 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: 2,
     },
+    switchContainer: {
+       
+        justifyContent: 'center',
+        alignItems: 'center',
+        
+        marginBottom: 10,
+      },
+    
+      switchAccountButton: {
+        backgroundColor: '#fff',
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        flexDirection: 'row',
+        width: '100%',
+        borderRadius: 8,
+        borderWidth: 1,           // <-- Corrected here
+        borderColor: 'red',
+      },
+      switchAccountText: {
+        color: '#ff0000',
+        fontSize: 16,
+        fontWeight: 'bold',
+        fontSize: 14,
+      },
 });
