@@ -9,7 +9,7 @@ import BottomNavBar from '../components/bottomNavBar';
 export default function OrganizationPageRSO() {
     const navigation = useNavigation();
     const route = useRoute();
-    const orgName = "Deepspace";
+    const orgName = "Google Dev";
 
     const [appliedUsers, setAppliedUsers] = useState([]);
     const [memberUsers, setMemberUsers] = useState([]);
@@ -55,6 +55,17 @@ export default function OrganizationPageRSO() {
                     members: arrayUnion(email),
                 });
 
+                const userRef = doc(firestore, 'Users', email);
+
+                try {
+                    await updateDoc(userRef, {
+                        orgs: arrayUnion(orgName)  // Adds orgName to the 'orgs' array
+                    });
+                    console.log("Organization added to user successfully");
+                } catch (error) {
+                    console.error("Error adding orgName to user:", error);
+                }
+
                 setAppliedUsers(prev => prev.filter(user => user.email !== email));
                 setMemberUsers(prev => [...prev, appliedUsers.find(user => user.email === email)]);
             }
@@ -93,6 +104,17 @@ export default function OrganizationPageRSO() {
                 await updateDoc(orgRef, {
                     members: arrayRemove(email),
                 });
+
+                const userRef = doc(firestore, 'Users', email); // assuming email is the doc ID for Users collection
+               
+                try {
+                    await updateDoc(userRef, {
+                        orgs: arrayRemove(orgName),
+                    });
+                    console.log("Organization removed from user successfully");
+                } catch (error) {
+                    console.error("Error removing orgName from user:", error);
+                }
 
                 setMemberUsers(prev => prev.filter(user => user.email !== email));
             }
