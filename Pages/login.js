@@ -22,10 +22,10 @@ export default function Login() {
     //   return;
     // }
   
-    if (!email.match(ueEmailRegex)) {
-      Alert.alert('Invalid Input', 'Use a valid UE email address.');
-      return;
-    }
+    // if (!email.match(ueEmailRegex)) {
+    //   Alert.alert('Invalid Input', 'Use a valid UE email address.');
+    //   return;
+    // }
   
     if (password.length < 6) {
       Alert.alert('Invalid Input', 'Password must be at least 6 characters long.');

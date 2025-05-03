@@ -100,6 +100,7 @@ export default function OrganizationPage() {
                 location: newOrg.location,
                 email: newOrg.email,
                 websitelink: newOrg.websitelink,
+                leaders: [],
                 members: '',
                 followers: ''
             };

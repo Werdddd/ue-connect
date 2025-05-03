@@ -195,9 +195,9 @@ export default function UserOwnProfilePage() {
                                     </TouchableOpacity>
 
                                     <Text style={styles.userName}>
-                                        {name.firstName && name.lastName
-                                            ? `${name.firstName} ${name.lastName}`
-                                            : 'Your Name'}
+                                    {name.firstName || name.lastName
+                                    ? `${name.firstName} ${name.lastName}`.trim()
+                                    : 'Unknown'}
                                     </Text>
                                     <View style={styles.followDataRow}>
                                         <Text style={styles.textsNumber1}>{following}</Text>
