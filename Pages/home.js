@@ -393,7 +393,7 @@ const fetchNewsfeed = async () => {
           await sendNotification({
             userId: postOwner, // This can be UID or email — use same ID type as your users
             type: 'like',
-            content: `${currentUserEmail} liked your post.`,
+            content: `${userName} liked your post.`,
           });
         }
       }
