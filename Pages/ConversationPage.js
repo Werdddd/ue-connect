@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, Image } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons'; 
+import { Ionicons } from '@expo/vector-icons';
 import { firestore, auth } from '../Firebase';
 import { collection, query, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import BottomNavBar from '../components/bottomNavBar';
-import { orderBy, doc, getDoc } from 'firebase/firestore';
+import { orderBy, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 export default function ConversationPage() {
   const route = useRoute();
@@ -14,7 +14,7 @@ export default function ConversationPage() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
-  const [otherUserData, setOtherUserData] = useState(null); 
+  const [otherUserData, setOtherUserData] = useState(null);
   const scrollViewRef = React.useRef();
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function ConversationPage() {
       setMessages(fetchedMessages);
     });
 
-    return () => unsubscribe(); 
+    return () => unsubscribe();
   }, [chatId]);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function ConversationPage() {
       }
     });
 
-    return () => unsubscribe(); 
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -56,9 +56,9 @@ export default function ConversationPage() {
         if (chatSnapshot.exists()) {
           const chatData = chatSnapshot.data();
           const users = chatData.Users;
-          
+
           const otherUserId = Object.keys(users).find(userId => userId !== currentUserId);
-          
+
           const otherUserRef = doc(firestore, 'Users', otherUserId);
           const otherUserSnapshot = await getDoc(otherUserRef);
           console.log('Other user data:', currentUserId);
@@ -71,7 +71,7 @@ export default function ConversationPage() {
         console.error('Error fetching user data:', error);
       }
     };
-    
+
     fetchOtherUserData();
   }, [chatId, currentUserId]);
 
@@ -85,10 +85,22 @@ export default function ConversationPage() {
         createdAt: serverTimestamp(),
       });
       setMessageText('');
+
+      await updateDoc(doc(firestore, 'chats', chatId), {
+        lastMessage: {
+          text: messageText.trim(),
+          senderId: currentUserId,
+          createdAt: serverTimestamp(),
+        }
+      });
+
     } catch (error) {
       console.error('Error sending message:', error);
     }
   };
+
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -100,7 +112,7 @@ export default function ConversationPage() {
         {otherUserData ? (
           <View style={styles.headerUserInfo}>
             <Image
-              source={{ uri: otherUserData.profileImage }} 
+              source={{ uri: otherUserData.profileImage }}
               style={styles.profileImage}
             />
             <Text style={styles.headerText}>
@@ -112,9 +124,9 @@ export default function ConversationPage() {
         )}
       </View>
 
-      <ScrollView 
-        ref={scrollViewRef} 
-        style={styles.messagesContainer} 
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.messagesContainer}
         onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}>
         {messages.map((message) => (
           <View
@@ -211,8 +223,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     backgroundColor: '#fff',
-    elevation: 5, 
-    shadowColor: '#000', 
+    elevation: 5,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,

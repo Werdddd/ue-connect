@@ -134,7 +134,7 @@ export default function ChatPage() {
         createdAt: serverTimestamp(),
       }
     });
-
+    
     return newChat;
   };
 
