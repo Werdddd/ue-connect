@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } fr
 import { Ionicons } from '@expo/vector-icons';
 import { applyToEvent, removeApplicationFromEvent } from '../Backend/eventPage';
 import { getAuth } from 'firebase/auth';
-import { getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc, setDoc } from 'firebase/firestore';
 import { firestore } from '../Firebase'; 
 
 export default function EventCard({ event }) {
@@ -15,6 +15,41 @@ export default function EventCard({ event }) {
 
     const auth = getAuth();
     const user = auth.currentUser;
+
+    const [userRating, setUserRating] = useState(0);
+    const [hasRated, setHasRated] = useState(false);
+
+    const submitRating = async (ratingValue) => {
+        if (!user) return;
+        const userKey = user.email.replace(/\./g, '_');
+        const eventRatingRef = doc(firestore, 'eventRatings', event.id);
+      
+        try {
+          const docSnap = await getDoc(eventRatingRef);
+          let existingData = {};
+      
+          if (docSnap.exists()) {
+            existingData = docSnap.data();
+          }
+      
+          const updatedRatings = {
+            ...existingData.ratings,
+            [userKey]: {
+              rating: ratingValue,
+              
+            }
+          };
+      
+          await setDoc(eventRatingRef, { ratings: updatedRatings });
+      
+          setUserRating(ratingValue);
+          setHasRated(true);
+          alert('Rating submitted!');
+        } catch (error) {
+          console.error('Failed to submit rating:', error);
+          alert('Rating failed.');
+        }
+      };
 
     // Check if user is applied to the event when component mounts
     useEffect(() => {
@@ -49,10 +84,23 @@ export default function EventCard({ event }) {
             } catch (error) {
                 console.error("Error checking participation:", error.message);
             }
+
+            const ratingDocRef = doc(firestore, 'eventRatings', event.id);
+            const ratingSnap = await getDoc(ratingDocRef);
+            if (ratingSnap.exists()) {
+            const ratings = ratingSnap.data().ratings || {};
+            const userKey = useremail.replace(/\./g, '_');
+            if (ratings[userKey]) {
+                setUserRating(ratings[userKey].rating);
+                setHasRated(true);
+            }
+            }
+
         };
     
         checkIfJoined();
     }, [user, event.id]);
+    
     
 
     const handleOpenModal = () => {
@@ -118,21 +166,35 @@ export default function EventCard({ event }) {
                     <Text style={styles.description}>
                         Participants: {approvedCount}
                     </Text>
+                    
 
                     <View style={styles.buttonRow}>
                     <TouchableOpacity
                         style={[
-                            styles.joinButton,
-                            joined && styles.joinedButton,
-                            applicationStatus === 'Approved' && styles.approvedButton
+                        styles.joinButton,
+                        joined && styles.joinedButton,
+                        applicationStatus === 'Approved' && styles.approvedButton,
+                        event.status === 'Finished' && styles.finishedButton
                         ]}
                         onPress={handleJoinToggle}
-                        disabled={applicationStatus === 'Approved'} // Optional: prevent toggle if approved
+                        disabled={applicationStatus === 'Approved' || event.status === 'Finished'}
                     >
-                        <Text style={styles.joinButtonText}>
-                            {applicationStatus === 'Approved' ? 'Approved' : joined ? 'Applied' : 'Join Now'}
+                        <Text
+                        style={[
+                            styles.joinButtonText,
+                            event.status === 'Finished' && styles.finishedButtonText
+                        ]}
+                        >
+                        {event.status === 'Finished'
+                            ? 'Event Finished'
+                            : applicationStatus === 'Approved'
+                            ? 'Approved'
+                            : joined
+                            ? 'Applied'
+                            : 'Join Now'}
                         </Text>
                     </TouchableOpacity>
+
 
                         <TouchableOpacity onPress={handleFavoriteToggle}>
                             <Ionicons
@@ -143,6 +205,26 @@ export default function EventCard({ event }) {
                             />
                         </TouchableOpacity>
                     </View>
+
+                    {event.status === 'Finished' && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15 }}>
+                            <Text style={{ fontWeight: 'bold', marginRight: 8 }}>Rate this Event:</Text>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                            <TouchableOpacity
+                                key={star}
+                                onPress={() => submitRating(star)}
+                                disabled={hasRated}
+                            >
+                                <Ionicons
+                                name={star <= userRating ? 'star' : 'star-outline'}
+                                size={28}
+                                color="#FFD700"
+                                />
+                            </TouchableOpacity>
+                            ))}
+                        </View>
+                        )}
+
                 </View>
             </TouchableOpacity>
 
@@ -364,5 +446,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'green',
         borderColor: 'darkgreen',
     },
-    
+    finishedButton: {
+        backgroundColor: 'gray', // Light gray
+        
+      },
+      
 });

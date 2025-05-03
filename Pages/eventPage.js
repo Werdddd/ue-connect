@@ -34,13 +34,20 @@ export default function Event() {
     const loadEvents = async () => {
         try {
             const data = await fetchEvents();
-
-            const approvedEvents = data.filter(event => event.status === 'Approved');
-            setEvents(approvedEvents);
+            console.log('Fetched events:', data);
+    
+            const visibleEvents = data.filter(event => {
+                const status = event.status?.toLowerCase();
+                return status === 'approved' || status === 'finished';
+            });
+    
+            setEvents(visibleEvents);
         } catch (error) {
             console.error('Failed to load events:', error);
         }
     };
+    
+    
 
     const handleAddEvent = async () => {
         if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants) {
