@@ -6,7 +6,7 @@ import { auth, firestore } from '../Firebase';
 import { formatDistanceToNow } from 'date-fns';
 import BottomNavBar from '../components/bottomNavBar';
 import Header from '../components/header';
-import { useNavigation } from '@react-navigation/native'; 
+import { useNavigation } from '@react-navigation/native';
 
 export default function ChatPage() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -17,7 +17,7 @@ export default function ChatPage() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const navigation = useNavigation();
   const [messages, setMessages] = useState([]);
-  
+
   useEffect(() => {
     const fetchUsers = async () => {
       const snapshot = await getDocs(collection(firestore, 'Users'));
@@ -33,7 +33,7 @@ export default function ChatPage() {
   useEffect(() => {
     const user = auth.currentUser;
     if (user) {
-      setCurrentUserId(user.email); 
+      setCurrentUserId(user.email);
     }
   }, []);
 
@@ -45,19 +45,19 @@ export default function ChatPage() {
     });
     return () => unsubscribeAuth();
   }, []);
-  
+
   useEffect(() => {
     if (!currentUserId) return;
-  
+
     const q = query(collection(firestore, 'chats'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const filteredChats = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(chat => chat.Users && chat.Users[currentUserId]);
-  
+
       setChats(filteredChats);
     });
-  
+
     return () => unsubscribe();
   }, [currentUserId]);
 
@@ -91,15 +91,15 @@ export default function ChatPage() {
   const getChatBetweenUsers = async () => {
     try {
       if (!currentUserId || !selectedUserId) return;
-  
+
       const chatQuery = query(
         collection(firestore, 'chatRooms'),
         where(`Users.${currentUserId}`, '==', true),
         where(`Users.${selectedUserId}`, '==', true)
       );
-  
+
       const querySnapshot = await getDocs(chatQuery);
-  
+
       if (!querySnapshot.empty) {
         const chatRoom = querySnapshot.docs[0].data();
         setMessages(chatRoom.messages || []);
@@ -132,14 +132,12 @@ export default function ChatPage() {
 
   const sendMessage = async (chatId) => {
     try {
-      // 1. Add the message to the messages subcollection
       await addDoc(collection(firestore, `chats/${chatId}/messages`), {
         senderId: currentUserId,
         text: messageText.trim(),
         createdAt: serverTimestamp(),
       });
-  
-      // 2. Update the lastMessage field in the chat document
+
       const chatRef = doc(firestore, 'chats', chatId);
       await setDoc(chatRef, {
         lastMessage: {
@@ -148,14 +146,12 @@ export default function ChatPage() {
           createdAt: serverTimestamp(),
         },
       }, { merge: true });
-  
-      // 3. Get chat data to find the recipient
+
       const chatDoc = await getDoc(chatRef);
       const chatData = chatDoc.data();
       if (chatData && chatData.Users) {
         const recipientId = Object.keys(chatData.Users).find(id => id !== currentUserId);
-  
-        // 4. Send the notification
+
         if (recipientId) {
           await sendNotification({
             userId: recipientId,
@@ -171,7 +167,7 @@ export default function ChatPage() {
 
   const getOtherUserInfo = (chat) => {
     const otherId = Object.keys(chat.Users).find(id => id !== currentUserId);
-    return Users.find(u => u.id === otherId); 
+    return Users.find(u => u.id === otherId);
   };
 
   const handleCardPress = (chatId) => {
@@ -179,15 +175,19 @@ export default function ChatPage() {
   };
 
   return (
-    <ScrollView style={{ flex: 1 }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <SafeAreaView style={styles.safeArea} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={styles.safeArea}>
+          <View style={{ flex: 1 }}>
             <Header />
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1, paddingBottom: 80, paddingHorizontal: 20 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.headerContainer}>
                 <Text style={styles.headerText}>Your Messages</Text>
                 <TouchableOpacity style={styles.newConversationButton} onPress={toggleModal}>
@@ -218,15 +218,18 @@ export default function ChatPage() {
                 <Text>No conversations found</Text>
               )}
             </ScrollView>
-            <BottomNavBar />
 
-            <Modal
-              keyboardShouldPersistTaps="handled"
-              visible={shareModalVisible}
-              animationType="slide"
-              transparent={true}
-              onRequestClose={toggleModal}
-            >
+            <BottomNavBar />
+          </View>
+
+          {/* Modal */}
+          <Modal
+            visible={shareModalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={toggleModal}
+          >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Start a New Conversation</Text>
@@ -238,15 +241,13 @@ export default function ChatPage() {
                       onValueChange={(itemValue) => setSelectedUserId(itemValue)}
                     >
                       <Picker.Item label="Select a user..." value="" />
-                      {Users
-                        .filter(u => u.id !== currentUserId)
-                        .map(user => (
-                          <Picker.Item
-                            key={user.id}
-                            label={`${user.firstName} ${user.lastName}`}
-                            value={user.id}
-                          />
-                        ))}
+                      {Users.filter(u => u.id !== currentUserId).map(user => (
+                        <Picker.Item
+                          key={user.id}
+                          label={`${user.firstName} ${user.lastName}`}
+                          value={user.id}
+                        />
+                      ))}
                     </Picker>
                   </View>
 
@@ -272,11 +273,11 @@ export default function ChatPage() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </Modal>
-          </SafeAreaView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </ScrollView>
+            </TouchableWithoutFeedback>
+          </Modal>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -297,21 +298,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   headerText: {
-    fontSize: 24,  
+    fontSize: 24,
     fontWeight: 'bold',
   },
   newConversationButton: {
-    padding: 10,
     backgroundColor: '#E50914',
     borderRadius: 50,
     width: 40,
     height: 40,
-    justifyContent: 'center',
     alignItems: 'center',
   },
   newConversationText: {
     color: '#fff',
-    fontSize: 30, 
+    fontSize: 30,
     fontWeight: 'bold',
   },
   chatCard: {
