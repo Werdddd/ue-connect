@@ -672,6 +672,18 @@ const fetchNewsfeed = async () => {
             <ScrollView>
               {postComments.map((comment) => (
                 <View key={comment.id} style={styles.commentCard}>
+                <TouchableOpacity
+                onPress={() => {
+                    if (currentUserEmail !== comment.email) {
+                    navigation.navigate('UserOpen', {
+                        postId: comment.id,
+                        postEmail: comment.email,
+                    });
+                    } else {
+                    navigation.navigate('UserOwnProfilePage');
+                    }
+                }}
+                >
                   {comment.profileImage ? (
                       <Image
                         source={{ uri: comment.profileImage }}
@@ -680,6 +692,7 @@ const fetchNewsfeed = async () => {
                     ) : (
                       <FontAwesome name="user-circle-o" size={38} color="#999" />
                   )}
+                  </TouchableOpacity>
                     <View>
                     <Text style={styles.commentUserName}>
                       {comment.userName || 'Anonymous'}
