@@ -12,7 +12,20 @@ export default function EventCardRSO({ event }) {
     const [participants, setParticipants] = useState([]);
     const [approvedCount, setApprovedCount] = useState(0);
     const [appliedCount, setAppliedCount] = useState(0);
-  
+    const [eventStatus, setEventStatus] = useState(event.status);
+    const markEventAsFinished = async () => {
+      try {
+        const eventRef = doc(firestore, 'events', event.id);
+        await updateDoc(eventRef, { status: 'Finished' });
+    
+        setEventStatus('Finished');
+        // Optional: Close modal or give feedback
+        alert('Event marked as Finished.');
+      } catch (error) {
+        console.error('Error updating event status:', error);
+      }
+    };
+    
     const handleOpenEventModal = () => {
       setModalVisible(true);
     };
@@ -37,6 +50,8 @@ export default function EventCardRSO({ event }) {
                 return { backgroundColor: 'green' };
             case 'Rejected':
                 return { backgroundColor: 'red' };
+            case 'Finished':
+                return { backgroundColor: 'gray' };
             case 'Applied':
             default:
                 return { backgroundColor: 'orange' };
@@ -193,7 +208,27 @@ export default function EventCardRSO({ event }) {
                 <TouchableOpacity style={styles.viewParticipantsButton} onPress={handleOpenParticipantsModal}>
                   <Text style={styles.viewParticipantsText}>View Participants</Text>
                 </TouchableOpacity>
+                
                 <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
+
+                {eventStatus === 'Approved' && (
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#fff',
+                      borderWidth: 1,
+                      borderColor: '#FF0000',
+                      padding: 10,
+                      borderRadius: 5,
+                      marginTop: 15,
+                    }}
+                    onPress={markEventAsFinished}
+                  >
+                    <Text style={{ color: '#ff0000', textAlign: 'center' }}>
+                      Mark as Finished?
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
               </ScrollView>
             </View>
   
@@ -432,7 +467,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         paddingVertical: 10,
         
-        borderRadius: 12,
+        borderRadius: 5,
         alignSelf: 'flex-start',
         fontSize: 12,
         marginTop: 5,
