@@ -33,7 +33,7 @@ export default function OrganizationPageSAO() {
         department: '',
         orgName: '',
         memberCount: '',
-        members: '',
+        members: [],
         shortdesc: '',
         logoUri: '',
         logoBase64: '',
@@ -101,7 +101,7 @@ export default function OrganizationPageSAO() {
                 email: newOrg.email.toLowerCase(),
                 websitelink: newOrg.websitelink,
                 leaders: [],
-                members: '',
+                members: [],
                 followers: ''
             };
 
@@ -112,7 +112,7 @@ export default function OrganizationPageSAO() {
                 { id: prevOrgs.length + 1, ...newOrgData }
             ]);
 
-            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: '', followers: ''});
+            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: [], followers: ''});
             setModalVisible(false);
 
         } catch (error) {
