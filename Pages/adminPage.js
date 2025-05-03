@@ -1,151 +1,377 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Linking } from 'react-native';
-import { firestore } from '../Firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+  TextInput,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform, ScrollView
+} from "react-native";
+import { firestore } from "../Firebase";
+import {
+  doc,
+  getDocs,
+  query,
+  collection,
+  where,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
+import Icon from "react-native-vector-icons/MaterialIcons";
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
-import UserCard from '../components/userCard';
-import { TextInput } from 'react-native-gesture-handler';
 
 export default function AdminPage() {
-    const navigation = useNavigation();
-    const [scrollY, setScrollY] = useState(0);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editStudentNumber, setEditStudentNumber] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [users, setUsers] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchText, setSearchText] = useState("");
+const [scrollY, setScrollY] = useState(0);
 
-    const [name, setName] = useState('');
-    const [year, setYear] = useState('');
-    const [course, setCourse] = useState('');
+  const fetchUsers = async () => {
+    try {
+      setRefreshing(true);
+      const q = query(collection(firestore, "Users"), where("studentNumber", "!=", null));
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setUsers(data);
+      setRefreshing(false);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
 
-    const [searchText, setSearchText] = useState("");
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
+  const filteredUsers = users.filter((user) => {
+    const query = searchText.toLowerCase();
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <SafeAreaView style={styles.safeArea}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-                >
-                <Header scrollY={scrollY} />
-
-                
-
-                {/* User Profile Content */}
-                <View style={styles.profileContainer}>                               
-                    <Text style={styles.saoHeader}>{'Student Affairs Office Admin Panel'}</Text>
-                    <Text style={styles.saoSubtitle}>{'Manage student activities, records, and organizational affairs seamlessly'}</Text>                 
-                    <View style={styles.underline} />
-                </View>
-                <View style={styles.userCardContainer}>
-                    <UserCard searchText={searchText}/>
-                </View>
-                        
-                    <BottomNavBar />
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        </TouchableWithoutFeedback>
+      user.firstName?.toLowerCase().includes(query) ||
+      user.lastName?.toLowerCase().includes(query) ||
+      user.email?.toLowerCase().includes(query) ||
+      user.studentNumber?.includes(query)
     );
+  });
+
+  const handleEdit = (user) => {
+    setSelectedUser(user);
+    setEditFirstName(user.firstName);
+    setEditLastName(user.lastName);
+    setEditStudentNumber(user.studentNumber);
+    setEditRole(user.role);
+    setEditModalVisible(true);
+  };
+
+  const openDeleteModal = (user) => {
+    setSelectedUser(user);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteDoc(doc(firestore, "Users", selectedUser.id));
+      setDeleteModalVisible(false);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
+  };
+
+  const saveEdit = async () => {
+    const studentNumberPattern = /^\d{11}$/;
+    const validRoles = ["user", "leader"];
+
+    if (!studentNumberPattern.test(editStudentNumber)) {
+      alert("Student Number must be exactly 11 digits.");
+      return;
+    }
+
+    if (!validRoles.includes(editRole.toLowerCase())) {
+      alert("Role must be either 'user' or 'leader'.");
+      return;
+    }
+
+    try {
+      const docRef = doc(firestore, "Users", selectedUser.id);
+      await updateDoc(docRef, {
+        firstName: editFirstName,
+        lastName: editLastName,
+        studentNumber: editStudentNumber,
+        role: editRole,
+      });
+      setEditModalVisible(false);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error updating user:", error);
+    }
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardContent}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
+          <Text style={styles.email}>{item.email}</Text>
+          <Text style={styles.role}>Role: {item.role}</Text>
+          <Text style={styles.studentNumber}>Student #: {item.studentNumber}</Text>
+        </View>
+        <View style={styles.iconButtons}>
+          <TouchableOpacity onPress={() => handleEdit(item)}>
+            <Icon name="edit" size={24} color="#4CAF50" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => openDeleteModal(item)}>
+            <Icon name="delete" size={24} color="#F44336" style={{ marginTop: 8 }} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <View style={styles.container}>
+        <Header scrollY={scrollY} />
+        <ScrollView
+            onScroll={(event) => {
+                setScrollY(event.nativeEvent.contentOffset.y);
+            }}
+            scrollEventThrottle={16}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}>
+          <View style={styles.searchContainer}>
+            <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
+            <TextInput
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder="Search users..."
+              style={styles.searchInput}
+            />
+          </View>
+        
+
+        <FlatList
+          data={filteredUsers}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListEmptyComponent={<Text style={{ textAlign: "center" }}>No users found.</Text>}
+          contentContainerStyle={{ paddingBottom: 50 }}
+          refreshing={refreshing}
+          onRefresh={fetchUsers}
+        />
+
+        {/* Edit Modal */}
+        <Modal visible={editModalVisible} transparent animationType="slide">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Edit User</Text>
+
+              <View style={styles.nameRow}>
+                <View style={styles.nameContainer}>
+                  <Text style={styles.label}>First Name</Text>
+                  <TextInput
+                    value={editFirstName}
+                    onChangeText={setEditFirstName}
+                    style={styles.input}
+                  />
+                </View>
+                <View style={styles.nameContainer}>
+                  <Text style={styles.label}>Last Name</Text>
+                  <TextInput
+                    value={editLastName}
+                    onChangeText={setEditLastName}
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Student Number</Text>
+                <TextInput
+                  value={editStudentNumber}
+                  onChangeText={setEditStudentNumber}
+                  style={styles.input}
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Role</Text>
+                <TextInput
+                  value={editRole}
+                  onChangeText={setEditRole}
+                  style={styles.input}
+                />
+              </View>
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={saveEdit} style={styles.saveBtn}>
+                  <Text style={styles.btnText}>Save</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.cancelBtn}>
+                  <Text style={styles.btnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Delete Modal */}
+        <Modal visible={deleteModalVisible} transparent animationType="fade">
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={{ textAlign: "center", marginBottom: 10 }}>
+                Are you sure you want to delete this user?
+              </Text>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity onPress={confirmDelete} style={styles.deleteBtn}>
+                  <Text style={styles.btnText}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setDeleteModalVisible(false)} style={styles.cancelBtn}>
+                  <Text style={styles.btnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+          </View>
+        </Modal>
+
+        </ScrollView>
+        <BottomNavBar />
+       </View>
+      
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    flexcont: {
-        flex: 1,
-    },
-    
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    scrollContent: {
-        flexGrow: 1,
-        paddingHorizontal: 20,
-        paddingBottom: 80,
-    },
-    profileContainer: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    userCardContainer: {
-        flex: 1,
-        width: '100%',
-     
-    },
-
-    cardScrollContent: {
-        flexGrow: 1,
-        paddingBottom: 80,
-    },
-    
-
-    userProfileImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        marginBottom: 15,
-        borderWidth: 1,
-        borderColor: '#ccc',
-    },
-    saoHeader: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 5,
-    },
-    saoSubtitle: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#777',
-        marginBottom: 5,
-        paddingHorizontal: 20,
-    },
-    userCourse: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#777',
-        marginBottom: 20,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        marginBottom: 25,
-    },
-    followButton: {
-        backgroundColor: '#E0E0E0',
-        paddingVertical: 8,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-    },
-    followButtonText: {
-        color: '#000',
-        fontWeight: 'bold',
-    },
-    messageButton: {
-        backgroundColor: '#E0E0E0',
-        paddingVertical: 8,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-    },
-    messageButtonText: {
-        color: '#000',
-        fontWeight: 'bold',
-    },
-    underline: {
-        alignSelf: 'center',
-        height: 1,
-        backgroundColor: '#555',
-        width: '100%',
-        marginTop: 4,
-    },
-    infoDetailRow: {
-        flexDirection: 'row',
-        alignItems: 'top',
-        marginTop: 10,
-
-        justifyContent: 'space-between',
-        width: '50%',
-    },
+  card: {
+    backgroundColor: "#fff",
+    margin: 10,
+    padding: 10,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+},
+  cardContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  iconButtons: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  email: {
+    fontSize: 14,
+  },
+  role: {
+    fontSize: 14,
+  },
+  studentNumber: {
+    fontSize: 14,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    marginHorizontal: 10,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 8,
+    fontSize: 16,
+  },
+  modalBackground: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContainer: {
+    width: "85%",
+    padding: 20,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  nameRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  nameContainer: {
+    flex: 1,
+  },
+  inputContainer: {
+    marginBottom: 10,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 10,
+  },
+  saveBtn: {
+    backgroundColor: "#4CAF50",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  deleteBtn: {
+    backgroundColor: "#F44336",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  cancelBtn: {
+    backgroundColor: "#9E9E9E",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  btnText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
 });
