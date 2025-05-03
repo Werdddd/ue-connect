@@ -42,6 +42,19 @@ export default function Home() {
   const [comments, setComments] = useState([]);
   const ss = "dd";
 
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+const [selectedImagePic, setSelectedImagePic] = useState(null);
+
+const openImage = (uri) => {
+  setSelectedImagePic(uri);
+  setImageModalVisible(true);
+};
+
+const closeModalImage = () => {
+  setImageModalVisible(false);
+  setSelectedImagePic(null);
+};
+
 
   const toggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
@@ -558,14 +571,36 @@ const fetchNewsfeed = async () => {
           {hasImages && (
             <View style={styles.postImagesContainer}>
               {post.images.map((uri, idx) => (
-                <Image
-                  key={idx}
-                  source={{ uri }}
-                  style={styles.postImage}
-                />
+                <TouchableOpacity key={idx} onPress={() => openImage(uri)}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.postImage}
+                  />
+                </TouchableOpacity>
               ))}
             </View>
           )}
+
+          {/* Modal for Viewing Image */}
+          {imageModalVisible && (
+          <Modal
+            visible={imageModalVisible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={closeModalImage}
+          >
+            <View style={styles.modalContainer}>
+              <TouchableOpacity style={styles.modalOverlay} onPress={closeModalImage} />
+              <View style={styles.modalContent}>
+                <Image
+                  source={{ uri: selectedImagePic }}
+                  style={styles.modalImage}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
         </View>
   
         {/* Post Actions */}
