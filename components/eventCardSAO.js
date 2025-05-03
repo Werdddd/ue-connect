@@ -69,6 +69,7 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
     };
 
     useEffect(() => {
+        console.log('Proposal Link from Event:', event?.proposalLink);
         if (event?.proposalLink) {
           setProposalLink(event.proposalLink);
         }
@@ -327,4 +328,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
     },
+    previewLink: {
+      
+        textDecorationLine: 'underline',
+        marginTop: 5,
+      },
 });
