@@ -11,7 +11,7 @@ export default function OrgProfilePage() {
     const navigation = useNavigation();
     const [orgData, setOrgData] = useState(null);
     const [scrollY, setScrollY] = useState(0);
-
+    const [isApplied, setIsApplied] = useState(false);
     //re-check values
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -33,14 +33,14 @@ export default function OrgProfilePage() {
 
     // const orgName = 'ACSS';
 
-    useEffect (() => {
+    useEffect(() => {
 
-        const fetchOrgData = async () =>{
-            try{
+        const fetchOrgData = async () => {
+            try {
                 const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
                 const querySnapshot = await getDocs(q);
                 console.log(orgName);
-                if(!querySnapshot.empty){
+                if (!querySnapshot.empty) {
                     const docSnap = querySnapshot.docs[0];
                     const data = docSnap.data();
 
@@ -54,10 +54,11 @@ export default function OrgProfilePage() {
                     setLogo(data.logoBase64);
                     console.log('data fetched');
                     console.log(userEmail);
-                }else{
+                    
+                } else {
                     console.log('No Registry Found')
                 }
-            }catch(error){
+            } catch (error) {
                 console.error('Error fetching organzation data:', error)
             }
         }
@@ -66,32 +67,35 @@ export default function OrgProfilePage() {
     }, []);
 
     useEffect(() => {
-        const userCheck = async() =>{
+        const userCheck = async () => {
             const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
-            const orgDoc = querySnapshot.docs[0];
-            const data = orgDoc.data();
+                const orgDoc = querySnapshot.docs[0];
+                const data = orgDoc.data();
 
-            const members = data.members || [];
-            setIsMember(members.includes(userEmail)); // <-- Update membership state
+                const members = data.members || [];
+                const applied = data.applied || [];
+
+                setIsMember(members.includes(userEmail));
+                setIsApplied(applied.includes(userEmail));
             }
         };
         userCheck();
     }, [orgName, userEmail]);
 
     useEffect(() => {
-        const followCheck = async() =>{
+        const followCheck = async () => {
             const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
-            const orgDoc = querySnapshot.docs[0];
-            const data = orgDoc.data();
+                const orgDoc = querySnapshot.docs[0];
+                const data = orgDoc.data();
 
-            const followers = data.followers || [];
-            setFollowing(followers.includes(userEmail)); // <-- Update membership state
+                const followers = data.followers || [];
+                setFollowing(followers.includes(userEmail)); // <-- Update membership state
             }
         };
         followCheck();
@@ -101,25 +105,25 @@ export default function OrgProfilePage() {
         try {
             const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
             const querySnapshot = await getDocs(q);
-        
+
             if (!querySnapshot.empty) {
                 const orgDoc = querySnapshot.docs[0];
                 const orgRef = doc(firestore, 'organizations', orgDoc.id);
-        
+
                 const data = orgDoc.data();
                 const followers = data.followers || [];
                 const userIsFollower = followers.includes(userEmail);
-        
+
                 setFollowing(!userIsFollower);
-        
+
                 await updateDoc(orgRef, {
                     followers: userIsFollower ? arrayRemove(userEmail) : arrayUnion(userEmail),
                 });
-        
+
                 console.log(
                     userIsFollower
-                    ? `User ${userEmail} unfollowed organization ${orgName}`
-                    : `User ${userEmail} followed organization ${orgName}`
+                        ? `User ${userEmail} unfollowed organization ${orgName}`
+                        : `User ${userEmail} followed organization ${orgName}`
                 );
             } else {
                 console.log('Organization not found');
@@ -129,37 +133,38 @@ export default function OrgProfilePage() {
         }
     };
 
-    const addUserToMembers = async (orgName, userEmail) => {
+    const addUserToApplication = async (orgName, userEmail) => {
         try {
-          const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
-          const querySnapshot = await getDocs(q);
-      
-          if (!querySnapshot.empty) {
-            const orgDoc = querySnapshot.docs[0];
-            const orgRef = doc(firestore, 'organizations', orgDoc.id);
-      
-            const data = orgDoc.data();
-            const members = data.members || [];
-            const userIsMember = members.includes(userEmail);
+            const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const querySnapshot = await getDocs(q);
 
-            setIsMember(!userIsMember);
+            if (!querySnapshot.empty) {
+                const orgDoc = querySnapshot.docs[0];
+                const orgRef = doc(firestore, 'organizations', orgDoc.id);
 
-            await updateDoc(orgRef, {
-              members: userIsMember ? arrayRemove(userEmail) : arrayUnion(userEmail),
-            });
-      
-            console.log(
-              userIsMember
-                ? `User ${userEmail} removed from organization ${orgName}`
-                : `User ${userEmail} added to organization ${orgName}`
-            );
-          } else {
-            console.log('Organization not found');
-          }
+                const data = orgDoc.data();
+                const applied = data.applied || [];
+                const members = data.members || [];
+                const userIsApplied = applied.includes(userEmail);
+                const userIsMember = members.includes(userEmail);
+                setIsApplied(!userIsApplied);
+
+                await updateDoc(orgRef, {
+                    applied: userIsApplied ? arrayRemove(userEmail) : arrayUnion(userEmail),
+                });
+
+                console.log(
+                    userIsApplied
+                        ? `User ${userEmail} removed from application ${orgName}`
+                        : `User ${userEmail} added to application ${orgName}`
+                );
+            } else {
+                console.log('Organization not found');
+            }
         } catch (error) {
-          console.error('Error updating members:', error);
+            console.error('Error updating members:', error);
         }
-      };
+    };
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -169,38 +174,44 @@ export default function OrgProfilePage() {
                     style={styles.container}
                 >
                     <View style={styles.container}>
-                    <Header scrollY={scrollY} />
+                        <Header scrollY={scrollY} />
                         <ScrollView
-                                onScroll={(event) => {
+                            onScroll={(event) => {
                                 setScrollY(event.nativeEvent.contentOffset.y);
-                                }}
-                                scrollEventThrottle={16}
-                                contentContainerStyle={styles.scrollContent}
-                                showsVerticalScrollIndicator={false}>
+                            }}
+                            scrollEventThrottle={16}
+                            contentContainerStyle={styles.scrollContent}
+                            showsVerticalScrollIndicator={false}>
                             {/* Org Profile Content */}
                             <View style={styles.profileContainer}>
-                                <Image 
+                                <Image
                                     source={{ uri: logo }}
                                     style={styles.logo}
                                 />
                                 <Text style={styles.orgName}>{name}</Text>
                                 <Text style={styles.shortDescription}>{description}</Text>
-                                
+
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity style={styles.followButton} onPress={() => toggleFollow(orgName, userEmail)}>
-                                        <Text style={styles.followButtonText}>{isFollower ? 'Unfollow': 'Follow'}</Text>
+                                        <Text style={styles.followButtonText}>{isFollower ? 'Unfollow' : 'Follow'}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={styles.messageButton}>
                                         <Text style={styles.messageButtonText}>Message</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity style={styles.joinButton} onPress={() => addUserToMembers(orgName, userEmail)}>
-                                        <Text style={styles.joinButtonText}>{isMember ? 'Leave': 'Join'}</Text>
+                                    <TouchableOpacity
+                                        style={styles.joinButton}
+                                        onPress={() => addUserToApplication(orgName, userEmail)}
+                                        disabled={isMember} 
+                                    >
+                                        <Text style={styles.joinButtonText}>
+                                            {isMember ? 'Joined' : isApplied ? 'Applied' : 'Join'}
+                                        </Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View style={styles.underline} />
                                 <View style={styles.section}>
                                     <Text style={styles.sectionTitle}>Organization Details</Text>
-                                    
+
                                     <View style={styles.infoDetailRow}>
                                         <Ionicons name="information-circle-outline" size={20} color="#555" />
                                         <Text style={styles.detailText}>{fullDescription}</Text>
@@ -317,13 +328,13 @@ const styles = StyleSheet.create({
         width: '100%',
         borderRadius: 10,
         padding: 15,
-  
+
     },
     sectionTitle: {
         fontWeight: 'bold',
         fontSize: 16,
         marginBottom: 10,
-        
+
     },
     fullDescription: {
         fontSize: 14,
