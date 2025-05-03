@@ -64,14 +64,19 @@ const PostCard = ({
             ) : (
               <FontAwesome name="user-circle-o" size={35} color="#999" />
             )}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-              <Text style={styles.postUserName}>{post.user.name}</Text>
-              {post.user.role === ss && (
-                <Image
-                  source={require('../assets/switch2.png')}
-                  style={{ width: 16, height: 16, marginLeft: 5 }}
-                />
-              )}
+            <View style={{ flexDirection: 'column', marginLeft: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.postUserName}>{post.user.name}</Text>
+                {post.user.role === ss && (
+                  <Image
+                    source={require('../assets/switch2.png')}
+                    style={{ width: 16, height: 16, marginLeft: 5 }}
+                  />
+                )}
+              </View>
+              <Text style={styles.postDate}>
+                {new Date(post.date).toLocaleString()}
+              </Text>
             </View>
           </View>
           <TouchableOpacity
@@ -497,7 +502,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   postDate: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#888',
   },
   postBody: {
@@ -675,10 +680,6 @@ const styles = StyleSheet.create({
   postUserName: {
     fontWeight: 'bold',
     fontSize: 14,
-  },
-  postDate: {
-    fontSize: 12,
-    color: '#777',
   },
   optionsMenu: {
     position: 'absolute', 

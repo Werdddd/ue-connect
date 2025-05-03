@@ -393,7 +393,7 @@ const fetchNewsfeed = async () => {
           await sendNotification({
             userId: postOwner, // This can be UID or email — use same ID type as your users
             type: 'like',
-            content: `${currentUserEmail} liked your post.`,
+            content: `${userName} liked your post.`,
           });
         }
       }
@@ -500,38 +500,43 @@ const fetchNewsfeed = async () => {
         {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
-          <TouchableOpacity
-            onPress={() => {
-              if (currentUserEmail !== post.userId) {
-                navigation.navigate('UserOpen', {
-                  postId: post.id,
-                  postEmail: post.userId, // assuming userId is their email
-                });
-              } else {
-                navigation.navigate('UserOwnProfilePage');
-              }
-  }}
-            >
-              {post.user.profileImage ? (
-                <Image
-                  source={{ uri: post.user.profileImage }}
-                  style={styles.profileImagePost}
-                  resizeMode="cover"
-                />
-              ) : (
-                <FontAwesome name="user-circle-o" size={35} color="#999" />
-              )}
-            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                if (currentUserEmail !== post.userId) {
+                  navigation.navigate('UserOpen', {
+                    postId: post.id,
+                    postEmail: post.userId, // assuming userId is their email
+                  });
+                } else {
+                  navigation.navigate('UserOwnProfilePage');
+                }
+              }}
+              >
+                {post.user.profileImage ? (
+                  <Image
+                    source={{ uri: post.user.profileImage }}
+                    style={styles.profileImagePost}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <FontAwesome name="user-circle-o" size={35} color="#999" />
+                )}
+              </TouchableOpacity>
   
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-              <Text style={styles.postUserName}>{post.user.name}</Text>
-              {post.user.role === ss && (
-                <Image
-                  source={require('../assets/switch2.png')}
-                  style={{ width: 16, height: 16, marginLeft: 5 }}
-                />
-              )}
-            </View>
+              <View style={{ flexDirection: 'column', marginLeft: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.postUserName}>{post.user.name}</Text>
+                  {post.user.role === ss && (
+                    <Image
+                      source={require('../assets/switch2.png')}
+                      style={{ width: 16, height: 16, marginLeft: 5 }}
+                    />
+                  )}
+                </View>
+                <Text style={styles.postDate}>
+                  {new Date(post.date).toLocaleString()}
+                </Text>
+              </View>
           </View>
   
           {/* Pinned Icon */}
@@ -1154,10 +1159,14 @@ const styles = StyleSheet.create({
     
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 0,
+    paddingBottom: 0,
   },
   postDate: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#888',
+    marginTop: 0,
+    paddingTop: 0,
   },
   postBody: {
     marginTop: 5,
@@ -1334,10 +1343,6 @@ const styles = StyleSheet.create({
   postUserName: {
     fontWeight: 'bold',
     fontSize: 14,
-  },
-  postDate: {
-    fontSize: 12,
-    color: '#777',
   },
   pinIcon: {
     position: 'absolute',
