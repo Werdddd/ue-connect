@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   newConversationText: {
     color: '#fff',
     fontSize: 30,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   chatCard: {
     backgroundColor: '#f0f0f0',
