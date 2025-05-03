@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput, Keyboard, TouchableWithoutFeedback, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { collection, getDocs, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where, } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where, } from 'firebase/firestore';
 import { auth, firestore } from '../Firebase';
 import { formatDistanceToNow } from 'date-fns';
 import BottomNavBar from '../components/bottomNavBar';
