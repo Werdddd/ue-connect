@@ -6,6 +6,7 @@ import BottomNavBar from '../components/bottomNavBar';
 import { Ionicons, MaterialIcons, Feather, Entypo } from '@expo/vector-icons'; // icon packs
 import { firestore, auth } from '../Firebase';
 import { doc, getDoc, query, collection, getDocs, where, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { loginUser } from '../Backend/login';
 
 export default function OrgProfilePage() {
     const navigation = useNavigation();
@@ -28,7 +29,8 @@ export default function OrgProfilePage() {
     const userEmail = currentUser.email;
 
     const [isMember, setIsMember] = useState(false);
-    const [isFollower, setFollowing] = useState(false)
+    const [isFollower, setFollowing] = useState(false);
+    const [isLeader, setLeader] = useState(false)
 
 
     // const orgName = 'ACSS';
@@ -52,8 +54,22 @@ export default function OrgProfilePage() {
                     setEmail(data.email);
                     setWebsite(data.websitelink);
                     setLogo(data.logoBase64);
-                    console.log('data fetched');
-                    console.log(userEmail);
+                    if (data.leaders && data.leaders.includes(userEmail)) {
+                        setLeader(true);
+                      } else {
+                        setLeader(false);
+                      }
+                    //console.log(userEmail);
+
+                    const userDocRef = doc(firestore, "Users", data.email); // Using email as the document ID
+                    const userSnap = await getDoc(userDocRef);
+                    if (userSnap.exists()) {
+                        console.log();
+                        
+                      } else {
+                        console.log("No such user!");
+                        return null;
+                      }
                     
                 } else {
                     console.log('No Registry Found')
@@ -133,6 +149,20 @@ export default function OrgProfilePage() {
         }
     };
 
+    const switchAccount = async () => {
+        const { success, user, error } = await loginUser({ email, password: '123456' });         
+        if (success) {
+            navigation.navigate('Home');
+        } else {
+            console.error("Error logging in: ", error);
+            Alert.alert(
+            'Login Error',
+            error.message || 'Something went wrong. Please try again.',
+            [{ text: 'I Understand' }]
+            );
+        }
+      };
+
     const addUserToApplication = async (orgName, userEmail) => {
         try {
             const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
@@ -204,12 +234,14 @@ export default function OrgProfilePage() {
                                     <Text style={styles.messageButtonText}>Message</Text>
                                 </TouchableOpacity>
                             </View>
+                            {isLeader && (
                             <View style={styles.switchContainer}>
-                            <TouchableOpacity style={styles.switchAccountButton} onPress={() => console.log('Switch Account')}>
-                            <Ionicons name="swap-horizontal" size={20} color="#ff0000" style={{ marginRight: 8 }} />
-                            <Text style={styles.switchAccountText}>Switch Account</Text>
-                            </TouchableOpacity>
+                                <TouchableOpacity style={styles.switchAccountButton} onPress={switchAccount}>
+                                <Ionicons name="swap-horizontal" size={20} color="#ff0000" style={{ marginRight: 8 }} />
+                                <Text style={styles.switchAccountText}>Switch Account</Text>
+                                </TouchableOpacity>
                             </View>
+                            )}
                                 <View style={styles.underline} />
                                 <View style={styles.section}>
                                     <Text style={styles.sectionTitle}>Organization Details</Text>
