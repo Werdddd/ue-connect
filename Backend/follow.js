@@ -1,8 +1,9 @@
 // follow.js
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { firestore } from '../Firebase'; // adjust to your setup
+import { sendNotification } from '../Backend/notifications'; // adjust path as needed
 
-export const followUser = async (currentUserEmail, recipientEmail) => {
+export const followUser = async (currentUserEmail, recipientEmail, user) => {
   try {
     const currentUserRef = doc(firestore, 'Users', currentUserEmail);
     const recipientRef = doc(firestore, 'Users', recipientEmail);
@@ -24,6 +25,12 @@ export const followUser = async (currentUserEmail, recipientEmail) => {
         followers: arrayUnion(currentUserEmail),
       }),
     ]);
+
+    await sendNotification({
+      userId: recipientEmail,
+      type: 'follow',
+      content: `${user} started following you.`,
+    });
 
     return { success: true };
   } catch (error) {

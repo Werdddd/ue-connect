@@ -2,6 +2,7 @@
 import { doc, updateDoc, arrayRemove, getDoc } from 'firebase/firestore';
 import { firestore } from '../Firebase'; // adjust to your setup
 
+
 export const unfollowUser = async (currentUserEmail, recipientEmail) => {
   try {
     const currentUserRef = doc(firestore, 'Users', currentUserEmail);

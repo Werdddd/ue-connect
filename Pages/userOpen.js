@@ -41,11 +41,15 @@ export default function UserOwnProfilePage() {
     const userEmail = postEmail;
     const [currentUserEmail, setCurrentUserEmail] = useState('')
     const [followed, setFollowed] = useState(false);
+    const [userName2, setUser] = useState('');
+
+
 
     useEffect(() => {
         const user = auth.currentUser;
         if (user?.email) {
           setCurrentUserEmail(user.email);
+          setUser(user.firstName,' ', user.lastName);
         }
       }, []);
       
@@ -164,7 +168,7 @@ export default function UserOwnProfilePage() {
     };
 
     const handleFollow = async () => {
-        const res = await followUser(currentUserEmail, userEmail);
+        const res = await followUser(currentUserEmail, userEmail, userName);
         if (res.success) {
             setFollowed(true);
             fetchProfile();
