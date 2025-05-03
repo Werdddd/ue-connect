@@ -43,3 +43,17 @@ export const getOrganizations = async () => {
         throw error;
     }
 };
+
+export const getAllUsers = async () => {
+    try {
+        const snapshot = await getDocs(collection(firestore, 'Users'));
+        const users = [];
+        snapshot.forEach(doc => {
+            users.push(doc.data());
+        });
+        return users;
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        return [];
+    }
+};
