@@ -98,7 +98,7 @@ export default function OrganizationPage() {
                 logoBase64: newOrg.logoBase64,
                 fulldesc: newOrg.fulldesc,
                 location: newOrg.location,
-                email: newOrg.email,
+                email: newOrg.email.toLowerCase(),
                 websitelink: newOrg.websitelink,
                 leaders: [],
                 members: '',
