@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput, Keyboard, TouchableWithoutFeedback, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput, Keyboard, TouchableWithoutFeedback, Pressable, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { collection, getDocs, getDoc, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where, } from 'firebase/firestore';
 import { auth, firestore } from '../Firebase';
@@ -150,17 +150,6 @@ export default function ChatPage() {
 
       const chatDoc = await getDoc(chatRef);
       const chatData = chatDoc.data();
-      if (chatData && chatData.Users) {
-        const recipientId = Object.keys(chatData.Users).find(id => id !== currentUserId);
-
-        if (recipientId) {
-          await sendNotification({
-            userId: recipientId,
-            type: 'message',
-            content: `You have a new message from ${currentUserId}`,
-          });
-        }
-      }
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -259,7 +248,15 @@ export default function ChatPage() {
                             setSearchQuery(`${user.firstName} ${user.lastName}`);
                           }}
                         >
-                          <Text>{user.firstName} {user.lastName}</Text>
+                          <Image
+                            source={{ uri: user.profileImage }}
+                            style={styles.profileImage}
+                          />
+                          <View style={styles.userDetails}>
+                            <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
+                            <Text style={styles.courseYear}>{user.Course} {user.Year}</Text>
+                            <Text style={styles.email}>{user.email}</Text>
+                          </View>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -419,10 +416,43 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: '#fff',
   },
-  
   searchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    backgroundColor: '#ddd', 
+  },
+
+  userDetails: {
+    flex: 1,
+  },
+
+  name: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  courseYear: {
+    fontSize: 14,
+    color: '#444',
+    marginTop: 2,
+  },
+
+  email: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
 });
