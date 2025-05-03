@@ -5,6 +5,7 @@ import { auth, firestore } from '../Firebase';
 import Header from '../components/header';
 import { Card } from 'react-native-paper';
 import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
+import BottomNavBar from '../components/bottomNavBar';
 
 const NotificationScreen = () => {
   const [notifications, setNotifications] = useState([]);
@@ -40,13 +41,13 @@ const NotificationScreen = () => {
       case 'message':
         return <Ionicons name="chatbubble" size={20} color="red" />;
       case 'event':
-        return <MaterialIcons name="event" size={20} color="#red" />;
+        return <MaterialIcons name="event" size={20} color="red" />;
       case 'comment':
         return <FontAwesome5 name="comment" size={20} color="red" />;
       case 'follow':
         return <FontAwesome5 name="user-plus" size={20} color="red" />;        
       default:
-        return <Ionicons name="notifications" size={20} color="#aaa" />;
+        return <Ionicons name="notifications" size={20} color="red" />;
     }
   };
 
@@ -92,6 +93,7 @@ const NotificationScreen = () => {
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
       />
+      <BottomNavBar />
     </View>
   );
 };
@@ -100,7 +102,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 40,
   },
   titleRow: {
     flexDirection: 'row',

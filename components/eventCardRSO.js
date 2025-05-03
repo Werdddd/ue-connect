@@ -5,279 +5,258 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { firestore } from '../Firebase';
-import { doc, updateDoc, getDoc, deleteField, collection, where, getDocs, query } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, deleteField, collection, where, getDocs, query, addDoc, serverTimestamp } from 'firebase/firestore';
+
+
 export default function EventCardRSO({ event }) {
-    const [modalVisible, setModalVisible] = useState(false);
-    const [participantsModalVisible, setParticipantsModalVisible] = useState(false);
-    const [participants, setParticipants] = useState([]);
-    const [approvedCount, setApprovedCount] = useState(0);
-    const [appliedCount, setAppliedCount] = useState(0);
-    const [eventStatus, setEventStatus] = useState(event.status);
-    const markEventAsFinished = async () => {
-      try {
-        const eventRef = doc(firestore, 'events', event.id);
-        await updateDoc(eventRef, { status: 'Finished' });
-    
-        setEventStatus('Finished');
-        // Optional: Close modal or give feedback
-        alert('Event marked as Finished.');
-      } catch (error) {
-        console.error('Error updating event status:', error);
-      }
-    };
-    
-    const handleOpenEventModal = () => {
-      setModalVisible(true);
-    };
-  
-    const handleCloseEventModal = () => {
-      setModalVisible(false);
-    };
-  
-    const handleOpenParticipantsModal = () => {
-      setParticipantsModalVisible(true);
-      fetchParticipants();
-    };
-  
-    const handleCloseParticipantsModal = () => {
-      setParticipantsModalVisible(false);
-      setModalVisible(true);
-    };
-  
-    const getStatusStyle = (status) => {
-        switch (status) {
-            case 'Approved':
-                return { backgroundColor: 'green' };
-            case 'Rejected':
-                return { backgroundColor: 'red' };
-            case 'Finished':
-                return { backgroundColor: 'gray' };
-            case 'Applied':
-            default:
-                return { backgroundColor: 'orange' };
-        }
-    };
+  const [modalVisible, setModalVisible] = useState(false);
+  const [participantsModalVisible, setParticipantsModalVisible] = useState(false);
+  const [participants, setParticipants] = useState([]);
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [appliedCount, setAppliedCount] = useState(0);
+  const [eventStatus, setEventStatus] = useState(event.status);
 
-    const fetchParticipants = async () => {
-      try {
-        const eventRef = doc(firestore, 'events', event.id);
-        const eventDoc = await getDoc(eventRef);
-  
-        if (eventDoc.exists()) {
-          const data = eventDoc.data();
-          const participantsList = data.participantsList || {};
-  
-          const participantsArray = [];
-  
-          for (const safeEmailKey of Object.keys(participantsList)) {
-            const { name, status } = participantsList[safeEmailKey];
-  
-            // Convert safeEmailKey back to real email
-            const email = safeEmailKey.replace(/_/g, '.');
-  
-            participantsArray.push({
-              email,
-              name,
-              status: status || 'Applied', // Default status to "Applied"
-            });
-          }
-  
-          setParticipants(participantsArray);
-  
-          const applied = participantsArray.filter(p => p.status === 'Applied').length;
-          const approved = participantsArray.filter(p => p.status === 'Approved').length;
-  
-          setAppliedCount(applied);
-          setApprovedCount(approved);
-        }
-      } catch (error) {
-        console.error('Error fetching participants:', error);
-      }
-    };
-  
-    const handleStatusChange = async (email, action) => {
-        try {
-          const safeEmailKey = email.replace(/\./g, '_');
-          const eventRef = doc(firestore, 'events', event.id);
-      
-          if (action === 'Rejected') {
-            // Remove participant from event
-            await updateDoc(eventRef, {
-              [`participantsList.${safeEmailKey}`]: deleteField(),
-            });
-      
-            // Update local state
-            const updated = participants.filter(p => p.email !== email);
-            setParticipants(updated);
-            setAppliedCount(prev => Math.max(0, prev - 1));
-      
-          } else if (action === 'Approved') {
-            // Update status to "Approved"
-            await updateDoc(eventRef, {
-              [`participantsList.${safeEmailKey}.status`]: 'Approved',
-            });
-      
-            // Update local state
-            const updated = participants.map(p => {
-              if (p.email === email && p.status !== 'Approved') {
-                return { ...p, status: 'Approved' };
-              }
-              return p;
-            });
-            setParticipants(updated);
-            setAppliedCount(prev => Math.max(0, prev - 1));
-          }
-      
-          // Recalculate approved count and update in Firestore
-          const updatedDoc = await getDoc(eventRef);
-          const updatedList = updatedDoc.data()?.participantsList || {};
-          const newApprovedCount = Object.values(updatedList).filter(p => p.status === 'Approved').length;
-      
-          setApprovedCount(newApprovedCount);
-      
-          // Update participants (number) field in Firestore
-          await updateDoc(eventRef, {
-            participants: newApprovedCount,
+  const markEventAsFinished = async () => {
+    try {
+      const eventRef = doc(firestore, 'events', event.id);
+      await updateDoc(eventRef, { status: 'Finished' });
+
+      setEventStatus('Finished');
+      alert('Event marked as Finished.');
+    } catch (error) {
+      console.error('Error updating event status:', error);
+    }
+  };
+
+  const handleOpenEventModal = () => {
+    setModalVisible(true);
+  };
+
+  const handleCloseEventModal = () => {
+    setModalVisible(false);
+  };
+
+  const handleOpenParticipantsModal = () => {
+    setParticipantsModalVisible(true);
+    fetchParticipants();
+  };
+
+  const handleCloseParticipantsModal = () => {
+    setParticipantsModalVisible(false);
+    setModalVisible(true);
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'Approved':
+        return { backgroundColor: 'green' };
+      case 'Rejected':
+        return { backgroundColor: 'red' };
+      case 'Finished':
+        return { backgroundColor: 'gray' };
+      case 'Applied':
+      default:
+        return { backgroundColor: 'orange' };
+    }
+  };
+
+  const fetchParticipants = async () => {
+    try {
+      const eventRef = doc(firestore, 'events', event.id);
+      const eventDoc = await getDoc(eventRef);
+
+      if (eventDoc.exists()) {
+        const data = eventDoc.data();
+        const participantsList = data.participantsList || {};
+        const participantsArray = [];
+
+        for (const safeEmailKey of Object.keys(participantsList)) {
+          const { name, status } = participantsList[safeEmailKey];
+          const email = safeEmailKey.replace(/_/g, '.');
+          participantsArray.push({
+            email,
+            name,
+            status: status || 'Applied',
           });
-      
-        } catch (error) {
-          console.error('Error updating participant status:', error);
         }
-      };
-      
-      
-  
-    return (
-      <View>
-        {/* Event Card */}
-        <TouchableOpacity style={styles.card} onPress={handleOpenEventModal}>
-          {event.banner && (
-            <Image
-              source={{ uri: event.banner }}
-              style={styles.banner}
-              resizeMode="cover"
-            />
-          )}
-          <View style={styles.infoContainer}>
-            <View style={styles.headerRow}>
-              <Image source={event.seal} style={styles.seal} />
-              <View style={styles.titleDateContainer}>
-                <Text style={styles.title}>{event.title}</Text>
-                <Text style={styles.date}>{event.date}</Text>
-              </View>
-            </View>
-            <Text style={styles.description}>{event.description}</Text>
-            <Text style={styles.Participants}>Participants: {approvedCount}</Text>
-            <View style={styles.buttonRow}>
-              <Text style={[styles.status, getStatusStyle(event.status)]}>
-                {event.status}
-              </Text>
+
+        setParticipants(participantsArray);
+        const applied = participantsArray.filter(p => p.status === 'Applied').length;
+        const approved = participantsArray.filter(p => p.status === 'Approved').length;
+
+        setAppliedCount(applied);
+        setApprovedCount(approved);
+      }
+    } catch (error) {
+      console.error('Error fetching participants:', error);
+    }
+  };
+
+  const handleStatusChange = async (email, action) => {
+    try {
+      const safeEmailKey = email.replace(/\./g, '_');
+      const eventRef = doc(firestore, 'events', event.id);
+
+      if (action === 'Rejected') {
+        await updateDoc(eventRef, {
+          [`participantsList.${safeEmailKey}`]: deleteField(),
+        });
+
+        const updated = participants.filter(p => p.email !== email);
+        setParticipants(updated);
+        setAppliedCount(prev => Math.max(0, prev - 1));
+
+      } else if (action === 'Approved') {
+        await updateDoc(eventRef, {
+          [`participantsList.${safeEmailKey}.status`]: 'Approved',
+        });
+
+        const updated = participants.map(p => {
+          if (p.email === email && p.status !== 'Approved') {
+            return { ...p, status: 'Approved' };
+          }
+          return p;
+        });
+        setParticipants(updated);
+        setAppliedCount(prev => Math.max(0, prev - 1));
+
+        // ✅ Send in-app notification
+// ✅ Send in-app notification with correct structure
+      await addDoc(collection(firestore, 'notifications'), {
+        userId: email, // this is the full email like "user@example.com"
+        type: 'event',
+        content: `Your request to join the event "${event.title}" has been approved.`,
+        timestamp: serverTimestamp(),
+        read: false
+      });
+      }
+
+      const updatedDoc = await getDoc(eventRef);
+      const updatedList = updatedDoc.data()?.participantsList || {};
+      const newApprovedCount = Object.values(updatedList).filter(p => p.status === 'Approved').length;
+
+      setApprovedCount(newApprovedCount);
+
+      await updateDoc(eventRef, {
+        participants: newApprovedCount,
+      });
+
+    } catch (error) {
+      console.error('Error updating participant status:', error);
+    }
+  };
+
+  return (
+    <View>
+      <TouchableOpacity style={styles.card} onPress={handleOpenEventModal}>
+        {event.banner && (
+          <Image source={{ uri: event.banner }} style={styles.banner} resizeMode="cover" />
+        )}
+        <View style={styles.infoContainer}>
+          <View style={styles.headerRow}>
+            <Image source={event.seal} style={styles.seal} />
+            <View style={styles.titleDateContainer}>
+              <Text style={styles.title}>{event.title}</Text>
+              <Text style={styles.date}>{event.date}</Text>
             </View>
           </View>
-        </TouchableOpacity>
-  
-        {/* Modal for Event Details */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={handleCloseEventModal}
-        >
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <TouchableOpacity style={styles.closeButton} onPress={handleCloseEventModal}>
-                <Ionicons name="close" size={30} color="#333" />
-              </TouchableOpacity>
-  
-              <ScrollView contentContainerStyle={styles.modalContent}>
+          <Text style={styles.description}>{event.description}</Text>
+          <Text style={styles.Participants}>Participants: {approvedCount}</Text>
+          <View style={styles.buttonRow}>
+            <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {/* Modal for Event Details */}
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={handleCloseEventModal}>
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <TouchableOpacity style={styles.closeButton} onPress={handleCloseEventModal}>
+              <Ionicons name="close" size={30} color="#333" />
+            </TouchableOpacity>
+
+            <ScrollView contentContainerStyle={styles.modalContent}>
               {event.banner && (
-                    <Image
-                    source={{ uri: event.banner }}
-                    style={styles.banner}
-                    resizeMode="cover"
-                    />
-                )}
-                <Text style={styles.modalTitle}>{event.title}</Text>
-                <View style={styles.dateTimeContainer}>
-                  <Text style={styles.modalDate}>{event.date}</Text>
-                  <Text style={styles.modalTime}>{event.time}</Text>
-                </View>
-                <Text style={styles.modalDescription}>{event.description}</Text>
-                <Text style={styles.modalLocation}>Location: {event.location}</Text>
-  
-                <TouchableOpacity style={styles.viewParticipantsButton} onPress={handleOpenParticipantsModal}>
-                  <Text style={styles.viewParticipantsText}>View Participants</Text>
-                </TouchableOpacity>
-                
-                <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
-
-                {eventStatus === 'Approved' && (
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: '#fff',
-                      borderWidth: 1,
-                      borderColor: '#FF0000',
-                      padding: 10,
-                      borderRadius: 5,
-                      marginTop: 15,
-                    }}
-                    onPress={markEventAsFinished}
-                  >
-                    <Text style={{ color: '#ff0000', textAlign: 'center' }}>
-                      Mark as Finished?
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-              </ScrollView>
-            </View>
-  
-            {/* Participants Modal */}
-            {participantsModalVisible && (
-              <View style={styles.stackedModalOverlay}>
-                <View style={styles.modalContainerParticipants}>
-                  <TouchableOpacity style={styles.closeButton} onPress={handleCloseParticipantsModal}>
-                    <Ionicons name="close" size={30} color="#333" />
-                  </TouchableOpacity>
-  
-                  <ScrollView contentContainerStyle={styles.modalContentParticipants}>
-                    <Text style={styles.eventPartiHeader}>Event Participants</Text>
-                    <View style={styles.breakdownRow}>
-                      <Text style={styles.breakdownText}>Applications: {appliedCount}</Text>
-                      <Text style={styles.breakdownText}>Approved: {approvedCount}</Text>
-                    </View>
-                    <View style={styles.underline} />
-  
-                    {participants.length === 0 ? (
-                      <Text>No participants yet.</Text>
-                    ) : (
-                      participants.map((participant) => (
-                        <View key={participant.email} style={styles.participantRow}>
-                          <View style={styles.nameEmailRow}>
-                            <Text style={styles.participantName}>{participant.name}</Text>
-                            <Text style={styles.participantEmail}>{participant.email}</Text>
-                          </View>
-                          <View style={styles.iconButtons}>
-                            <TouchableOpacity onPress={() => handleStatusChange(participant.email, 'Approved')}>
-                              <Ionicons name="checkmark-circle-outline" size={24} color="green" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => handleStatusChange(participant.email, 'Rejected')}>
-                              <Ionicons name="close-circle-outline" size={24} color="red" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      ))
-                    )}
-                  </ScrollView>
-                </View>
+                <Image source={{ uri: event.banner }} style={styles.banner} resizeMode="cover" />
+              )}
+              <Text style={styles.modalTitle}>{event.title}</Text>
+              <View style={styles.dateTimeContainer}>
+                <Text style={styles.modalDate}>{event.date}</Text>
+                <Text style={styles.modalTime}>{event.time}</Text>
               </View>
-            )}
+              <Text style={styles.modalDescription}>{event.description}</Text>
+              <Text style={styles.modalLocation}>Location: {event.location}</Text>
+
+              <TouchableOpacity style={styles.viewParticipantsButton} onPress={handleOpenParticipantsModal}>
+                <Text style={styles.viewParticipantsText}>View Participants</Text>
+              </TouchableOpacity>
+
+              <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
+
+              {eventStatus === 'Approved' && (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#fff',
+                    borderWidth: 1,
+                    borderColor: '#FF0000',
+                    padding: 10,
+                    borderRadius: 5,
+                    marginTop: 15,
+                  }}
+                  onPress={markEventAsFinished}
+                >
+                  <Text style={{ color: '#ff0000', textAlign: 'center' }}>Mark as Finished?</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
           </View>
-        </Modal>
-      </View>
-    );
-  }
-  
+
+          {/* Participants Modal */}
+          {participantsModalVisible && (
+            <View style={styles.stackedModalOverlay}>
+              <View style={styles.modalContainerParticipants}>
+                <TouchableOpacity style={styles.closeButton} onPress={handleCloseParticipantsModal}>
+                  <Ionicons name="close" size={30} color="#333" />
+                </TouchableOpacity>
+
+                <ScrollView contentContainerStyle={styles.modalContentParticipants}>
+                  <Text style={styles.eventPartiHeader}>Event Participants</Text>
+                  <View style={styles.breakdownRow}>
+                    <Text style={styles.breakdownText}>Applications: {appliedCount}</Text>
+                    <Text style={styles.breakdownText}>Approved: {approvedCount}</Text>
+                  </View>
+                  <View style={styles.underline} />
+
+                  {participants.length === 0 ? (
+                    <Text>No participants yet.</Text>
+                  ) : (
+                    participants.map((participant) => (
+                      <View key={participant.email} style={styles.participantRow}>
+                        <View style={styles.nameEmailRow}>
+                          <Text style={styles.participantName}>{participant.name}</Text>
+                          <Text style={styles.participantEmail}>{participant.email}</Text>
+                        </View>
+                        <View style={styles.iconButtons}>
+                          <TouchableOpacity onPress={() => handleStatusChange(participant.email, 'Approved')}>
+                            <Ionicons name="checkmark-circle-outline" size={24} color="green" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleStatusChange(participant.email, 'Rejected')}>
+                            <Ionicons name="close-circle-outline" size={24} color="red" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+              </View>
+            </View>
+          )}
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
     card: {

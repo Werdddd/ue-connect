@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Button, Modal, Platform} from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  Button,
+  Modal,
+  Platform,
+} from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native'; 
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
-  const navigation = useNavigation(); 
+  const navigation = useNavigation();
+  const route = useRoute(); // Access current route
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [text, setText] = useState('');
@@ -16,35 +27,46 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
   const closeSearch = () => {
     setIsSearchActive(false);
     setSearchQuery('');
-  }
+  };
 
   const handleSearch = (query) => {
     setSearchQuery(query);
-    const filtered = posts.filter(post =>
-      post?.title?.toLowerCase().includes(query.toLowerCase()) ||
-      post?.content?.toLowerCase().includes(query.toLowerCase())
+    const filtered = posts.filter(
+      (post) =>
+        post?.title?.toLowerCase().includes(query.toLowerCase()) ||
+        post?.content?.toLowerCase().includes(query.toLowerCase())
     );
     setFilteredPosts(filtered);
   };
 
   return (
     <View style={[styles.header, scrollY > 0 && styles.headerShadow]}>
-      <View style={styles.leftSection}>
-        <Image
-          source={require('../assets/logo.png')}
-          style={styles.logo}
-        />
+      <TouchableOpacity style={styles.leftSection} onPress={() => navigation.navigate('Home')}>
+        <Image source={require('../assets/logo.png')} style={styles.logo} />
         <Text style={styles.title}>UE Connect</Text>
-      </View>
+      </TouchableOpacity>
+
       <View style={styles.rightSection}>
         <TouchableOpacity onPress={openSearch}>
           <Feather name="search" size={24} color="black" style={styles.icon} />
         </TouchableOpacity>
+
         <TouchableOpacity onPress={() => navigation.navigate('NotificationScreen')}>
-          <Ionicons name="notifications-outline" size={24} color="black" style={styles.icon} />
+          <Ionicons
+            name="notifications-outline"
+            size={24}
+            color={route.name === 'NotificationScreen' ? '#E50914' : 'black'}
+            style={styles.icon}
+          />
         </TouchableOpacity>
+
         <TouchableOpacity onPress={() => navigation.navigate('ChatPage')}>
-          <Ionicons name="chatbubble-ellipses-outline" size={24} color="black" style={styles.icon} />
+          <Ionicons
+            name="chatbubble-ellipses-outline"
+            size={24}
+            color={route.name === 'ChatPage' ? '#E50914' : 'black'}
+            style={styles.icon}
+          />
         </TouchableOpacity>
       </View>
 
@@ -57,11 +79,7 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
         />
       )}
 
-      <Modal
-        visible={isSearchActive}
-        transparent
-        animationType="fade"
-      >
+      <Modal visible={isSearchActive} transparent animationType="fade">
         <View style={styles.overlay}>
           <View style={styles.modalBox}>
             <TextInput
@@ -70,13 +88,14 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
               value={text}
               onChangeText={setText}
             />
-            <Button 
-            title="Search"
-            onPress={() => {
-              closeSearch();
-              navigation.navigate('searchResult', { searchText: text });
-              setText(''); 
-            }}/>
+            <Button
+              title="Search"
+              onPress={() => {
+                closeSearch();
+                navigation.navigate('searchResult', { searchText: text });
+                setText('');
+              }}
+            />
           </View>
         </View>
       </Modal>
