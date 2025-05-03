@@ -26,7 +26,6 @@ const NotificationScreen = () => {
         ...doc.data()
       }));
 
-      console.log('Fetched notifications:', fetchedNotifications);
 
       setNotifications(fetchedNotifications);
     });

@@ -287,6 +287,23 @@ const fetchNewsfeed = async () => {
   
       // Reset the comment input field
       setCommentText('');
+
+      const postRef = doc(firestore, 'newsfeed', selectedPostId);
+      const postSnap = await getDoc(postRef);
+  
+      if (postSnap.exists()) {
+        const postData = postSnap.data();
+        const postOwner = postData.userId;
+  
+        // Avoid notifying yourself
+        if (postOwner && postOwner !== currentUserEmail) {
+          await sendNotification({
+            userId: postOwner,
+            type: 'comment',
+            content: `${userName} commented on your post.`,
+          });
+        }
+      }
   
       // Immediately re-fetch the comments for the selected post to update the UI
       fetchComments(selectedPostId); // Custom function to fetch comments
