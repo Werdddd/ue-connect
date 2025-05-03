@@ -66,7 +66,6 @@ export default function OrganizationBar({ onSelectDepartment }) {
 
 
 
-
                 {/* Add Org logos here, Orgname must be unique para di mag error*/}
                 {/* After mag add dito, go to organizationPage, then add org sa function, follow format*/}
             </ScrollView>
@@ -99,7 +98,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 10,
-        elevation: 2,
     },
     selectedColumn: {
         borderBottomWidth: 3,

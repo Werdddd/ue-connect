@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     },
     underline: {
         alignSelf: 'center',
-        height: 1,
+        height: 2,
         backgroundColor: '#E50914',
         width: '100%',
         marginTop: 2,

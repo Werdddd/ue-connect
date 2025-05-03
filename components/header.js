@@ -75,7 +75,7 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
             onPress={() => {
               closeSearch();
               navigation.navigate('searchResult', { searchText: text });
-              setText(''); // ✅ Clear the input after search
+              setText(''); 
             }}/>
           </View>
         </View>
