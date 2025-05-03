@@ -3,7 +3,7 @@ import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { firestore } from '../Firebase'; // adjust to your setup
 import { sendNotification } from '../Backend/notifications'; // adjust path as needed
 
-export const followUser = async (currentUserEmail, recipientEmail, user) => {
+export const followUser = async (currentUserEmail, recipientEmail, userName) => {
   try {
     const currentUserRef = doc(firestore, 'Users', currentUserEmail);
     const recipientRef = doc(firestore, 'Users', recipientEmail);
@@ -29,7 +29,7 @@ export const followUser = async (currentUserEmail, recipientEmail, user) => {
     await sendNotification({
       userId: recipientEmail,
       type: 'follow',
-      content: `${user} started following you.`,
+      content: `${userName} started following you.`,
     });
 
     return { success: true };
