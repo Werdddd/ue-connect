@@ -38,9 +38,13 @@ const NotificationScreen = () => {
       case 'like':
         return <FontAwesome5 name="heart" size={20} color="red" />;
       case 'message':
-        return <Ionicons name="chatbubble" size={20} color="#007AFF" />;
+        return <Ionicons name="chatbubble" size={20} color="red" />;
       case 'event':
-        return <MaterialIcons name="event" size={20} color="#34C759" />;
+        return <MaterialIcons name="event" size={20} color="#red" />;
+      case 'comment':
+        return <FontAwesome5 name="comment" size={20} color="red" />;
+      case 'follow':
+        return <FontAwesome5 name="user-plus" size={20} color="red" />;        
       default:
         return <Ionicons name="notifications" size={20} color="#aaa" />;
     }
