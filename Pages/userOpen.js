@@ -34,6 +34,7 @@ export default function UserOwnProfilePage() {
     const [following, setFollowing] = useState(0);
     const [followers, setFollowers] = useState(0);
     const [organization, setOrganization] = useState(0);
+    const [member, setMember] = useState(0);
     const [group, setGroup] = useState(false);
     const [userPosts, setUserPosts] = useState([]);
     const route = useRoute();
@@ -86,6 +87,26 @@ export default function UserOwnProfilePage() {
             setOrganization(data.orgs?.length || 0);
             setGroup(data.group);
             setFollowed(data.followers?.includes(currentUserEmail));
+            if (data.group) {
+                (async () => {
+                  try {
+                    const orgsRef = collection(firestore, 'organizations');
+                    const q = query(orgsRef, where('email', '==', userEmail));
+                    const querySnapshot = await getDocs(q);
+                    //console.log(userEmail);
+                    
+                    if (!querySnapshot.empty) {
+                      const orgData = querySnapshot.docs[0].data();
+                      setMember(orgData.members.length);
+                      //console.log("Organization found:", orgData.location); // or any other field
+                    } else {
+                      console.log("No organization found with that email.");
+                    }
+                  } catch (err) {
+                    console.error("Failed to fetch extra user data:", err);
+                  }
+                })();
+              }
         } else {
             console.log('No such user document!');
         }
@@ -97,6 +118,7 @@ export default function UserOwnProfilePage() {
     if (userEmail && currentUserEmail) {
         subscribeToProfile();
         fetchUserPosts(); // Still OK to run once here
+        //console.log("name", name);
     }
     
     return () => {
@@ -233,19 +255,19 @@ export default function UserOwnProfilePage() {
                                     />
 
                                     <Text style={styles.userName}>
-                                        {name.firstName && name.lastName
-                                            ? `${name.firstName} ${name.lastName}`
-                                            : 'Your Name'}
+                                    {name.firstName || name.lastName
+                                    ? `${name.firstName} ${name.lastName}`.trim()
+                                    : 'Unknown'}
                                     </Text>
                                     <View style={styles.followDataRow}>
                                         <Text style={styles.textsNumber1}>{following}</Text>
                                         <Text style={styles.textsNumber2}>{followers}</Text>
-                                        <Text style={styles.textsNumber3}>{organization}</Text>
+                                        <Text style={styles.textsNumber3}>{group ? member : organization}</Text>
                                     </View>
                                     <View style={styles.followDetailRow}>
                                         <Text style={styles.texts}>{'Following'}</Text>
                                         <Text style={styles.texts}>{'Followers'}</Text>
-                                        <Text style={styles.texts}>{'Organizations'}</Text>
+                                        <Text style={styles.texts}>{group ? 'Members' : 'Organizations'}</Text>
                                     </View>
                                     {!group && (
                                     <View style={styles.infoDetailRow}>
