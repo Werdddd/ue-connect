@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 
 export default function ChatPage() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [messageText, setMessageText] = useState('');
   const [Users, setUsers] = useState([]);
@@ -235,21 +236,35 @@ export default function ChatPage() {
                   <Text style={styles.modalTitle}>Start a New Conversation</Text>
 
                   <Text style={styles.label}>Select Recipient:</Text>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={selectedUserId}
-                      onValueChange={(itemValue) => setSelectedUserId(itemValue)}
-                    >
-                      <Picker.Item label="Select a user..." value="" />
-                      {Users.filter(u => u.id !== currentUserId).map(user => (
-                        <Picker.Item
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search for a user..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+
+                  {searchQuery.length > 0 && (
+                    <ScrollView style={styles.searchResults}>
+                      {Users.filter(user =>
+                        user.id !== currentUserId &&
+                        (`${user.firstName} ${user.lastName}`)
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase())
+                      ).map(user => (
+                        <TouchableOpacity
                           key={user.id}
-                          label={`${user.firstName} ${user.lastName}`}
-                          value={user.id}
-                        />
+                          style={styles.searchItem}
+                          onPress={() => {
+                            setSelectedUserId(user.id);
+                            setSearchQuery(`${user.firstName} ${user.lastName}`);
+                          }}
+                        >
+                          <Text>{user.firstName} {user.lastName}</Text>
+                        </TouchableOpacity>
                       ))}
-                    </Picker>
-                  </View>
+                    </ScrollView>
+                  )}
+
 
                   <Text style={styles.label}>Message:</Text>
                   <TextInput
@@ -388,5 +403,26 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#E50914',
     fontWeight: 'bold',
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  searchResults: {
+    maxHeight: 150,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  
+  searchItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
 });
