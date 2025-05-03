@@ -198,7 +198,7 @@ export default function UserOwnProfilePage() {
                 >
                     <View style={styles.container}>
                         <Header scrollY={scrollY} />
-                        <TouchableWithoutFeedback onPress={() => setShowOptions(null)}>
+                        <TouchableWithoutFeedback>
                             <ScrollView
                                 keyboardShouldPersistTaps="handled"
                                 onScroll={(event) => {
