@@ -18,6 +18,7 @@ export default function ChatPage() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const navigation = useNavigation();
   const [messages, setMessages] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -67,7 +68,13 @@ export default function ChatPage() {
     setSelectedUserId('');
     setMessageText('');
   };
-
+  const filteredUsers = searchTerm.trim()
+  ? Users.filter(user =>
+      `${user.firstName} ${user.lastName}`
+        .toLowerCase()
+        .includes(searchTerm.trim().toLowerCase())
+    )
+  : Users;
   const handleStartConversation = async () => {
     if (!selectedUserId || !messageText.trim() || !currentUserId) return;
 
@@ -185,7 +192,7 @@ export default function ChatPage() {
                 </TouchableOpacity>
               </View>
 
-              {chats.length > 0 ? (
+              {filte.length > 0 ? (
                 chats.map(chat => {
                   const otherUser = getOtherUserInfo(chat);
                   return (
