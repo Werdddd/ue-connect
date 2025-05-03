@@ -34,18 +34,33 @@ export default function OrganizationBar({ onSelectDepartment }) {
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                    style={[styles.column, selectedDepartment === 'GDSC' && styles.selectedColumn]} 
-                    onPress={() => handleSelect('GDSC')}
+                    style={[styles.column, selectedDepartment === 'COE' && styles.selectedColumn]} 
+                    onPress={() => handleSelect('COE')}
                 >
-                    <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
+                    <Image source={require('../assets/coeLogo.jpg')} style={styles.orglogo} />
                 </TouchableOpacity>
                 
+                <TouchableOpacity 
+                    style={[styles.column, selectedDepartment === 'CAS' && styles.selectedColumn]} 
+                    onPress={() => handleSelect('CAS')}
+                >
+                    <Image source={require('../assets/casLogo.jpg')} style={styles.orglogo} />
+                </TouchableOpacity>
+
                 <TouchableOpacity 
                     style={[styles.column, selectedDepartment === 'CFAD' && styles.selectedColumn]} 
                     onPress={() => handleSelect('CFAD')}
                 >
-                    <Image source={require('../assets/cscLogo.png')} style={styles.orglogo} />
+                    <Image source={require('../assets/cfadLogo.jpg')} style={styles.orglogo} />
                 </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.column, selectedDepartment === 'CBA' && styles.selectedColumn]} 
+                    onPress={() => handleSelect('CBA')}
+                >
+                    <Image source={require('../assets/cbaLogo.png')} style={styles.orglogo} />
+                </TouchableOpacity>
+
 
 
 

@@ -12,7 +12,7 @@ import Home from './Pages/home.js';
 import Template from './Pages/templatePage.js';
 import OrganizationPage from './Pages/organizationPage.js';
 import OrganizationPageRSO from './Pages/organizationPageRSO.js';
-import OrganizationPageSAO from './Pages/organizationPageRSO.js';
+import OrganizationPageSAO from './Pages/organizationPageSAO.js';
 import Events from './Pages/eventPage.js';
 import Settings from './Pages/settings.js';
 import OrgProfilePage from './Pages/orgProfilePage.js';

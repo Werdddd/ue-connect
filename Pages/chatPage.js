@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput, Keyboard, TouchableWithoutFeedback, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput, Keyboard, TouchableWithoutFeedback, Pressable, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { collection, getDocs, getDoc, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where, } from 'firebase/firestore';
 import { auth, firestore } from '../Firebase';
@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 
 export default function ChatPage() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [messageText, setMessageText] = useState('');
   const [Users, setUsers] = useState([]);
@@ -17,6 +18,7 @@ export default function ChatPage() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const navigation = useNavigation();
   const [messages, setMessages] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -66,7 +68,13 @@ export default function ChatPage() {
     setSelectedUserId('');
     setMessageText('');
   };
-
+  const filteredUsers = searchTerm.trim()
+  ? Users.filter(user =>
+      `${user.firstName} ${user.lastName}`
+        .toLowerCase()
+        .includes(searchTerm.trim().toLowerCase())
+    )
+  : Users;
   const handleStartConversation = async () => {
     if (!selectedUserId || !messageText.trim() || !currentUserId) return;
 
@@ -149,17 +157,6 @@ export default function ChatPage() {
 
       const chatDoc = await getDoc(chatRef);
       const chatData = chatDoc.data();
-      if (chatData && chatData.Users) {
-        const recipientId = Object.keys(chatData.Users).find(id => id !== currentUserId);
-
-        if (recipientId) {
-          await sendNotification({
-            userId: recipientId,
-            type: 'message',
-            content: `You have a new message from ${currentUserId}`,
-          });
-        }
-      }
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -195,7 +192,7 @@ export default function ChatPage() {
                 </TouchableOpacity>
               </View>
 
-              {chats.length > 0 ? (
+              {filte.length > 0 ? (
                 chats.map(chat => {
                   const otherUser = getOtherUserInfo(chat);
                   return (
@@ -235,21 +232,43 @@ export default function ChatPage() {
                   <Text style={styles.modalTitle}>Start a New Conversation</Text>
 
                   <Text style={styles.label}>Select Recipient:</Text>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={selectedUserId}
-                      onValueChange={(itemValue) => setSelectedUserId(itemValue)}
-                    >
-                      <Picker.Item label="Select a user..." value="" />
-                      {Users.filter(u => u.id !== currentUserId).map(user => (
-                        <Picker.Item
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search for a user..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+
+                  {searchQuery.length > 0 && (
+                    <ScrollView style={styles.searchResults}>
+                      {Users.filter(user =>
+                        user.id !== currentUserId &&
+                        (`${user.firstName} ${user.lastName}`)
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase())
+                      ).map(user => (
+                        <TouchableOpacity
                           key={user.id}
-                          label={`${user.firstName} ${user.lastName}`}
-                          value={user.id}
-                        />
+                          style={styles.searchItem}
+                          onPress={() => {
+                            setSelectedUserId(user.id);
+                            setSearchQuery(`${user.firstName} ${user.lastName}`);
+                          }}
+                        >
+                          <Image
+                            source={{ uri: user.profileImage }}
+                            style={styles.profileImage}
+                          />
+                          <View style={styles.userDetails}>
+                            <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
+                            <Text style={styles.courseYear}>{user.Course} {user.Year}</Text>
+                            <Text style={styles.email}>{user.email}</Text>
+                          </View>
+                        </TouchableOpacity>
                       ))}
-                    </Picker>
-                  </View>
+                    </ScrollView>
+                  )}
+
 
                   <Text style={styles.label}>Message:</Text>
                   <TextInput
@@ -388,5 +407,59 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#E50914',
     fontWeight: 'bold',
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  searchResults: {
+    maxHeight: 150,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  searchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+
+  profileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    backgroundColor: '#ddd', 
+  },
+
+  userDetails: {
+    flex: 1,
+  },
+
+  name: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  courseYear: {
+    fontSize: 14,
+    color: '#444',
+    marginTop: 2,
+  },
+
+  email: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
 });

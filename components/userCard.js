@@ -7,7 +7,7 @@ import {
   Modal,
   FlatList,
   TextInput,
-  Button, ScrollView
+  Button, ScrollView, SafeAreaView, KeyboardAvoidingView, Platform
 } from "react-native";
 import { firestore } from "../Firebase";
 import {
@@ -159,20 +159,32 @@ export default function UserCard() {
 
   return (
     <>
-      <TextInput
-        value={searchText}
-        onChangeText={(text) => setSearchText(text)}  // Assuming `setSearchText` is passed or declared
-        onSubmitEditing={handleSearchSubmit}
-        placeholder="Search users..."
-      />
-
-      <FlatList
-        data={filteredUsers}  // Use filteredUsers instead of the original users
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
-        ListEmptyComponent={<Text>No users found.</Text>}
-      />
-      
+      <SafeAreaView style={{ flex: 1 }}>
+    <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : undefined}
+  >
+    <View style={{ padding: 10 }}>
+      {/* Styled Search Bar */}
+      <View style={styles.searchContainer}>
+        <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
+        <TextInput
+          value={searchText}
+          onChangeText={setSearchText}
+          onSubmitEditing={handleSearchSubmit}
+          placeholder="Search users..."
+          style={styles.searchInput}
+        />
+      </View>
+    </View>
+      {/* User List */}
+    <FlatList
+      data={filteredUsers}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={renderItem}
+      ListEmptyComponent={<Text style={{ textAlign: 'center' }}>No users found.</Text>}
+      contentContainerStyle={{ paddingBottom: 50 }}
+    />
       {/* Edit Modal */}
       <Modal visible={editModalVisible} transparent animationType="slide">
         <View style={styles.modalBackground}>
@@ -250,6 +262,8 @@ export default function UserCard() {
           </View>
         </View>
       </Modal>
+      </KeyboardAvoidingView>
+      </SafeAreaView>
     </>
   );
 }
@@ -377,5 +391,24 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     textAlign: "center",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    backgroundColor: "#f5f5f5",
+    marginBottom: 10,
+  },
+  
+  searchIcon: {
+    marginRight: 8,
+  },
+  
+  searchInput: {
+    flex: 1,
+    height: 40,
   },
 });

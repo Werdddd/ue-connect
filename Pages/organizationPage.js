@@ -126,10 +126,14 @@ export default function OrganizationPage() {
                 return 'All Organizations';
             case 'CSC':
                 return 'Central Student Council';
-            case 'GDSC':
-                return 'Google Developer Student Clubs';
+            case 'COE':
+                return 'College of Engineering';
+            case 'CAS':
+                return 'College of Arts and Sciences';
             case 'CFAD':
                 return 'College of Fine Arts and Design';
+            case 'CBA':
+                return 'College Business Administration';
             default:
                 return '';
         }

@@ -12,7 +12,7 @@ import { Image } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 
-export default function OrganizationPage() {
+export default function OrganizationPageSAO() {
     useEffect(() => {
         const fetchOrganizations = async () => {
             try {
