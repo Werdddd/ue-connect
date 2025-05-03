@@ -6,6 +6,7 @@ import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import OrganizationCard from '../components/organizationCard';
 import { addOrganization, getOrganizations } from '../Backend/organizationHandler';
+import { getAllUsers } from '../Backend/organizationHandler';
 import { useEffect } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
@@ -13,6 +14,23 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 
 export default function OrganizationPageSAO() {
+
+    const [usersList, setUsersList] = useState([]);
+const [leadersModalVisible, setLeadersModalVisible] = useState(false);
+const [selectedLeaders, setSelectedLeaders] = useState([]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            const users = await getAllUsers();
+            setUsersList(users);
+        };
+        fetchUsers();
+    }, []);
+    useEffect(() => {
+        if (!isModalVisible) {
+            setSelectedLeaders([]);
+        }
+    }, [isModalVisible]);
     useEffect(() => {
         const fetchOrganizations = async () => {
             try {
@@ -100,9 +118,10 @@ export default function OrganizationPageSAO() {
                 location: newOrg.location,
                 email: newOrg.email.toLowerCase(),
                 websitelink: newOrg.websitelink,
-                leaders: [],
+                leaders: selectedLeaders,
                 members: '',
-                followers: ''
+                followers: '',
+                
             };
 
             await addOrganization(newOrgData);
@@ -173,7 +192,8 @@ export default function OrganizationPageSAO() {
                         })}
                     <TouchableOpacity
                         style={styles.plusButton}
-                        onPress={() => setModalVisible(true)}
+                        onPress={() => {setModalVisible(true); setSelectedLeaders([])}}
+                        
                     >
                         <Text style={styles.plusText}>＋</Text>
                     </TouchableOpacity>
@@ -224,42 +244,94 @@ export default function OrganizationPageSAO() {
                                     onChangeText={(text) => setNewOrg({ ...newOrg, location: text })}
                                 />
                                 
+                                
                                 <TextInput
-                                    placeholder="Email"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.email}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, email: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Website (Optional)"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.websitelink}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, websitelink: text })}
-                                />
-
-                                <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
-                                    <Text style={styles.pickImageButtonText}>Pick Logo</Text>
-                                </TouchableOpacity>
-                                {(newOrg.logoUri || newOrg.logoBase64) && (
-                                    <Image
-                                        source={{ uri: newOrg.logoBase64 || newOrg.logoUri }}
-                                        style={{ width: 50, height: 50, marginVertical: 10, alignSelf: 'center' }}
-                                        resizeMode="contain"
+                                        placeholder="Email"
+                                        style={[styles.input, { height: 40}]}
+                                        multiline
+                                        value={newOrg.email}
+                                        onChangeText={(text) => setNewOrg({ ...newOrg, email: text })}
                                     />
-                                )}
-                                <TouchableOpacity style={styles.addButton} onPress={handleAddOrganization}>
-                                    <Text style={styles.addButtonText}>Add Organization</Text>
-                                </TouchableOpacity>
+                                <TextInput
+                                        placeholder="Website (Optional)"
+                                        style={[styles.input, { height: 40}]}
+                                        multiline
+                                        value={newOrg.websitelink}
+                                        onChangeText={(text) => setNewOrg({ ...newOrg, websitelink: text })}
+                                    />
+                               
+                                <View style={{ flexDirection: 'row', gap: 10, marginVertical: 10 }}>
+                                    <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
+                                        <Text style={styles.pickImageButtonText}>Pick Logo</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.pickImageButton} onPress={() => setLeadersModalVisible(true)}>
+                                        <Text style={styles.pickImageButtonText}>Add Leaders</Text>
+                                    </TouchableOpacity>
+                                </View>
 
-                                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    {(newOrg.logoUri || newOrg.logoBase64) && (
+                                        <Image
+                                            source={{ uri: newOrg.logoBase64 || newOrg.logoUri }}
+                                            style={{ width: 50, height: 50, marginVertical: 10, alignSelf: 'center' }}
+                                            resizeMode="contain"
+                                        />
+                                    )}
+                                    <View style={{ flexDirection: 'row', gap: 10 }}> 
+                                    <TouchableOpacity style={styles.addButton} onPress={handleAddOrganization}>
+                                        <Text style={styles.addButtonText}>Add Org</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+                                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    </View>
+                            </View>
+                        </View>
+                    </Modal>
+
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={leadersModalVisible}
+                        onRequestClose={() => setLeadersModalVisible(false)}
+                    >
+                        <View style={styles.modalBackground}>
+                            <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
+                                <Text style={styles.modalTitle}>Select Leaders</Text>
+                                <ScrollView>
+                                    {usersList.map((user, index) => (
+                                        <View key={index} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10, borderBottomWidth: 0.5 }}>
+                                            <Text style={{ flex: 1 }}>{user.email}</Text>
+                                            <TouchableOpacity
+                                                style={{
+                                                    backgroundColor: selectedLeaders.includes(user.email) ? '#ccc' : '#4CAF50',
+                                                    padding: 6,
+                                                    borderRadius: 5
+                                                }}
+                                                onPress={() => {
+                                                    if (selectedLeaders.includes(user.email)) {
+                                                        setSelectedLeaders(selectedLeaders.filter(e => e !== user.email));
+                                                    } else {
+                                                        setSelectedLeaders([...selectedLeaders, user.email]);
+                                                    }
+                                                }}
+                                            >
+                                                <Text style={{ color: 'white' }}>
+                                                    {selectedLeaders.includes(user.email) ? 'Added' : 'Add'}
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                                <TouchableOpacity style={[styles.doneButton, { marginTop: 10 }]} onPress={() => setLeadersModalVisible(false)}>
+                                    <Text style={styles.cancelButtonText}>Done</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     </Modal>
+
                 </ScrollView>
 
                 <BottomNavBar />
@@ -338,28 +410,47 @@ const styles = StyleSheet.create({
         marginVertical: 5,
     },
     addButton: {
-        backgroundColor: '#E50914',
+        backgroundColor: '#4CAF50',
         padding: 12,
         borderRadius: 5,
-        marginTop: 10,
+    
+        width: '48%'
     },
     addButtonText: {
         color: 'white',
         textAlign: 'center',
         fontWeight: 'bold',
     },
+    doneButton: {
+        backgroundColor: '#E50914',
+        padding: 8,
+        borderRadius: 5,
+        justifyContent: 'center',
+        width: '100%'
+    },
     cancelButton: {
-        padding: 10,
-        marginTop: 10,
+        backgroundColor: '#E50914',
+        padding: 12,
+        borderRadius: 5,
+        
+        width: '48%'
     },
     cancelButtonText: {
+        color: 'white',
         textAlign: 'center',
-        color: '#E50914',
+        fontWeight: 'bold',
     },
     pickImageButton: {
-        backgroundColor: '#E50914',
+        width: '48%',
         padding: 10,
         borderRadius: 5,
-        marginTop: 10,
+    
+        borderWidth: 1,
+        borderColor: '#E50914'
     },
+    pickImageButtonText:{
+        color: '#E50914',
+        textAlign: 'center',
+      
+    }
 });
