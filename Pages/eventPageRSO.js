@@ -317,7 +317,7 @@ export default function EventPageRSO() {
                                 <View style={styles.dateTimeColumn}>
                                     <Text style={styles.label}>Event Time</Text>
                                     <TextInput
-                                    placeholder="8:00 AM - 12:00 PM"
+                                    placeholder="8:00 - 10:00 AM"
                                     placeholderTextColor="#D3D3D3"
                                     style={styles.input}
                                     value={newTime}
