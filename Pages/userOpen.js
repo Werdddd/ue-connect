@@ -41,16 +41,30 @@ export default function UserOwnProfilePage() {
     const userEmail = postEmail;
     const [currentUserEmail, setCurrentUserEmail] = useState('')
     const [followed, setFollowed] = useState(false);
-    const [userName2, setUser] = useState('');
+    const [userName, setUser] = useState('');
 
 
 
     useEffect(() => {
-        const user = auth.currentUser;
-        if (user?.email) {
-          setCurrentUserEmail(user.email);
-          setUser(user.firstName,' ', user.lastName);
-        }
+        const fetchUser = async () => {
+          const user = auth.currentUser;
+          if (user?.email) {
+            setCurrentUserEmail(user.email);
+      
+            const userRef = doc(firestore, 'Users', user.email);
+            const userSnap = await getDoc(userRef);
+      
+            if (userSnap.exists()) {
+              const userData = userSnap.data();
+              setUser(`${userData.firstName} ${userData.lastName}`);
+              //console.log(`${userData.firstName} ${userData.lastName}`);
+            } else {
+              console.log('No such user document!');
+            }
+          }
+        };
+      
+        fetchUser();
       }, []);
       
 
@@ -129,7 +143,7 @@ export default function UserOwnProfilePage() {
                         if (userDoc.exists()) {
                             const u = userDoc.data();
 
-                            console.log("test");
+                            //console.log("test");
                             userProfile = {
                                 name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Anonymous',
                                 profileImage: u.profileImage
