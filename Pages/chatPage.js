@@ -69,12 +69,12 @@ export default function ChatPage() {
     setMessageText('');
   };
   const filteredUsers = searchTerm.trim()
-  ? Users.filter(user =>
+    ? Users.filter(user =>
       `${user.firstName} ${user.lastName}`
         .toLowerCase()
         .includes(searchTerm.trim().toLowerCase())
     )
-  : Users;
+    : Users;
   const handleStartConversation = async () => {
     if (!selectedUserId || !messageText.trim() || !currentUserId) return;
 
@@ -192,7 +192,7 @@ export default function ChatPage() {
                 </TouchableOpacity>
               </View>
 
-              {filte.length > 0 ? (
+              {chats.length > 0 ? (
                 chats.map(chat => {
                   const otherUser = getOtherUserInfo(chat);
                   return (
@@ -239,35 +239,33 @@ export default function ChatPage() {
                     onChangeText={setSearchQuery}
                   />
 
-                  {searchQuery.length > 0 && (
-                    <ScrollView style={styles.searchResults}>
-                      {Users.filter(user =>
-                        user.id !== currentUserId &&
-                        (`${user.firstName} ${user.lastName}`)
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase())
-                      ).map(user => (
-                        <TouchableOpacity
-                          key={user.id}
-                          style={styles.searchItem}
-                          onPress={() => {
-                            setSelectedUserId(user.id);
-                            setSearchQuery(`${user.firstName} ${user.lastName}`);
-                          }}
-                        >
-                          <Image
-                            source={{ uri: user.profileImage }}
-                            style={styles.profileImage}
-                          />
-                          <View style={styles.userDetails}>
-                            <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
-                            <Text style={styles.courseYear}>{user.Course} {user.Year}</Text>
-                            <Text style={styles.email}>{user.email}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  )}
+                  <ScrollView style={styles.searchResults}>
+                    {Users.filter(user =>
+                      user.id !== currentUserId &&
+                      (`${user.firstName} ${user.lastName}`)
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase())
+                    ).map(user => (
+                      <TouchableOpacity
+                        key={user.id}
+                        style={styles.searchItem}
+                        onPress={() => {
+                          setSelectedUserId(user.id);
+                          setSearchQuery(`${user.firstName} ${user.lastName}`);
+                        }}
+                      >
+                        <Image
+                          source={{ uri: user.profileImage }}
+                          style={styles.profileImage}
+                        />
+                        <View style={styles.userDetails}>
+                          <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
+                          <Text style={styles.courseYear}>{user.Course} {user.Year}</Text>
+                          <Text style={styles.email}>{user.email}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
 
 
                   <Text style={styles.label}>Message:</Text>
@@ -439,7 +437,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     marginRight: 12,
-    backgroundColor: '#ddd', 
+    backgroundColor: '#ddd',
   },
 
   userDetails: {
