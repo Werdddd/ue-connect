@@ -235,6 +235,7 @@ const styles = StyleSheet.create({
   headerUserInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingRight: 80,
   },
   profileImage: {
     width: 40,
