@@ -73,10 +73,10 @@ export default function ConversationPage() {
             key={message.id}
             style={[
               styles.messageBubble,
-              message.senderId === currentUserId ? styles.sentMessage : styles.receivedMessage,
+              message.senderId != currentUserId ? styles.sentMessage : styles.receivedMessage,
             ]}
           >
-            <Text style={[styles.messageText, message.senderId === currentUserId ? { color: '#fff' } : { color: '#000' } ]}>{message.text}</Text>
+            <Text style={[styles.messageText, message.senderId === currentUserId ? { color: '#000' } : { color: '#fff' } ]}>{message.text}</Text>
           </View>
         ))}
       </ScrollView>
@@ -130,11 +130,13 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 20,
     marginBottom: 10,
+    color: '#fff',
   },
   sentMessage: {
     backgroundColor: '#E50914',
     alignSelf: 'flex-end',
     marginLeft: '20%',
+    color: '#fff',
   },
   receivedMessage: {
     backgroundColor: '#f0f0f0',
