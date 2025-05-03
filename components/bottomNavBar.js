@@ -1,13 +1,40 @@
-import React, { useState } from 'react'; 
+import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons'; 
 import { FontAwesome } from '@expo/vector-icons'; 
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { auth, firestore } from '../Firebase';  // Firebase imports
+import { getDoc, doc } from 'firebase/firestore';  // Firestore functions
 
 const BottomNavBar = () => {
   const [userProfileImage, setUserProfileImage] = useState(null);
   const navigation = useNavigation();
   const route = useRoute();
+
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      const userEmail = auth.currentUser?.email;
+      if (userEmail) {
+        try {
+          // Retrieve the user's profile from Firestore based on their email
+          const userDocRef = doc(firestore, 'Users', userEmail);
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            // Set the profile image from Firestore
+            setUserProfileImage(userData.profileImage || null); // Default to null if no image is set
+          } else {
+            console.log('No user document found');
+          }
+        } catch (error) {
+          console.error('Error fetching profile image:', error);
+        }
+      }
+    };
+
+    fetchProfileImage();
+  }, []);
 
   const isActive = (screenName) => route.name === screenName;
 
