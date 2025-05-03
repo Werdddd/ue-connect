@@ -10,6 +10,7 @@ import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCardSAO from '../components/eventCardSAO';
 import { fetchEvents, addEvent, updateEventStatus } from '../Backend/eventPageSAO';
+import { getSuggestedDateTime } from '../Backend/eventPageRSO';
 import { launchImageLibrary } from 'react-native-image-picker';
 // import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -39,15 +40,16 @@ export default function EventPageSAO() {
     const [currentAction, setCurrentAction] = useState(null);
     const [currentEventId, setCurrentEventId] = useState(null);
     const [remark, setRemark] = useState('');
-
+const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
+    const [proposalLink, setProposalLink] = useState('');
     useEffect(() => {
         loadEvents();
     }, []);
 
     const loadEvents = async () => {
         try {
-            const data = await fetchEvents();
-            setEvents(data);
+            const events = await fetchEvents();
+            setEvents(events);
         } catch (error) {
             console.error('Failed to load events:', error);
         }
@@ -94,17 +96,33 @@ export default function EventPageSAO() {
     };
 
 
-    const handleSelectProposal = async () => {
-        try {
-            const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
-            if (result.type === 'success') {
-                console.log('Selected proposal:', result);
-                setSelectedProposal(result);
-            }
-        } catch (error) {
-            console.error("Error picking proposal file:", error);
+    const handleSelectProposal = () => {
+        if (selectedProposal) {
+          setProposalLink(selectedProposal.uri); // edit existing
+        } else {
+          setProposalLink(''); // new proposal
         }
+        setIsProposalModalVisible(true);
+      };
+      
+    
+    //   const handleProposalLinkInput = (text) => {
+    //     setProposalLink(text); // Update the proposal link
+    //   };
+    
+      const handleSaveProposalLink = () => {
+        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' }); // Save the proposal link
+        setIsProposalModalVisible(false); // Close modal after saving
+      };
+
+
+    const handleProposalLinkInput = (link) => {
+        setSelectedProposal({
+            name: "Google Drive Proposal Link",
+            uri: link,
+        });
     };
+    
 
     const handleActionConfirm = async () => {
         if (!remark.trim()) {
@@ -168,7 +186,9 @@ export default function EventPageSAO() {
             location: newLocation,
             participants: participants,
             org: organization,
-            status: eventStatus,
+            status: eventStatus, 
+            proposalLink: selectedProposal?.uri || null,
+            proposalName: selectedProposal?.name || null,
         };
 
         try {
@@ -190,18 +210,32 @@ export default function EventPageSAO() {
 
 
     const getOrganizationTitle = () => {
-        switch (selectedOrg) {
-            case 'All': return 'All Events';
-            case 'CSC': return 'Central Student Council';
-            case 'GDSC': return 'Google Developer Student Clubs';
-            case 'CFAD': return 'College of Fine Arts and Science';
-            default: return '';
-        }
-    };
-
-    const filteredEvents = selectedOrg === 'All'
-        ? events
-        : events.filter(event => event.org === selectedOrg);
+            switch (selectedOrg) {
+                case 'All': return 'All Events';
+                case 'CSC': return 'Central Student Council';
+                case 'COE': return 'College of Engineering';
+                case 'CFAD': return 'College of Fine Arts and Science';
+                case 'CBA': return 'College of Business Administration';
+                case 'CAS': return 'College of Arts and Science';
+                default: return '';
+            }
+        };
+    
+        const filteredEvents = selectedOrg === 'All'
+            ? events
+            : events.filter(event => event.org === selectedOrg);
+    
+        const [suggestedDateTime, setSuggestedDateTime] = useState(null);
+    
+            useEffect(() => {
+                const fetchSuggestion = async () => {
+                  const suggestion = await getSuggestedDateTime();
+                  setSuggestedDateTime(suggestion);
+                };
+              
+                fetchSuggestion();
+              }, []);
+              
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -255,136 +289,236 @@ export default function EventPageSAO() {
 
                 <BottomNavBar />
 
-                <Modal
-                    animationType="slide"
-                    transparent={true}
-                    visible={isModalVisible}
-                    onRequestClose={() => setIsModalVisible(false)}
-                >
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Create Event</Text>
-                            <Text style={styles.label}>Event Title</Text>
-                            <TextInput
-                                placeholder="ENtramurals 2025"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newTitle}
-                                onChangeText={setNewTitle}
-                            />
-                            <Text style={styles.label}>Event Description</Text>
-                            <TextInput
-                                placeholder="An event of..."
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newDescription}
-                                onChangeText={setNewDescription}
-                            />
-                            <View style={styles.dateTimeRow}>
-
-                                <View style={styles.dateTimeColumn}>
-                                    <Text style={styles.label}>Event Date</Text>
-                                    <TextInput
-                                        placeholder="April 25, 2025"
-                                        placeholderTextColor="#D3D3D3"
-                                        style={styles.input}
-                                        value={newDate}
-                                        onChangeText={setNewDate}
-                                    />
-                                </View>
-
-                                <View style={styles.dateTimeColumn}>
-                                    <Text style={styles.label}>Event Time</Text>
-                                    <TextInput
-                                        placeholder="8:00 AM - 12:00 PM"
-                                        placeholderTextColor="#D3D3D3"
-                                        style={styles.input}
-                                        value={newTime}
-                                        onChangeText={setNewTime}
-                                    />
-                                </View>
-                            </View>
-
-                            <Text style={styles.label}>Event Location</Text>
-                            <TextInput
-                                placeholder="MPH 2, Engineering Building"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newLocation}
-                                onChangeText={setNewLocation}
-                            />
-                            <Text style={styles.label}>Event Participants</Text>
-                            <TextInput
-                                placeholder="100"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                keyboardType="numeric"
-                                value={newParticipants}
-                                onChangeText={setNewParticipants}
-                            />
-                            <View style={styles.bannerFileRow}>
-                                {/* Banner Upload Section */}
-                                <View style={styles.uploadSection}>
-                                    <Text style={styles.label}>Event Banner</Text>
-                                    <TouchableOpacity
-                                        style={styles.uploadButton}
-                                        onPress={handleSelectBanner}
+                {/* Modal */}
+                                <Modal
+                                    animationType="slide"
+                                    transparent={true}
+                                    visible={isModalVisible}
+                                    onRequestClose={() => setIsModalVisible(false)}
+                                >
+                                    <View style={styles.modalContainer}>
+                                    <KeyboardAvoidingView
+                                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                                        style={styles.modalContentWrapper} // Added a wrapper style for layout adjustments
                                     >
-                                        <Text style={styles.buttonText}>
-                                            {selectedBanner ? 'Change Banner' : 'Upload Banner'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                    {selectedBanner && (
-                                        <Image
-                                            source={{ uri: selectedBanner }}
-                                            style={styles.bannerPreview}
-                                            resizeMode="cover"
-                                        />
-                                    )}
-                                </View>
-
-                                <View style={styles.uploadSection}>
-                                    <Text style={styles.label}>Event Proposal</Text>
-                                    <TouchableOpacity
-                                        style={styles.uploadButton}
-                                        onPress={handleSelectProposal}
-                                    >
-                                        <Text style={styles.buttonText}>
-                                            {selectedProposal ? 'Change File' : 'Upload Proposal'}
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    {selectedProposal && (
-                                        <View style={{ marginTop: 8 }}>
-                                            <Text style={styles.proposalText}>
-                                                📄 {selectedProposal?.uri?.split('/').pop() ?? 'No name found'}
-                                            </Text>
-
-
+                                         <ScrollView
+                                            
+                                            keyboardShouldPersistTaps="handled" // To ensure tapping outside input still dismisses keyboard
+                                        >
+                                        <View style={styles.modalContent}>
+                                            <Text style={styles.modalTitle}>Create Event</Text>
+                                            <Text style={styles.label}>Event Title</Text>
+                                            <TextInput
+                                                placeholder="ENtramurals 2025"
+                                                placeholderTextColor="#D3D3D3"
+                                                style={styles.input}
+                                                value={newTitle}
+                                                onChangeText={setNewTitle}
+                                            />
+                                            <Text style={styles.label}>Event Description</Text>
+                                            <TextInput
+                                                placeholder="An event of..."
+                                                placeholderTextColor="#D3D3D3"
+                                                style={styles.input}
+                                                value={newDescription}
+                                                onChangeText={setNewDescription}
+                                            />
+                                            
+                                            <View style={styles.dateTimeRow}>
+                                                {/* Date Input */}
+                                                <View style={styles.dateTimeColumn}>
+                                                    <Text style={styles.label}>Event Date</Text>
+                                                    <TextInput
+                                                    placeholder="April 25, 2025"
+                                                    placeholderTextColor="#D3D3D3"
+                                                    style={styles.input}
+                                                    value={newDate}
+                                                    onChangeText={setNewDate}
+                                                    />
+                                                </View>
+                
+                                                {/* Time Input */}
+                                                <View style={styles.dateTimeColumn}>
+                                                    <Text style={styles.label}>Event Time</Text>
+                                                    <TextInput
+                                                    placeholder="8:00 AM - 12:00 PM"
+                                                    placeholderTextColor="#D3D3D3"
+                                                    style={styles.input}
+                                                    value={newTime}
+                                                    onChangeText={setNewTime}
+                                                    />
+                                                </View>
+                                                </View>
+                
+                                                {/* Suggestions Below Inputs */}
+                                                {suggestedDateTime?.suggestedTimes?.length > 0 && (
+                                                <View style={styles.suggestionContainer}>
+                                                    <Text style={styles.suggestionLabel}>Suggestions:</Text>
+                                                    <View style={styles.suggestionGrid}>
+                                                    {suggestedDateTime.suggestedTimes.map((item, index) => {
+                                                        const [date, time] = item.split(" • ");
+                                                        return (
+                                                        <TouchableOpacity
+                                                            key={index}
+                                                            style={styles.suggestionButton}
+                                                            onPress={() => {
+                                                            setNewDate(date.trim());
+                                                            setNewTime(time.trim());
+                                                            }}
+                                                        >
+                                                            <Text style={styles.suggestionText}>{date}</Text>
+                                                            <Text style={styles.suggestionText}>{time}</Text>
+                                                        </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                    </View>
+                                                </View>
+                                                )}
+                
+                
+                
+                
+                
+                                        <Text style={[styles.label, { marginTop: 10 }]}>Event Location</Text>
+                
+                                            <TextInput
+                                                placeholder="MPH 2, Engineering Building"
+                                                placeholderTextColor="#D3D3D3"
+                                                style={styles.input}
+                                                value={newLocation}
+                                                onChangeText={setNewLocation}
+                                            />
+                                            <Text style={styles.label}>Event Participants</Text>
+                                            <TextInput
+                                                placeholder="100"
+                                                placeholderTextColor="#D3D3D3"
+                                                style={styles.input}
+                                                keyboardType="numeric"
+                                                value={newParticipants}
+                                                onChangeText={setNewParticipants}
+                                            />
+                                            <View style={styles.bannerFileRow}>
+                                                <View style={styles.uploadSection}>
+                                                    <Text style={styles.label}>Event Banner</Text>
+                                                    <TouchableOpacity
+                                                        style={styles.uploadButton}
+                                                        onPress={handleSelectBanner}
+                                                    >
+                                                        <Text style={styles.buttonText}>
+                                                            {selectedBanner ? 'Change Banner' : 'Upload Banner'}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                    {selectedBanner && (
+                                                        <Image
+                                                            source={{ uri: selectedBanner }}
+                                                            style={styles.bannerPreview}
+                                                            resizeMode="cover"
+                                                        />
+                                                    )}
+                                                </View>
+                
+                                                <View style={styles.uploadSection}>
+                                                    <Text style={styles.label}>Event Proposal</Text>
+                                                   
+                                                    
+                
+                                                    
+                
+                                                    <TouchableOpacity
+                                                        style={styles.uploadButton}
+                                                        onPress={handleSelectProposal} // Opens the modal to add/edit proposal link
+                                                        >
+                                                        <Text style={styles.buttonText}>
+                                                            {selectedProposal ? 'Change Proposal' : 'Upload Proposal'}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                
+                
+                
+                                                </View>
+                                                {/* Modal for Proposal Link Input */}
+                                                <Modal
+                                                    animationType="slide"
+                                                    transparent={true}
+                                                    visible={isProposalModalVisible}
+                                                    onRequestClose={() => setIsProposalModalVisible(false)} // Close the modal
+                                                >
+                                                    <View style={styles.modalContainer}>
+                                                    <View style={styles.modalContent}>
+                                                        <Text style={styles.modalTitle}>Enter Proposal Link</Text>
+                
+                                                        
+                
+                                                        <TextInput
+                                                        placeholder="Enter Google Drive link"
+                                                        placeholderTextColor="#D3D3D3"
+                                                        style={styles.input}
+                                                        value={proposalLink}
+                                                        onChangeText={setProposalLink}
+                                                        />
+                
+                
+                                                        {proposalLink && (
+                                                        <View style={styles.previewContainer}>
+                                                            <Text style={styles.previewTitle}>Preview Link:</Text>
+                                                            <TouchableOpacity onPress={() => Linking.openURL(proposalLink)}>
+                                                            <Text style={styles.previewLink}>{proposalLink}</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                        )}
+                
+                                                        <View style={styles.proposalModalButtons}>
+                                                        <TouchableOpacity
+                                                            style={[styles.proposalmodalButton, styles.cancelButton]}
+                                                            onPress={() => {
+                                                                setIsProposalModalVisible(false);
+                                                                setProposalLink('null');
+                                                                 // or '' depending on how preview is handled
+                                                              }}
+                                                              
+                                                              
+                                                        >
+                                                            <Text style={styles.buttonText}>Cancel</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[styles.proposalmodalButton, styles.saveButton]}
+                                                            onPress={handleSaveProposalLink}
+                                                        >
+                                                            <Text style={styles.buttonText}>Save</Text>
+                                                        </TouchableOpacity>
+                                                        </View>
+                
+                                                    </View>
+                                                    </View>
+                                                </Modal>
+                
+                                            </View>
+                
+                                            <View style={styles.modalButtons}>
+                                            <TouchableOpacity
+                                                style={styles.cancelButtons}
+                                                onPress={() => {
+                                                    setIsModalVisible(false);
+                                                    // Clear the date and time inputs as well
+                                                    setNewDate('');
+                                                    setNewTime('');
+                                                    
+                                                }}
+                                            >
+                                                <Text style={styles.buttonText}>Cancel</Text>
+                                            </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.addButton}
+                                                    onPress={handleAddEvent}
+                                                >
+                                                    <Text style={styles.buttonText}>Add</Text>
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
-                                    )}
-
-                                </View>
-
-                            </View>
-
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
-                                    onPress={() => setIsModalVisible(false)}
-                                >
-                                    <Text style={styles.buttonText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.addButton}
-                                    onPress={handleAddEvent}
-                                >
-                                    <Text style={styles.buttonText}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </Modal>
+                                        </ScrollView>
+                                        </KeyboardAvoidingView>
+                                    </View>
+                                </Modal>
 
                 <Modal
                     visible={actionModalVisible}

@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#E50914',
         paddingVertical: 8,
         paddingHorizontal: 20,
-        borderRadius: 20,
+        borderRadius: 5,
         marginTop: 10,
     },
     joinedButton: {

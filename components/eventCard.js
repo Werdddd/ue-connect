@@ -163,7 +163,7 @@ export default function EventCard({ event }) {
                         </View>
                     </View>
                     <Text style={styles.description}>{event.description}</Text>
-                    <Text style={styles.description}>
+                    <Text style={styles.parti}>
                         Participants: {approvedCount}
                     </Text>
                     
@@ -207,8 +207,8 @@ export default function EventCard({ event }) {
                     </View>
 
                     {event.status === 'Finished' && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15 }}>
-                            <Text style={{ fontWeight: 'bold', marginRight: 8 }}>Rate this Event:</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                            <Text style={{ fontWeight: '400', color:'#666', marginRight: 8 }}>Rate this Event:</Text>
                             {[1, 2, 3, 4, 5].map((star) => (
                             <TouchableOpacity
                                 key={star}
@@ -264,18 +264,30 @@ export default function EventCard({ event }) {
                             <Text style={styles.modalLocation}>Location: {event.location}</Text>
                             <View style={styles.joinHeartContainer}>
                             <TouchableOpacity
-                                style={[
-                                    styles.joinButton,
-                                    joined && styles.joinedButton,
-                                    applicationStatus === 'Approved' && styles.approvedButton
-                                ]}
-                                onPress={handleJoinToggle}
-                                disabled={applicationStatus === 'Approved'} // Optional: prevent toggle if approved
-                            >
-                                <Text style={styles.joinButtonText}>
-                                    {applicationStatus === 'Approved' ? 'Approved' : joined ? 'Applied' : 'Join Now'}
-                                </Text>
-                            </TouchableOpacity>
+                        style={[
+                        styles.joinButton,
+                        joined && styles.joinedButton,
+                        applicationStatus === 'Approved' && styles.approvedButton,
+                        event.status === 'Finished' && styles.finishedButton
+                        ]}
+                        onPress={handleJoinToggle}
+                        disabled={applicationStatus === 'Approved' || event.status === 'Finished'}
+                    >
+                        <Text
+                        style={[
+                            styles.joinButtonText,
+                            event.status === 'Finished' && styles.finishedButtonText
+                        ]}
+                        >
+                        {event.status === 'Finished'
+                            ? 'Event Finished'
+                            : applicationStatus === 'Approved'
+                            ? 'Approved'
+                            : joined
+                            ? 'Applied'
+                            : 'Join Now'}
+                        </Text>
+                    </TouchableOpacity>
 
                                 <TouchableOpacity onPress={handleFavoriteToggle} style={styles.favoriteButton}>
                                     <Ionicons
@@ -285,6 +297,24 @@ export default function EventCard({ event }) {
                                     />
                                 </TouchableOpacity>
                             </View>
+                            {event.status === 'Finished' && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15 }}>
+                            <Text style={{ fontWeight: 'bold', marginRight: 8 }}>Rate this Event:</Text>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                            <TouchableOpacity
+                                key={star}
+                                onPress={() => submitRating(star)}
+                                disabled={hasRated}
+                            >
+                                <Ionicons
+                                name={star <= userRating ? 'star' : 'star-outline'}
+                                size={28}
+                                color="#FFD700"
+                                />
+                            </TouchableOpacity>
+                            ))}
+                        </View>
+                        )}
                         </ScrollView>
                     </View>
                 </View>
@@ -345,6 +375,11 @@ const styles = StyleSheet.create({
         color: '#666',
         marginBottom: 15,
     },
+    parti: {
+        fontSize: 14,
+        color: '#666',
+        
+    },
     buttonRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -354,7 +389,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#E50914',
         paddingVertical: 8,
         paddingHorizontal: 20,
-        borderRadius: 20,
+        borderRadius: 5,
         marginTop: 10,
     },
     joinedButton: {

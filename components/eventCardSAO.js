@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView,TextInput } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView,TextInput, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; 
 
 export default function EventCardSAO({ event, onApprove, onReject }) {
@@ -69,92 +69,88 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
     };
 
     useEffect(() => {
-        console.log('Proposal Link from Event:', event?.proposalLink);
-        if (event?.proposalLink) {
-          setProposalLink(event.proposalLink);
+        if (event && event.proposalLink) {
+            console.log('Proposal Link from Event:', event.proposalLink);
+            setProposalLink(event.proposalLink);
+        } else {
+            console.log('Proposal Link not found in event:', event);
         }
-      }, [event]);
+    }, [event]);
+    
       
-    return (
+      return (
         <View>
-        <TouchableOpacity style={styles.card} onPress={handleOpenModal}>
-           {event.banner && (
-                           <Image
-                               source={{ uri: event.banner }}
-                               style={styles.banner}
-                               resizeMode="cover"
-                           />
-                       )}
-            <View style={styles.infoContainer}>
-                <View style={styles.headerRow}>
-                    <Image source={event.seal} style={styles.seal} />
-                    <View style={styles.titleDateContainer}>
-                        <Text style={styles.title}>{event.title}</Text>
-                        <Text style={styles.date}>{event.date}</Text>
+            <TouchableOpacity style={styles.card} onPress={handleOpenModal}>
+                {event.banner && (
+                    <Image source={{ uri: event.banner }} style={styles.banner} resizeMode="cover" />
+                )}
+                <View style={styles.infoContainer}>
+                    <View style={styles.headerRow}>
+                        <Image source={event.seal} style={styles.seal} />
+                        <View style={styles.titleDateContainer}>
+                            <Text style={styles.title}>{event.title}</Text>
+                            <Text style={styles.date}>{event.date}</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.description}>{event.description}</Text>
+                    <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
+                </View>
+            </TouchableOpacity>
+
+            <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={handleCloseModal}>
+                <View style={styles.modalBackground}>
+                    <View style={styles.modalContainer}>
+                        <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
+                            <Ionicons name="close" size={30} color="#333" />
+                        </TouchableOpacity>
+
+                        <ScrollView contentContainerStyle={styles.modalContent}>
+                            {event.banner && (
+                                <Image source={{ uri: event.banner }} style={styles.banner} resizeMode="cover" />
+                            )}
+                            <Text style={styles.modalTitle}>{event.title}</Text>
+
+                            <View style={styles.dateTimeContainer}>
+                                <Text style={styles.modalDate}>{event.date}</Text>
+                                <Text style={styles.modalTime}>{event.time}</Text>
+                            </View>
+
+                            <Text style={styles.modalDescription}>{event.description}</Text>
+                            <Text style={styles.modalParticipants}>Participants: {event.participants}</Text>
+                            <Text style={styles.modalLocation}>Location: {event.location}</Text>
+
+                            <View style={styles.previewContainer}>
+                                <Text style={styles.previewTitle}>Proposal Link:</Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (proposalLink) {
+                                            Linking.openURL(proposalLink);
+                                        } else {
+                                            alert('No proposal link provided.');
+                                        }
+                                    }}
+                                >
+                                    <Text style={styles.previewLink}>
+                                        {proposalLink || 'No proposal link provided.'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, width: '100%' }}>
+                                <TouchableOpacity style={[styles.actionButton, { backgroundColor: 'green' }]} onPress={handleApprove}>
+                                    <Text style={styles.buttonText}>Approve</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={[styles.actionButton, { backgroundColor: 'red' }]} onPress={handleReject}>
+                                    <Text style={styles.buttonText}>Reject</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
                     </View>
                 </View>
-                <Text style={styles.description}>{event.description}</Text>
-                <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
-            </View>
-        </TouchableOpacity>
-
-        <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={handleCloseModal}>
-            <View style={styles.modalBackground}>
-                <View style={styles.modalContainer}>
-                    <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
-                        <Ionicons name="close" size={30} color="#333" />
-                    </TouchableOpacity>
-
-                    <ScrollView contentContainerStyle={styles.modalContent}>
-                    {event.banner && (
-                           <Image
-                               source={{ uri: event.banner }}
-                               style={styles.banner}
-                               resizeMode="cover"
-                           />
-                       )}
-                        <Text style={styles.modalTitle}>{event.title}</Text>
-
-                        <View style={styles.dateTimeContainer}>
-                            <Text style={styles.modalDate}>{event.date}</Text>
-                            <Text style={styles.modalTime}>{event.time}</Text>
-                        </View>
-
-                        <Text style={styles.modalDescription}>{event.description}</Text>
-                        <Text style={styles.modalParticipants}>Participants: {event.participants}</Text>
-                        <Text style={styles.modalLocation}>Location: {event.location}</Text>
-                        <View style={styles.previewContainer}>
-                        <Text style={styles.previewTitle}>Preview Link:</Text>
-                            <TouchableOpacity
-                                onPress={() => {
-                                if (proposalLink) {
-                                    Linking.openURL(proposalLink);
-                                } else {
-                                    alert('No proposal link provided.');
-                                }
-                                }}
-                            >
-                                <Text style={styles.previewLink}>
-                                {proposalLink || 'No proposal link provided.'}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 15, width: '100%' }}>
-                            <TouchableOpacity style={[styles.actionButton, { backgroundColor: 'green' }]} onPress={handleApprove}>
-                                <Text style={styles.buttonText}>Approve</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.actionButton, { backgroundColor: 'red' }]} onPress={handleReject}>
-                                <Text style={styles.buttonText}>Reject</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </ScrollView>
-                </View>
-            </View>
-        </Modal>
-    </View>
+            </Modal>
+        </View>
     );
 }
 
