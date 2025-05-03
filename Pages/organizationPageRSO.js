@@ -1,270 +1,155 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { collection, query, where, getDocs, doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
+import { firestore } from '../Firebase';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
-import OrganizationBar from '../components/organizationBar';
-import OrganizationCard from '../components/organizationCard';
-import { addOrganization, getOrganizations } from '../Backend/organizationHandler';
-import { useEffect } from 'react';
-import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'react-native';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
 
-export default function OrganizationPage() {
+export default function OrganizationPageRSO() {
+    const navigation = useNavigation();
+    const route = useRoute();
+    const orgName = "Deepspace";
+
+    const [appliedUsers, setAppliedUsers] = useState([]);
+    const [memberUsers, setMemberUsers] = useState([]);
+
     useEffect(() => {
-        const fetchOrganizations = async () => {
+        const fetchUsers = async () => {
             try {
-                const orgs = await getOrganizations();
-                setOrganizations(orgs);
+                const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+                const orgSnapshot = await getDocs(orgQuery);
+
+                if (!orgSnapshot.empty) {
+                    const orgData = orgSnapshot.docs[0].data();
+                    const appliedEmails = orgData.applied || [];
+                    const memberEmails = orgData.members || [];
+
+                    const usersSnapshot = await getDocs(collection(firestore, 'Users'));
+                    const allUsers = usersSnapshot.docs.map(doc => doc.data());
+
+                    const appliedList = allUsers.filter(user => appliedEmails.includes(user.email));
+                    const memberList = allUsers.filter(user => memberEmails.includes(user.email));
+
+                    setAppliedUsers(appliedList);
+                    setMemberUsers(memberList);
+                }
             } catch (error) {
-                console.error('Error fetching organizations:', error);
+                console.error('Error fetching users:', error);
             }
         };
 
-        fetchOrganizations();
-    }, []);
+        fetchUsers();
+    }, [orgName]);
 
-    const navigation = useNavigation();
-    const [scrollY, setScrollY] = useState(0);
-    const [isModalVisible, setModalVisible] = useState(false);
-    const [newOrg, setNewOrg] = useState({
-        department: '',
-        orgName: '',
-        memberCount: '',
-        members: '',
-        shortdesc: '',
-        logoUri: '',
-        logoBase64: '',
-        fulldesc: '',
-        followers: '',
-        location: '',
-        email: '',
-        websitelink: '',
-    });
-    const [organizations, setOrganizations] = useState([]);
-
-    const [selectedDepartment, setSelectedDepartment] = useState('All');
-
-    async function getBase64(uri) {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-        });
-        return base64;
-    }
-
-    async function compressImage(uri) {
-        const compressed = await ImageManipulator.manipulateAsync(
-            uri,
-            [{ resize: { width: 100 } }],
-            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        return compressed.uri;
-    }
-
-    async function pickImage() {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 1,
-        });
-
-        if (!result.canceled) {
-            const asset = result.assets[0];
-            const base64 = await processImage(asset.uri);
-            setNewOrg(prev => ({
-                ...prev,
-                logoUri: asset.uri,
-                logoBase64: `data:image/jpeg;base64,${base64}`,
-            }));
-        }
-    }
-
-    async function processImage(uri) {
-        const compressedUri = await compressImage(uri);
-        const base64 = await getBase64(compressedUri);
-        return base64;
-    }
-
-    const handleAddOrganization = async () => {
+    const handleApprove = async (email) => {
         try {
-            const newOrgData = {
-                department: newOrg.department,
-                orgName: newOrg.orgName,
-                memberCount: parseInt(0),
-                shortdesc: newOrg.shortdesc,
-                logoUri: newOrg.logoUri,
-                logoBase64: newOrg.logoBase64,
-                fulldesc: newOrg.fulldesc,
-                location: newOrg.location,
-                email: newOrg.email,
-                websitelink: newOrg.websitelink,
-                leaders: [],
-                members: '',
-                followers: ''
-            };
+            const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const orgSnapshot = await getDocs(orgQuery);
 
-            await addOrganization(newOrgData);
+            if (!orgSnapshot.empty) {
+                const orgRef = orgSnapshot.docs[0].ref;
 
-            setOrganizations(prevOrgs => [
-                ...prevOrgs,
-                { id: prevOrgs.length + 1, ...newOrgData }
-            ]);
+                await updateDoc(orgRef, {
+                    applied: arrayRemove(email),
+                    members: arrayUnion(email),
+                });
 
-            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: '', followers: ''});
-            setModalVisible(false);
-
+                setAppliedUsers(prev => prev.filter(user => user.email !== email));
+                setMemberUsers(prev => [...prev, appliedUsers.find(user => user.email === email)]);
+            }
         } catch (error) {
-            console.error('Error adding organization:', error);
+            console.error('Error approving user:', error);
         }
     };
 
+    const handleDeny = async (email) => {
+        try {
+            const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const orgSnapshot = await getDocs(orgQuery);
 
-    const getOrganizationTitle = () => {
-        switch (selectedDepartment) {
-            case 'All':
-                return 'All Organizations';
-            case 'CSC':
-                return 'Central Student Council';
-            case 'GDSC':
-                return 'Google Developer Student Clubs';
-            case 'CFAD':
-                return 'College of Fine Arts and Design';
-            default:
-                return '';
+            if (!orgSnapshot.empty) {
+                const orgRef = orgSnapshot.docs[0].ref;
+
+                await updateDoc(orgRef, {
+                    applied: arrayRemove(email),
+                });
+
+                setAppliedUsers(prev => prev.filter(user => user.email !== email));
+            }
+        } catch (error) {
+            console.error('Error denying user:', error);
+        }
+    };
+
+    const handleRemove = async (email) => {
+        try {
+            const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const orgSnapshot = await getDocs(orgQuery);
+
+            if (!orgSnapshot.empty) {
+                const orgRef = orgSnapshot.docs[0].ref;
+
+                await updateDoc(orgRef, {
+                    members: arrayRemove(email),
+                });
+
+                setMemberUsers(prev => prev.filter(user => user.email !== email));
+            }
+        } catch (error) {
+            console.error('Error denying user:', error);
         }
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.container}
-            >
-                <Header scrollY={scrollY} />
-                <ScrollView
-                    onScroll={(event) => {
-                        setScrollY(event.nativeEvent.contentOffset.y);
-                    }}
-                    scrollEventThrottle={16}
-                    contentContainerStyle={styles.scrollContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    <OrganizationBar onSelectDepartment={setSelectedDepartment} />
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
-                        <View style={styles.underline} />
-                    </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <SafeAreaView style={styles.safeArea}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+                    <View style={styles.container}>
+                        <Header />
+                        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                            <Text style={styles.sectionTitle}>Members</Text>
+                            {memberUsers.map((user, index) => (
+                                <View key={index} style={styles.userCard}>
+                                <Text style={styles.userText}>Email: {user.email}</Text>
+                                <Text style={styles.userText}>Name: {user.firstName} {user.lastName}</Text>
+                                <Text style={styles.userText}>Student No.: {user.studentNumber}</Text>
+                                <Text style={styles.userText}>Course: {user.course}</Text>
+                                <Text style={styles.userText}>Year: {user.year}</Text>
 
-                    {organizations
-                        .filter(org => selectedDepartment === 'All' || org.department === selectedDepartment)
-                        .map(org => {
-
-                            return (
-                                <OrganizationCard
-                                    key={org.id}
-                                    orgName={org.orgName}
-                                    memberCount={org.memberCount}
-                                    shortdesc={org.shortdesc}
-                                    logo={org.logoBase64}
-                                />
-                            );
-                        })}
-                    <TouchableOpacity
-                        style={styles.plusButton}
-                        onPress={() => setModalVisible(true)}
-                    >
-                        <Text style={styles.plusText}>＋</Text>
-                    </TouchableOpacity>
-                    <Modal
-                        animationType="slide"
-                        transparent={true}
-                        visible={isModalVisible}
-                        onRequestClose={() => setModalVisible(false)}
-                    >
-                        <View style={styles.modalBackground}>
-                            <View style={styles.modalContainer}>
-                                <Text style={styles.modalTitle}>Add New Organization</Text>
-
-                                <TextInput
-                                    placeholder="Organization Department (e.g. CSC)"
-                                    style={styles.input}
-                                    value={newOrg.department}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, department: text })}
-                                />
-                                <TextInput
-                                    placeholder="Full Organization Name"
-                                    style={styles.input}
-                                    value={newOrg.orgName}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, orgName: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Short Description"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.shortdesc}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, shortdesc: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Full Description"
-                                    style={[styles.input, { height: 80 }]}
-                                    multiline
-                                    value={newOrg.fulldesc}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, fulldesc: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Location (e.g. 2nd Floor, Main Building)"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.location}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, location: text })}
-                                />
-                                
-                                <TextInput
-                                    placeholder="Email"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.email}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, email: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Website (Optional)"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.websitelink}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, websitelink: text })}
-                                />
-
-                                <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
-                                    <Text style={styles.pickImageButtonText}>Pick Logo</Text>
-                                </TouchableOpacity>
-                                {(newOrg.logoUri || newOrg.logoBase64) && (
-                                    <Image
-                                        source={{ uri: newOrg.logoBase64 || newOrg.logoUri }}
-                                        style={{ width: 50, height: 50, marginVertical: 10, alignSelf: 'center' }}
-                                        resizeMode="contain"
-                                    />
-                                )}
-                                <TouchableOpacity style={styles.addButton} onPress={handleAddOrganization}>
-                                    <Text style={styles.addButtonText}>Add Organization</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                                </TouchableOpacity>
+                                <View style={styles.buttonRow}>
+                                    <TouchableOpacity style={styles.denyBtn} onPress={() => handleRemove(user.email)}>
+                                        <Text style={styles.buttonText}>Remove</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-                        </View>
-                    </Modal>
-                </ScrollView>
+                            ))}
 
-                <BottomNavBar />
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                            <Text style={styles.sectionTitle}>Applied</Text>
+                            {appliedUsers.map((user, index) => (
+                                <View key={index} style={styles.userCard}>
+                                    <Text style={styles.userText}>Email: {user.email}</Text>
+                                    <Text style={styles.userText}>Name: {user.firstName} {user.lastName}</Text>
+                                    <Text style={styles.userText}>Student No.: {user.studentNumber}</Text>
+                                    <Text style={styles.userText}>Course: {user.course}</Text>
+                                    <Text style={styles.userText}>Year: {user.year}</Text>
+
+                                    <View style={styles.buttonRow}>
+                                        <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(user.email)}>
+                                            <Text style={styles.buttonText}>Approve</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.denyBtn} onPress={() => handleDeny(user.email)}>
+                                            <Text style={styles.buttonText}>Deny</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))}
+                        </ScrollView>
+                        <BottomNavBar />
+                    </View>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </TouchableWithoutFeedback>
     );
 }
 
@@ -279,87 +164,44 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
+        paddingHorizontal: 20,
+        paddingBottom: 80,
     },
-    titleContainer: {
-        marginTop: 15,
-        marginHorizontal: 20,
-        marginBottom: 15,
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        marginVertical: 10,
+        color: '#333',
     },
-    titleText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#E50914',
-        textAlign: 'center',
-    },
-    underline: {
-        alignSelf: 'center',
-        height: 1,
-        backgroundColor: '#E50914',
-        width: '100%',
-        marginTop: 2,
-    },
-    plusButton: {
-        alignSelf: 'center',
-
-        backgroundColor: '#E50914',
-        borderRadius: 50,
-        width: 50,
-        height: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    plusText: {
-        color: 'white',
-        fontSize: 30,
-    },
-    modalBackground: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContainer: {
-        width: '85%',
-        backgroundColor: 'white',
+    userCard: {
+        backgroundColor: '#f0f0f0',
+        padding: 15,
         borderRadius: 10,
-        padding: 20,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
         marginBottom: 10,
-        textAlign: 'center',
     },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 5,
-        padding: 10,
-        marginVertical: 5,
+    userText: {
+        fontSize: 14,
+        color: '#555',
     },
-    addButton: {
-        backgroundColor: '#E50914',
-        padding: 12,
-        borderRadius: 5,
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         marginTop: 10,
     },
-    addButtonText: {
-        color: 'white',
-        textAlign: 'center',
+    approveBtn: {
+        backgroundColor: '#4CAF50',
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        borderRadius: 8,
+    },
+    denyBtn: {
+        backgroundColor: '#F44336',
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        borderRadius: 8,
+    },
+    buttonText: {
+        color: '#fff',
         fontWeight: 'bold',
-    },
-    cancelButton: {
-        padding: 10,
-        marginTop: 10,
-    },
-    cancelButtonText: {
-        textAlign: 'center',
-        color: '#E50914',
-    },
-    pickImageButton: {
-        backgroundColor: '#E50914',
-        padding: 10,
-        borderRadius: 5,
-        marginTop: 10,
     },
 });
