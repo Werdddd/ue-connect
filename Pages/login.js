@@ -16,16 +16,16 @@ export default function Login() {
     const studentNumberRegex = /^[0-9]{11}$/;
     const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
   
-    // Input validation
+    //Input validation
     // if (!studentNumber.match(studentNumberRegex)) {
     //   Alert.alert('Invalid Input', 'Student number must be exactly 11 digits.');
     //   return;
     // }
   
-    // if (!email.match(ueEmailRegex)) {
-    //   Alert.alert('Invalid Input', 'Use a valid UE email address.');
-    //   return;
-    // }
+    if (!email.match(ueEmailRegex)) {
+      Alert.alert('Invalid Input', 'Use a valid UE email address.');
+      return;
+    }
   
     if (password.length < 6) {
       Alert.alert('Invalid Input', 'Password must be at least 6 characters long.');
