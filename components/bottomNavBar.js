@@ -9,6 +9,7 @@ import { getDoc, doc } from 'firebase/firestore';  // Firestore functions
 const BottomNavBar = () => {
   const [userProfileImage, setUserProfileImage] = useState(null);
   const [role, setRole] = useState('');
+  const [org, setOrg] = useState('');
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -26,6 +27,8 @@ const BottomNavBar = () => {
             // Set the profile image from Firestore
             setUserProfileImage(userData.profileImage || null); // Default to null if no image is set
             setRole(userData.role);
+            setOrg(userData.firstName);
+            //console.log(userData.role, userData.firstName);
           } else {
             console.log('No user document found');
           }
@@ -55,11 +58,11 @@ const BottomNavBar = () => {
       <TouchableOpacity
         onPress={() => {
             if (role === 'admin') {
-            navigation.navigate('OrganizationPageRSO');
+            navigation.navigate('OrganizationPageRSO', { org });
             } else if (role === 'superadmin') {
-            navigation.navigate('OrganizationPageSAO');
+            navigation.navigate('OrganizationPageSAO', { org });
             } else {
-            navigation.navigate('OrganizationPage');
+            navigation.navigate('OrganizationPage', { org });
             }
         }}
         >
@@ -71,7 +74,17 @@ const BottomNavBar = () => {
       </TouchableOpacity>
 
       {/* Event */}
-      <TouchableOpacity onPress={() => navigation.navigate('Events')}>
+      <TouchableOpacity
+        onPress={() => {
+            if (role === 'admin') {
+            navigation.navigate('EventPageRSO', { org });
+            } else if (role === 'superadmin') {
+            navigation.navigate('EventPageSAO', { org });
+            } else {
+            navigation.navigate('Events', { org });
+            }
+        }}
+        >
         <Ionicons
           name={isActive('Events') ? 'calendar' : 'calendar-outline'}
           size={28}

@@ -9,7 +9,8 @@ import BottomNavBar from '../components/bottomNavBar';
 export default function OrganizationPageRSO() {
     const navigation = useNavigation();
     const route = useRoute();
-    const orgName = "Google Dev";
+    const { org } = route.params;
+    const orgName = org;
 
     const [appliedUsers, setAppliedUsers] = useState([]);
     const [memberUsers, setMemberUsers] = useState([]);

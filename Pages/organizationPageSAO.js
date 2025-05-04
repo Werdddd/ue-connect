@@ -16,8 +16,8 @@ import * as FileSystem from 'expo-file-system';
 export default function OrganizationPageSAO() {
 
     const [usersList, setUsersList] = useState([]);
-const [leadersModalVisible, setLeadersModalVisible] = useState(false);
-const [selectedLeaders, setSelectedLeaders] = useState([]);
+    const [leadersModalVisible, setLeadersModalVisible] = useState(false);
+    const [selectedLeaders, setSelectedLeaders] = useState([]);
 
     useEffect(() => {
         const fetchUsers = async () => {
