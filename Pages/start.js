@@ -12,7 +12,7 @@ export default function Start() {
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Welcome to Our App</Text>
+      <Text style={styles.title}>Welcome to UE Connect</Text>
       <TouchableOpacity
         style={styles.button}
         onPress={handleStart}
