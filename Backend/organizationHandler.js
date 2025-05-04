@@ -19,7 +19,7 @@ export const addOrganization = async (organizationData) => {
             orgs: [],
             profileImage: organizationData.logoBase64 || '',
             group: true,
-            role: 'user', // optional role
+            role: 'admin', // optional role
             studentNumber: '',
             timestamp: new Date()
         });

@@ -8,6 +8,7 @@ import { getDoc, doc } from 'firebase/firestore';  // Firestore functions
 
 const BottomNavBar = () => {
   const [userProfileImage, setUserProfileImage] = useState(null);
+  const [role, setRole] = useState('');
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -24,6 +25,7 @@ const BottomNavBar = () => {
             const userData = userDocSnap.data();
             // Set the profile image from Firestore
             setUserProfileImage(userData.profileImage || null); // Default to null if no image is set
+            setRole(userData.role);
           } else {
             console.log('No user document found');
           }
@@ -50,7 +52,17 @@ const BottomNavBar = () => {
       </TouchableOpacity>
 
       {/* Organization */}
-      <TouchableOpacity onPress={() => navigation.navigate('OrganizationPage')}>
+      <TouchableOpacity
+        onPress={() => {
+            if (role === 'admin') {
+            navigation.navigate('OrganizationPageRSO');
+            } else if (role === 'superadmin') {
+            navigation.navigate('OrganizationPageSAO');
+            } else {
+            navigation.navigate('OrganizationPage');
+            }
+        }}
+        >
         <Ionicons
           name={isActive('OrganizationPage') ? 'people' : 'people-outline'}
           size={28}
