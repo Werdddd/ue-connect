@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
+import { Picker } from '@react-native-picker/picker';
 
 export default function OrganizationPageSAO() {
 
@@ -130,7 +131,7 @@ export default function OrganizationPageSAO() {
                 { id: prevOrgs.length + 1, ...newOrgData }
             ]);
 
-            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: [], followers: ''});
+            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '', members: [], followers: '' });
             setModalVisible(false);
 
         } catch (error) {
@@ -145,10 +146,14 @@ export default function OrganizationPageSAO() {
                 return 'All Organizations';
             case 'CSC':
                 return 'Central Student Council';
-            case 'GDSC':
-                return 'Google Developer Student Clubs';
+            case 'COE':
+                return 'College of Engineering';
+            case 'CAS':
+                return 'College of Arts and Science';
             case 'CFAD':
                 return 'College of Fine Arts and Design';
+            case 'CBA':
+                return 'College of Business And Accounting';
             default:
                 return '';
         }
@@ -191,8 +196,8 @@ export default function OrganizationPageSAO() {
                         })}
                     <TouchableOpacity
                         style={styles.plusButton}
-                        onPress={() => {setModalVisible(true); setSelectedLeaders([])}}
-                        
+                        onPress={() => { setModalVisible(true); setSelectedLeaders([]) }}
+
                     >
                         <Text style={styles.plusText}>＋</Text>
                     </TouchableOpacity>
@@ -206,12 +211,20 @@ export default function OrganizationPageSAO() {
                             <View style={styles.modalContainer}>
                                 <Text style={styles.modalTitle}>Add New Organization</Text>
 
-                                <TextInput
-                                    placeholder="Organization Department (e.g. CSC)"
-                                    style={styles.input}
-                                    value={newOrg.department}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, department: text })}
-                                />
+                                <View style={[styles.input, { padding: 0 }]}>
+                                    <Picker
+                                        selectedValue={newOrg.department}
+                                        onValueChange={(itemValue) =>
+                                            setNewOrg({ ...newOrg, department: itemValue })
+                                        }>
+                                        <Picker.Item label="Select Department" value="" />
+                                        <Picker.Item label="Central Student Council" value="CSC" />
+                                        <Picker.Item label="College of Engineering" value="COE" />
+                                        <Picker.Item label="College of Arts and Science" value="CAS" />
+                                        <Picker.Item label="College of Fine Arts and Design" value="CFAD" />
+                                        <Picker.Item label="College of Business And Accounting" value="CBA" />
+                                    </Picker>
+                                </View>
                                 <TextInput
                                     placeholder="Full Organization Name"
                                     style={styles.input}
@@ -242,23 +255,23 @@ export default function OrganizationPageSAO() {
                                     value={newOrg.location}
                                     onChangeText={(text) => setNewOrg({ ...newOrg, location: text })}
                                 />
-                                
-                                
+
+
                                 <TextInput
-                                        placeholder="Email"
-                                        style={[styles.input, { height: 40}]}
-                                        multiline
-                                        value={newOrg.email}
-                                        onChangeText={(text) => setNewOrg({ ...newOrg, email: text })}
-                                    />
+                                    placeholder="Email"
+                                    style={[styles.input, { height: 40 }]}
+                                    multiline
+                                    value={newOrg.email}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, email: text })}
+                                />
                                 <TextInput
-                                        placeholder="Website (Optional)"
-                                        style={[styles.input, { height: 40}]}
-                                        multiline
-                                        value={newOrg.websitelink}
-                                        onChangeText={(text) => setNewOrg({ ...newOrg, websitelink: text })}
-                                    />
-                               
+                                    placeholder="Website (Optional)"
+                                    style={[styles.input, { height: 40 }]}
+                                    multiline
+                                    value={newOrg.websitelink}
+                                    onChangeText={(text) => setNewOrg({ ...newOrg, websitelink: text })}
+                                />
+
                                 <View style={{ flexDirection: 'row', gap: 10, marginVertical: 10 }}>
                                     <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
                                         <Text style={styles.pickImageButtonText}>Pick Logo</Text>
@@ -268,14 +281,14 @@ export default function OrganizationPageSAO() {
                                     </TouchableOpacity>
                                 </View>
 
-                                    {(newOrg.logoUri || newOrg.logoBase64) && (
-                                        <Image
-                                            source={{ uri: newOrg.logoBase64 || newOrg.logoUri }}
-                                            style={{ width: 50, height: 50, marginVertical: 10, alignSelf: 'center' }}
-                                            resizeMode="contain"
-                                        />
-                                    )}
-                                    <View style={{ flexDirection: 'row', gap: 10 }}> 
+                                {(newOrg.logoUri || newOrg.logoBase64) && (
+                                    <Image
+                                        source={{ uri: newOrg.logoBase64 || newOrg.logoUri }}
+                                        style={{ width: 50, height: 50, marginVertical: 10, alignSelf: 'center' }}
+                                        resizeMode="contain"
+                                    />
+                                )}
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
                                     <TouchableOpacity style={styles.addButton} onPress={handleAddOrganization}>
                                         <Text style={styles.addButtonText}>Add Org</Text>
                                     </TouchableOpacity>
@@ -283,7 +296,7 @@ export default function OrganizationPageSAO() {
                                     <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
                                         <Text style={styles.cancelButtonText}>Cancel</Text>
                                     </TouchableOpacity>
-                                    </View>
+                                </View>
                             </View>
                         </View>
                     </Modal>
@@ -320,7 +333,7 @@ export default function OrganizationPageSAO() {
                                                 </Text>
                                             </TouchableOpacity>
 
-                                            
+
                                         </View>
                                     ))}
                                 </ScrollView>
@@ -412,7 +425,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
         padding: 12,
         borderRadius: 5,
-    
+
         width: '48%'
     },
     addButtonText: {
@@ -431,7 +444,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#E50914',
         padding: 12,
         borderRadius: 5,
-        
+
         width: '48%'
     },
     cancelButtonText: {
@@ -443,13 +456,13 @@ const styles = StyleSheet.create({
         width: '48%',
         padding: 10,
         borderRadius: 5,
-    
+
         borderWidth: 1,
         borderColor: '#E50914'
     },
-    pickImageButtonText:{
+    pickImageButtonText: {
         color: '#E50914',
         textAlign: 'center',
-      
+
     }
 });
