@@ -56,6 +56,7 @@ export default function UserOwnProfilePage() {
     const [followers, setFollowers] = useState(0);
     const [organization, setOrganization] = useState(0);
     const [userPosts, setUserPosts] = useState([]);
+    const [group, setGroup] = useState(false);
     const userEmail = auth.currentUser?.email;
 
     useEffect(() => {
@@ -69,6 +70,7 @@ export default function UserOwnProfilePage() {
                 setFollowing(data.following.length);
                 setFollowers(data.followers.length);
                 setOrganization(data.orgs.length);
+                setGroup(data.group);
             } catch (error) {
                 console.error("Error fetching profile:", error.message);
             }
@@ -209,10 +211,12 @@ export default function UserOwnProfilePage() {
                                         <Text style={styles.texts}>{'Followers'}</Text>
                                         <Text style={styles.texts}>{'Organizations'}</Text>
                                     </View>
+                                    {!group && (
                                     <View style={styles.infoDetailRow}>
                                         <Text style={styles.userYear}>{year || 'Your Year'}</Text>
                                         <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
                                     </View>
+                                    )}
                                     <View style={styles.underline} />
                                 </View>
 

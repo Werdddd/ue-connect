@@ -62,7 +62,7 @@ export default function OrganizationPageSAO() {
         websitelink: '',
     });
     const [organizations, setOrganizations] = useState([]);
-
+    
     const [selectedDepartment, setSelectedDepartment] = useState('All');
 
     async function getBase64(uri) {
