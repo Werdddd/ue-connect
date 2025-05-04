@@ -125,7 +125,7 @@ export default function UserOwnProfilePage() {
                         if (userDoc.exists()) {
                             const u = userDoc.data();
 
-                            console.log("test");
+                            //console.log(u.role);
                             userProfile = {
                                 name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Anonymous',
                                 profileImage: u.profileImage
@@ -224,7 +224,8 @@ export default function UserOwnProfilePage() {
                                     <PostCard
                                         key={post.id}
                                         post={post}
-                                        ss={"dd"}
+                                        ss={"superadmin"}
+                                        ss2={"sheen"}
                                         hasText={!!post.text}
                                         hasImages={post.images?.length > 0}
                                         isLiked={post.likedBy.includes(userEmail)}

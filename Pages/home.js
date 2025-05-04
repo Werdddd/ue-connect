@@ -40,7 +40,8 @@ export default function Home() {
   const [postComments, setPostComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
   const [comments, setComments] = useState([]);
-  const ss = "dd";
+  const ss = "superadmin";
+  const ss2 = "sheen";
 
   const [imageModalVisible, setImageModalVisible] = useState(false);
 const [selectedImagePic, setSelectedImagePic] = useState(null);
@@ -539,12 +540,12 @@ const fetchNewsfeed = async () => {
               <View style={{ flexDirection: 'column', marginLeft: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={styles.postUserName}>{post.user.name}</Text>
-                  {post.user.role === ss && (
+                  {(post.user.role === ss || post.user.role === ss2) && (
                     <Image
-                      source={require('../assets/switch2.png')}
-                      style={{ width: 16, height: 16, marginLeft: 5 }}
+                        source={require('../assets/switch2.png')}
+                        style={{ width: 16, height: 16, marginLeft: 5 }}
                     />
-                  )}
+                   )}
                 </View>
                 <Text style={styles.postDate}>
                   {new Date(post.date).toLocaleString()}

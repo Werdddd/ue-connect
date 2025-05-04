@@ -293,7 +293,8 @@ export default function UserOwnProfilePage() {
                                     <PostCard
                                         key={post.id}
                                         post={post}
-                                        ss={"dd"}
+                                        ss={"superadmin"}
+                                        ss2={"sheen"}
                                         hasText={!!post.text}
                                         hasImages={post.images?.length > 0}
                                         isLiked={post.likedBy.includes(userEmail)}
