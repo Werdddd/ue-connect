@@ -137,8 +137,8 @@ export default function OrganizationPageRSO() {
                                 <Text style={styles.userText}>Email: {user.email}</Text>
                                 <Text style={styles.userText}>Name: {user.firstName} {user.lastName}</Text>
                                 <Text style={styles.userText}>Student No.: {user.studentNumber}</Text>
-                                <Text style={styles.userText}>Course: {user.course}</Text>
-                                <Text style={styles.userText}>Year: {user.year}</Text>
+                                <Text style={styles.userText}>Course: {user.Course}</Text>
+                                <Text style={styles.userText}>Year: {user.Year}</Text>
 
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity style={styles.denyBtn} onPress={() => handleRemove(user.email)}>
@@ -154,8 +154,8 @@ export default function OrganizationPageRSO() {
                                     <Text style={styles.userText}>Email: {user.email}</Text>
                                     <Text style={styles.userText}>Name: {user.firstName} {user.lastName}</Text>
                                     <Text style={styles.userText}>Student No.: {user.studentNumber}</Text>
-                                    <Text style={styles.userText}>Course: {user.course}</Text>
-                                    <Text style={styles.userText}>Year: {user.year}</Text>
+                                    <Text style={styles.userText}>Course: {user.Course}</Text>
+                                    <Text style={styles.userText}>Year: {user.Year}</Text>
 
                                     <View style={styles.buttonRow}>
                                         <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(user.email)}>
@@ -204,12 +204,14 @@ const styles = StyleSheet.create({
     },
     userText: {
         fontSize: 14,
-        color: '#555',
+        color: '#000', 
+        fontWeight: '700',
     },
     buttonRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         marginTop: 10,
+        gap: 10,
     },
     approveBtn: {
         backgroundColor: '#4CAF50',
