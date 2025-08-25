@@ -1,5 +1,5 @@
 import { firestore } from '../Firebase';
-import { collection, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { format, addDays, isSameDay, parse } from "date-fns";
 
 export async function fetchEvents() {
@@ -17,6 +17,14 @@ export async function fetchEvents() {
     throw error;
   }
 }
+
+export const updateEventStatus = async (eventId, status, remark) => {
+  const eventRef = doc(firestore, 'events', eventId);
+  await updateDoc(eventRef, {
+      status,
+      remark
+  });
+};
 
 // Function for add event
 export async function addEvent(newEvent) {
