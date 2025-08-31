@@ -9,7 +9,7 @@ import {
   TextInput,
   Button, ScrollView, SafeAreaView, KeyboardAvoidingView, Platform
 } from "react-native";
-import { firestore } from "../Firebase";
+import { firestore } from "../../../Firebase";
 import {
   doc,
   getDocs,

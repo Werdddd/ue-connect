@@ -13,7 +13,7 @@ import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
 import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, query, orderBy} from "firebase/firestore";
-import { auth, firestore } from '../Firebase';
+import { firestore, auth } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
 import { sendNotification } from '../Backend/notifications'; // adjust path as needed
 
