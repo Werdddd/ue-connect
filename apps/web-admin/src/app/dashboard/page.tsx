@@ -5,25 +5,16 @@ import {
   Users, 
   Building2, 
   Calendar, 
-  FileText, 
-  BarChart3, 
-  Menu,
-  X,
+  FileText,  
   UserCheck,
-  Shield,
   TrendingUp,
   Activity,
-  ChevronRight
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import Sidebar from '../components/Sidebar';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const Dashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Changed to false (collapsed by default)
-  const [sidebarHovered, setSidebarHovered] = useState(false);
   const [activeNav, setActiveNav] = useState('Dashboard');
-
-  // Determine if sidebar should show expanded content
-  const showExpandedContent = sidebarOpen || sidebarHovered;
 
   // Sample data
   const stats = {
@@ -56,20 +47,6 @@ const Dashboard = () => {
     { action: 'Document uploaded', org: 'Arts Society', time: '1 day ago' }
   ];
 
-  const navigationItems = [
-    { name: 'Dashboard', icon: BarChart3, active: true },
-    { name: 'Users', icon: Users, active: false },
-    { name: 'Organizations', icon: Building2, active: false },
-    { name: 'Events', icon: Calendar, active: false },
-    { name: 'Documents', icon: FileText, active: false }
-  ];
-
-  // Logo component
-  const Logo = ({ size = "w-8 h-8" }) => (
-    <img src="/logo.png" alt="UE Connect Logo" className={`${size} rounded-lg`} />
-    
-  );
-
   type StatCardProps = {
     title: string;
     value: number;
@@ -99,70 +76,9 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="ml-15 min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div 
-        className={`${showExpandedContent ? 'w-64' : 'w-20'} bg-white shadow-lg transition-all duration-300 flex flex-col relative z-10`}
-        onMouseEnter={() => setSidebarHovered(true)}
-        onMouseLeave={() => setSidebarHovered(false)}
-      >
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Logo />
-              {showExpandedContent && (
-                <div className="ml-3">
-                  <h1 className="text-xl font-bold text-gray-900">UE Connect</h1>
-                  <p className="text-sm text-gray-600">Admin Dashboard</p>
-                </div>
-              )}
-            </div>
-            
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
-            {navigationItems.map((item) => (
-              <li key={item.name}>
-                <button
-                  onClick={() => setActiveNav(item.name)}
-                  className={`w-full flex items-center px-3 py-3 rounded-lg transition-colors ${
-                    activeNav === item.name
-                      ? 'bg-red-50 text-red-700 border border-red-200'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {showExpandedContent && (
-                    <>
-                      <span className="ml-3 font-medium">{item.name}</span>
-                      <ChevronRight className="h-4 w-4 ml-auto" />
-                    </>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <Shield className="h-4 w-4 text-red-600" />
-            </div>
-            {showExpandedContent && (
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-900">Admin User</p>
-                <p className="text-xs text-gray-600">System Administrator</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
