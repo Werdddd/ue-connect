@@ -10,6 +10,7 @@ import {
   Shield,
   ChevronRight
 } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
 
 const Logo = ({ size = "w-8 h-8" }) => (
   <img 
@@ -19,23 +20,21 @@ const Logo = ({ size = "w-8 h-8" }) => (
   />
 );
 
-type SidebarProps = {
-  activeNav: string;
-  setActiveNav: (nav: string) => void;
-};
-
-const Sidebar: React.FC<SidebarProps> = ({ activeNav, setActiveNav }) => {
+const Sidebar: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const showExpandedContent = sidebarOpen || sidebarHovered;
 
+  // 👇 Each item has a path for routing
   const navigationItems = [
-    { name: 'Dashboard', icon: BarChart3 },
-    { name: 'Users', icon: Users },
-    { name: 'Organizations', icon: Building2 },
-    { name: 'Events', icon: Calendar },
-    { name: 'Documents', icon: FileText }
+    { name: 'Dashboard', icon: BarChart3, path: '/dashboard' },
+    { name: 'Users', icon: Users, path: '/usermanagement' },
+    { name: 'Organizations', icon: Building2, path: '/organizations' },
+    { name: 'Events', icon: Calendar, path: '/events' },
+    { name: 'Documents', icon: FileText, path: '/documents' }
   ];
 
   return (
@@ -65,38 +64,41 @@ const Sidebar: React.FC<SidebarProps> = ({ activeNav, setActiveNav }) => {
 
       {/* Navigation */}
       <div className="px-2 py-4 space-y-2 content-center">
-        {navigationItems.map((item) => (
-          <button
-            key={item.name}
-            onClick={() => setActiveNav(item.name)}
-            className={`w-full flex items-center px-3 py-3 rounded-lg transition-colors ${
-              activeNav === item.name
-                ? 'bg-red-50 text-red-700 border border-red-200'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <item.icon size={20} className="flex-shrink-0" />
-            <span
-              className={`ml-3 transition-all duration-300 ease-in-out whitespace-nowrap ${
-                showExpandedContent 
-                  ? 'opacity-100 translate-x-0' 
-                  : 'opacity-0 -translate-x-4'
+        {navigationItems.map((item) => {
+          const isActive = pathname === item.path; // 👈 highlight based on URL
+          return (
+            <button
+              key={item.name}
+              onClick={() => router.push(item.path)}
+              className={`w-full flex items-center px-3 py-3 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-red-50 text-red-700 border border-red-200'
+                  : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
-              {item.name}
-            </span>
-            {activeNav === item.name && (
-              <ChevronRight
-                size={16}
-                className={`ml-auto flex-shrink-0 transition-all duration-300 ease-in-out ${
+              <item.icon size={20} className="flex-shrink-0" />
+              <span
+                className={`ml-3 transition-all duration-300 ease-in-out whitespace-nowrap ${
                   showExpandedContent 
                     ? 'opacity-100 translate-x-0' 
-                    : 'opacity-0 translate-x-4'
+                    : 'opacity-0 -translate-x-4'
                 }`}
-              />
-            )}
-          </button>
-        ))}
+              >
+                {item.name}
+              </span>
+              {isActive && (
+                <ChevronRight
+                  size={16}
+                  className={`ml-auto flex-shrink-0 transition-all duration-300 ease-in-out ${
+                    showExpandedContent 
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 translate-x-4'
+                  }`}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Footer */}

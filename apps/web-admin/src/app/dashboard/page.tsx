@@ -78,7 +78,7 @@ const Dashboard = () => {
   return (
     <div className="ml-15 min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
+      <Sidebar />
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
