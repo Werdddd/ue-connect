@@ -238,21 +238,21 @@ const RSOManagement = () => {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard
-              title="Total Active RSOs"
+              title="Total Registered RSOs"
               value={stats.totalActiveRSOs}
               icon={Building2}
               color="text-red-600"
               bgColor="bg-red-50"
             />
             <StatCard
-              title="Events Pending Approval"
+              title="RSOs Pending Approval"
               value={stats.eventsPendingApproval}
               icon={Calendar}
               color="text-yellow-600"
               bgColor="bg-yellow-50"
             />
             <StatCard
-              title="Events Completed"
+              title="Re-accredited RSOs"
               value={stats.eventsCompleted}
               icon={CheckCircle}
               color="text-blue-600"
@@ -321,14 +321,7 @@ const RSOManagement = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                <button className="flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </button>
-                <button className="flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
-                </button>
+               
                 <button className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
                   <Plus className="h-4 w-4 mr-2" />
                   Register RSO

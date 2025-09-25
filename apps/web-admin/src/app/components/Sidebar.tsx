@@ -33,8 +33,8 @@ const Sidebar: React.FC = () => {
     { name: 'Dashboard', icon: BarChart3, path: '/dashboard' },
     { name: 'Users', icon: Users, path: '/usermanagement' },
     { name: 'Organizations', icon: Building2, path: '/rsomanagement' },
-    { name: 'Events', icon: Calendar, path: '/events' },
-    { name: 'Documents', icon: FileText, path: '/documents' }
+    { name: 'Events', icon: Calendar, path: '/eventmanagement' },
+    { name: 'Documents', icon: FileText, path: '/documentmanagement' }
   ];
 
   return (
