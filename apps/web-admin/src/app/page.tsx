@@ -3,11 +3,16 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, firestore } from "@/Firebase"; // adjust path
+
 export default function Home() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const router = useRouter();
 
@@ -15,14 +20,35 @@ export default function Home() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('Login attempt:', { email, password });
+    try {
+      // 1️⃣ Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      // ✅ Navigate to dashboard after login
-      router.push('/dashboard');
-    }, 2000);
+      // 2️⃣ Firestore: find doc with ID = email
+      const userDocRef = doc(firestore, "Users", user.email!.toLowerCase());
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+
+        if (userData.role === "admin") {
+          console.log("✅ Admin login:", userData);
+          router.push("/dashboard");
+        } else {
+          alert("❌ Access denied. Only admins can log in.");
+          await signOut(auth);
+        }
+      } else {
+        alert("❌ User record not found in Firestore.");
+        await signOut(auth);
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      alert(error.message || "Failed to log in.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,6 +69,11 @@ export default function Home() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="px-8 py-8">
             <div className="space-y-6">
+              {error && (
+                <p className="text-red-600 text-sm font-medium bg-red-50 px-3 py-2 rounded">
+                  {error}
+                </p>
+              )}
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
