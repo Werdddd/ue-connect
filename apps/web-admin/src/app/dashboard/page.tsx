@@ -16,6 +16,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { firestore } from '@/Firebase';
 import { getTotalUsers, getUserGrowth, getTotalJoinedStudents } from "@/services/users";
 import { getTotalOrganizations } from "@/services/organizations";
+import { getActiveEvents } from "@/services/events";
 
 
 const Dashboard = () => {
@@ -24,6 +25,7 @@ const Dashboard = () => {
   const [trendValue, setTrendValue] = useState<number | null>(null);
   const [totalOrgs, setTotalOrgs] = useState(0);
   const [joinedStudents, setJoinedStudents] = useState(0);
+  const [activeEvents, setActiveEvents] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,11 +33,13 @@ const Dashboard = () => {
       const growth = await getUserGrowth();
       const orgs = await getTotalOrganizations();
       const joined = await getTotalJoinedStudents();
+      const events = await getActiveEvents();
 
       setTotalUsers(total);
       setTrendValue(growth);
       setTotalOrgs(orgs);
       setJoinedStudents(joined);
+      setActiveEvents(events);
     };
     fetchData();
   }, []);
@@ -138,7 +142,7 @@ const Dashboard = () => {
 
             <StatCard
               title="Active Events"
-              value={stats.activeEvents}
+              value={activeEvents}
               icon={Calendar}
               trend={false}
             />
