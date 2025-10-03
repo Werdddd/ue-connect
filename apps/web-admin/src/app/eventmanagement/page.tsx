@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Search, 
@@ -28,6 +28,8 @@ import {
   Camera
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import { getEventsCount, getPendingEventsCount, getOnGoingEventsCount, getCompletedEventsCount } from '../../services/events';
+
 
 const EventManagement = () => {
   const [activeNav, setActiveNav] = useState('Event Management');
@@ -36,6 +38,33 @@ const EventManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterProposalStatus, setFilterProposalStatus] = useState('all');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+
+  const [totalEvents, setTotalEvents] = useState(0);      
+  const [pendingApproval, setPendingApproval] = useState(0);
+  const [OnGoingEvents, setOnGoing] = useState(0);
+  const [completedEvents, setCompletedEvents] = useState(0);
+  const [loadingTotal, setLoadingTotal] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [approved, pending, completed] = await Promise.all([
+          getEventsCount(),
+          getPendingEventsCount(),
+          getCompletedEventsCount (),
+        ]);
+        if (!cancelled) {
+          setTotalEvents(approved);
+          setPendingApproval(pending);
+          setCompletedEvents(completed);
+        }
+      } catch (e) {
+        console.error("Failed to load counts:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Sample event data
   const events = [
@@ -316,21 +345,21 @@ const EventManagement = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard
               title="Total Events"
-              value={stats.totalEvents}
+              value={totalEvents}
               icon={Calendar}
               color="text-red-600"
               bgColor="bg-red-50"
             />
             <StatCard
               title="Pending Approval"
-              value={stats.pendingApproval}
+              value={pendingApproval}
               icon={Clock}
               color="text-yellow-600"
               bgColor="bg-yellow-50"
             />
             <StatCard
-              title="Upcoming Events"
-              value={stats.upcomingEvents}
+              title="On Going"
+              value={OnGoingEvents}
               icon={PlayCircle}
               color="text-purple-600"
               bgColor="bg-purple-50"
