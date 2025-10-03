@@ -15,9 +15,16 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { firestore } from '@/Firebase';
 import { getTotalUsers, getUserGrowth, getTotalJoinedStudents } from "@/services/users";
-import { getTotalOrganizations } from "@/services/organizations";
+import { getTotalOrganizations, getOrganizationsByType } from "@/services/organizations";
 import { getActiveEvents } from "@/services/events";
+import { getGrowthTrends } from "@/services/analytics";
 
+function generateRedShades(count: number) {
+  return Array.from({ length: count }, (_, i) => {
+    const lightness = 35 + (i * 40) / count;
+    return `hsl(0, 80%, ${lightness}%)`;
+  });
+}
 
 const Dashboard = () => {
   const [activeNav, setActiveNav] = useState('Dashboard');
@@ -26,6 +33,10 @@ const Dashboard = () => {
   const [totalOrgs, setTotalOrgs] = useState(0);
   const [joinedStudents, setJoinedStudents] = useState(0);
   const [activeEvents, setActiveEvents] = useState(0);
+  const [studentTrend, setStudentTrend] = useState<number>(0);
+  const [monthlyData, setMonthlyData] = useState<{ month: string; students: number; orgs: number }[]>([]);
+  const [orgTypeData, setOrgTypeData] = useState<{ name: string; value: number; color: string }[]>([]);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,40 +45,34 @@ const Dashboard = () => {
       const orgs = await getTotalOrganizations();
       const joined = await getTotalJoinedStudents();
       const events = await getActiveEvents();
+      const growthTrends = await getGrowthTrends();
+      const orgTypeCounts = await getOrganizationsByType();
+
+      const colors = generateRedShades(orgTypeCounts.length);
+
+      const coloredData = orgTypeCounts.map((item, i) => ({
+        ...item,
+        color: colors[i],
+      }));
 
       setTotalUsers(total);
       setTrendValue(growth);
       setTotalOrgs(orgs);
       setJoinedStudents(joined);
       setActiveEvents(events);
+      setOrgTypeData(coloredData);
+
+      setMonthlyData(
+        growthTrends.map((item) => ({
+          month: item.month,
+          students: item.students,
+          orgs: orgs,
+        }))
+      );
     };
     fetchData();
   }, []);
 
-
-  // Sample data
-  const stats = {
-    totalStudents: 15420,
-    registeredOrgs: 147,
-    rsoOfficers: 892,
-    activeEvents: 23
-  };
-
-  const monthlyData = [
-    { month: 'Jan', students: 14200, orgs: 132, events: 45 },
-    { month: 'Feb', students: 14650, orgs: 138, events: 52 },
-    { month: 'Mar', students: 14890, orgs: 141, events: 48 },
-    { month: 'Apr', students: 15100, orgs: 144, events: 61 },
-    { month: 'May', students: 15420, orgs: 147, events: 58 }
-  ];
-
-  const orgTypeData = [
-    { name: 'University Wide', value: 45, color: '#DC2626' },
-    { name: 'COE', value: 32, color: '#EF4444' },
-    { name: 'CAS', value: 28, color: '#F87171' },
-    { name: 'CFAD', value: 25, color: '#FCA5A5' },
-    { name: 'CBA', value: 17, color: '#FECACA' }
-  ];
 
   const recentActivities = [
     { action: 'New organization registered', org: 'UE Debate Society', time: '2 hours ago' },

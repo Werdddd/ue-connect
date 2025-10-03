@@ -1,6 +1,8 @@
 import { firestore } from '../Firebase';
 import { collection, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
 import { format, addDays, isSameDay, parse } from "date-fns";
+import { getAuth } from "firebase/auth";
+
 
 export async function fetchEvents() {
   try {
@@ -17,28 +19,57 @@ export async function fetchEvents() {
   }
 }
 
-// Function for add event
-export async function addEvent(newEvent) {
-    try {
-      
-      const eventWithStatus = {
-        ...newEvent,
-        status: newEvent.status || 'Applied',
-      };
-  
-      const eventsSnapshot = await getDocs(collection(firestore, 'events'));
-      const newEventID = `OrgEvent${eventsSnapshot.size + 1}`; 
-  
-      const docRef = doc(firestore, 'events', newEventID);
-      await setDoc(docRef, eventWithStatus);
-  
-      //console.log('Event added with custom ID:', newEventID);
-      return newEventID;
-    } catch (error) {
-      console.error('Failed to add event:', error);
-      throw error;
-    }
+// Fetch organizations for collab
+export async function fetchOrganizations() {
+  try {
+    const querySnapshot = await getDocs(collection(firestore, 'organizations'));
+    const organizations = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    return organizations;
+  } catch (error) {
+    console.error('Failed to fetch organizations:', error);
+    throw error;
   }
+}
+
+// Add event with creator info
+export async function addEvent(newEvent) {
+  try {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error("User must be logged in to create events.");
+    }
+
+    // Fallback: if org name isn’t in profile, use email or "Unknown Org"
+    const creatorName = currentUser.displayName || currentUser.email || "Unknown Org";
+
+    const eventWithStatus = {
+      ...newEvent,
+      status: newEvent.status || 'Applied',
+      isCollab: newEvent.isCollab || false,
+      collabOrgs: newEvent.collabOrgs || [],
+      createdBy: currentUser.uid,       // ✅ save UID
+      createdByName: creatorName,       // ✅ save display name / org name
+      createdAt: new Date().toISOString(),
+    };
+
+    // custom ID like OrgEvent1, OrgEvent2...
+    const eventsSnapshot = await getDocs(collection(firestore, 'events'));
+    const newEventID = `OrgEvent${eventsSnapshot.size + 1}`;
+
+    const docRef = doc(firestore, 'events', newEventID);
+    await setDoc(docRef, eventWithStatus);
+
+    return newEventID;
+  } catch (error) {
+    console.error('Failed to add event:', error);
+    throw error;
+  }
+}
 
 
   // GREEDY ALGORITHM FOR SUGGESTED DATE AND TIME
