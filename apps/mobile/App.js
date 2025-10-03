@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import React from 'react';
+import { Platform } from "react-native";
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StyleSheet, Text, View } from 'react-native';
@@ -31,6 +32,7 @@ const Stack = createStackNavigator();
 
 export default function App() {
   console.log("App is rendering");
+  console.log("Running on:", Platform.OS);
 
   return (
     <NavigationContainer>
