@@ -17,7 +17,7 @@ import { firestore } from '@/Firebase';
 import { getTotalUsers, getUserGrowth, getTotalJoinedStudents } from "@/services/users";
 import { getTotalOrganizations } from "@/services/organizations";
 import { getActiveEvents } from "@/services/events";
-
+import { getGrowthTrends } from "@/services/analytics";
 
 const Dashboard = () => {
   const [activeNav, setActiveNav] = useState('Dashboard');
@@ -26,6 +26,9 @@ const Dashboard = () => {
   const [totalOrgs, setTotalOrgs] = useState(0);
   const [joinedStudents, setJoinedStudents] = useState(0);
   const [activeEvents, setActiveEvents] = useState(0);
+  const [studentTrend, setStudentTrend] = useState<number>(0);
+  const [monthlyData, setMonthlyData] = useState<{ month: string; students: number; orgs: number }[]>([]);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,32 +37,26 @@ const Dashboard = () => {
       const orgs = await getTotalOrganizations();
       const joined = await getTotalJoinedStudents();
       const events = await getActiveEvents();
+      const growthTrends = await getGrowthTrends();
 
       setTotalUsers(total);
       setTrendValue(growth);
       setTotalOrgs(orgs);
       setJoinedStudents(joined);
       setActiveEvents(events);
+
+      setMonthlyData(
+        growthTrends.map((item) => ({
+          month: item.month,
+          students: item.students,
+          orgs: orgs 
+        }))
+      );
+      
     };
     fetchData();
   }, []);
 
-
-  // Sample data
-  const stats = {
-    totalStudents: 15420,
-    registeredOrgs: 147,
-    rsoOfficers: 892,
-    activeEvents: 23
-  };
-
-  const monthlyData = [
-    { month: 'Jan', students: 14200, orgs: 132, events: 45 },
-    { month: 'Feb', students: 14650, orgs: 138, events: 52 },
-    { month: 'Mar', students: 14890, orgs: 141, events: 48 },
-    { month: 'Apr', students: 15100, orgs: 144, events: 61 },
-    { month: 'May', students: 15420, orgs: 147, events: 58 }
-  ];
 
   const orgTypeData = [
     { name: 'University Wide', value: 45, color: '#DC2626' },
