@@ -12,10 +12,10 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
-import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, query, orderBy} from "firebase/firestore";
+import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { firestore, auth } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
-import { sendNotification } from '../Backend/notifications'; // adjust path as needed
+import { sendNotification } from '../Backend/notifications'; 
 
 export default function Home() {
   const navigation = useNavigation();
@@ -23,8 +23,8 @@ export default function Home() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [postText, setPostText] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
- const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); 
+  const [loading, setLoading] = useState(false);
   const [newsfeedPosts, setNewsfeedPosts] = useState([]);
   const [userName, setusername] = useState('');
   const userComment = 'This is a sample comment.'; 
@@ -44,25 +44,27 @@ export default function Home() {
   const ss2 = "sheen";
 
   const [imageModalVisible, setImageModalVisible] = useState(false);
-const [selectedImagePic, setSelectedImagePic] = useState(null);
+  const [selectedImagePic, setSelectedImagePic] = useState(null);
 
-const openImage = (uri) => {
-  setSelectedImagePic(uri);
-  setImageModalVisible(true);
-};
+  const openImage = (uri) => {
+    setSelectedImagePic(uri);
+    setImageModalVisible(true);
+  };
 
-const closeModalImage = () => {
-  setImageModalVisible(false);
-  setSelectedImagePic(null);
-};
-
+  const closeModalImage = () => {
+    setImageModalVisible(false);
+    setSelectedImagePic(null);
+  };
 
   const toggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
   };
 
-  // Function to filter posts based on search text
-  const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
+  const [filteredPosts, setFilteredPosts] = useState([]);
+
+  const PAGE_SIZE = 10;
+  const [visiblePosts, setVisiblePosts] = useState([]);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (commentModalVisible && selectedPostId) {
@@ -71,116 +73,133 @@ const closeModalImage = () => {
 
     const user = auth.currentUser;
     if (user?.email) {
-    setCurrentUserEmail(user.email);
+      setCurrentUserEmail(user.email);
     }
 
     const getUserData = async () => {
-    const userDoc = await getDoc(doc(firestore, "Users", user.email));
-    if (userDoc.exists()) {
-        const userData = userDoc.data();
-        setusername(`${userData.firstName} ${userData.lastName}`);
-        if (userData?.profileImage) {
-        const isBase64 = !userData.profileImage.startsWith('http');
-        const imageSource = isBase64
-            ? `${userData.profileImage}`
-            : userData.profileImage;
-        
-        setUserProfileImage(imageSource);
-        //console.log("test", imageSource);
+      if (!user?.email) return;
+      try {
+        const userDoc = await getDoc(doc(firestore, "Users", user.email));
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setusername(`${userData.firstName} ${userData.lastName}`);
+            if (userData?.profileImage) {
+              const isBase64 = !userData.profileImage.startsWith('http');
+              const imageSource = isBase64
+                  ? `${userData.profileImage}`
+                  : userData.profileImage;
+              
+              setUserProfileImage(imageSource);
+            }
+            setRole(userData.role);
         }
-        setRole(userData.role);
-        //console.log(role);
-    }
+      } catch (err) {
+        console.warn('Error fetching user data in getUserData:', err);
+      }
     };
+
     getUserData();
 
-    // FETCH NEWSFEED
-const fetchNewsfeed = async () => {
-    try {
-      const snapshot = await getDocs(collection(firestore, 'newsfeed'));
-  
-      const fetched = await Promise.all(
-        snapshot.docs.map(async (docSnap) => {
-          const d = docSnap.data();
-  
-          // Handle date
-          const rawDate = d.date || d.timestamp;
-          const dateObj = rawDate?.toDate
-            ? rawDate.toDate()
-            : new Date(rawDate || Date.now());
-  
-          // Normalize post images
-          const images = (d.images || []).map((img) =>
-            img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
-          );
-  
-          // Get comment count
-          const commentsSnapshot = await getDocs(
-            collection(firestore, 'newsfeed', docSnap.id, 'comments')
-          );
-          const commentCount = commentsSnapshot.size;
-  
-          // Get user profile from Users collection
-          let profileImage =
-            'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
-          let userName = d.userName || 'Anonymous';
-          let role = '';
-  
-          if (d.userId) {
-            try {
-              const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
-              if (userDoc.exists()) {
-                const userData = userDoc.data();
-  
-                userName =
-                  userData.firstName && userData.lastName
-                    ? `${userData.firstName} ${userData.lastName}`
-                    : userData.firstName || 'Anonymous';
-  
-                profileImage = userData.profileImage || profileImage;
-                role = userData.role || '';
+    const fetchNewsfeed = async () => {
+        try {
+          const snapshot = await getDocs(collection(firestore, 'newsfeed'));
+      
+          const fetched = await Promise.all(
+            snapshot.docs.map(async (docSnap) => {
+              const d = docSnap.data();
+      
+              // Handle date
+              const rawDate = d.date || d.timestamp;
+              const dateObj = rawDate?.toDate
+                ? rawDate.toDate()
+                : new Date(rawDate || Date.now());
+      
+              // Normalize post images
+              const images = (d.images || []).map((img) =>
+                img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
+              );
+      
+              // Get comment count
+              const commentsSnapshot = await getDocs(
+                collection(firestore, 'newsfeed', docSnap.id, 'comments')
+              );
+              const commentCount = commentsSnapshot.size;
+      
+              // Get user profile from Users collection
+              let profileImage =
+                'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+              let userName = d.userName || 'Anonymous';
+              let role = '';
+      
+              if (d.userId) {
+                try {
+                  const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
+                  if (userDoc.exists()) {
+                    const userData = userDoc.data();
+      
+                    userName =
+                      userData.firstName && userData.lastName
+                        ? `${userData.firstName} ${userData.lastName}`
+                        : userData.firstName || 'Anonymous';
+      
+                    profileImage = userData.profileImage || profileImage;
+                    role = userData.role || '';
+                  }
+                } catch (err) {
+                  console.warn(`Failed to get user data for ${d.userId}`, err);
+                }
               }
-            } catch (err) {
-              console.warn(`Failed to get user data for ${d.userId}`, err);
-            }
-          }
-  
-          return {
-            id: docSnap.id,
-            text: d.text || '',
-            date: dateObj,
-            images,
-            userId: d.userId,
-            user: {
-              name: userName,
-              profileImage,
-              role,
-            },
-            likedBy: d.likedBy || [],
-            commentCount,
-            pinned: d.pinned === true, // ✅ Include pinned flag
-          };
-        })
-      );
-  
-      // ✅ Sort pinned posts first, then by date
-      const sortedPosts = fetched.sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1;
-        if (!a.pinned && b.pinned) return 1;
-        return b.date - a.date;
-      });
-  
-      setNewsfeedPosts(sortedPosts);
-    } catch (e) {
-      console.error('Error fetching newsfeed:', e);
-    }
-  };
-  
+      
+              return {
+                id: docSnap.id,
+                text: d.text || '',
+                date: dateObj,
+                images,
+                userId: d.userId,
+                user: {
+                  name: userName,
+                  profileImage,
+                  role,
+                },
+                likedBy: d.likedBy || [],
+                commentCount,
+                pinned: d.pinned === true, 
+              };
+            })
+          );
+      
+          const sortedPosts = fetched.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return b.date - a.date;
+          });
+      
+          setNewsfeedPosts(sortedPosts);
 
-    fetchNewsfeed();
+          setVisiblePosts(sortedPosts.slice(0, PAGE_SIZE));
+          setPage(1);
+          setFilteredPosts(sortedPosts);
+        } catch (e) {
+          console.error('Error fetching newsfeed:', e);
+        }
+      };
+      
+      fetchNewsfeed();
   }, [commentModalVisible, selectedPostId]);
 
+  const loadMorePosts = () => {
+    const nextPage = page + 1;
+    const start = (nextPage - 1) * PAGE_SIZE;
+    const end = nextPage * PAGE_SIZE;
 
+    if (start < newsfeedPosts.length) {
+      setVisiblePosts(prev => [
+        ...prev,
+        ...newsfeedPosts.slice(start, end),
+      ]);
+      setPage(nextPage);
+    }
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -280,26 +299,20 @@ const fetchNewsfeed = async () => {
   }
 };
   
-  
-  
-  
-
   const handleAddComment = async () => {
     if (commentText.trim() === '') return;
   
     try {
       const commentData = {
         text: commentText,
-        userName: userName, // fetched from Firestore earlier
-        profileImage: userProfileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg', // optional
+        userName: userName, 
+        profileImage: userProfileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg', 
         timestamp: serverTimestamp(),
         email: currentUserEmail,
       };
-  
-      // Add comment to Firestore
+
       await addDoc(collection(firestore, 'newsfeed', selectedPostId, 'comments'), commentData);
   
-      // Reset the comment input field
       setCommentText('');
 
       const postRef = doc(firestore, 'newsfeed', selectedPostId);
@@ -309,7 +322,6 @@ const fetchNewsfeed = async () => {
         const postData = postSnap.data();
         const postOwner = postData.userId;
   
-        // Avoid notifying yourself
         if (postOwner && postOwner !== currentUserEmail) {
           await sendNotification({
             userId: postOwner,
@@ -318,9 +330,8 @@ const fetchNewsfeed = async () => {
           });
         }
       }
-  
-      // Immediately re-fetch the comments for the selected post to update the UI
-      fetchComments(selectedPostId); // Custom function to fetch comments
+
+      fetchComments(selectedPostId); 
     } catch (error) {
       console.error('Error adding comment:', error);
     }
@@ -374,14 +385,12 @@ const fetchNewsfeed = async () => {
     const hasLiked = likedBy.includes(currentUserEmail);
   
     try {
-      // Update the like in Firestore
       await updateDoc(postRef, {
         likedBy: hasLiked
           ? arrayRemove(currentUserEmail)
           : arrayUnion(currentUserEmail),
       });
   
-      // Optimistically update UI
       setNewsfeedPosts(prev =>
         prev.map(p =>
           p.id === postId
@@ -394,18 +403,16 @@ const fetchNewsfeed = async () => {
             : p
         )
       );
-  
-      // 🔔 Only send notification on NEW like
+
       if (!hasLiked) {
         const postSnap = await getDoc(postRef);
         const postData = postSnap.data();
   
-        const postOwner = postData.userId; // depends on your schema
-  
-        // Don't notify yourself
+        const postOwner = postData.userId;
+
         if (postOwner && postOwner !== currentUserEmail) {
           await sendNotification({
-            userId: postOwner, // This can be UID or email — use same ID type as your users
+            userId: postOwner, 
             type: 'like',
             content: `${userName} liked your post.`,
           });
@@ -419,15 +426,12 @@ const fetchNewsfeed = async () => {
   
   const handleSearch = (query) => {
     setSearchQuery(query);
-  
-    // Check if the query is empty, and display all posts if true
     if (query === '') {
-      setFilteredPosts(posts); // Show all posts if search is cleared
+      setFilteredPosts(newsfeedPosts);
     } else {
-      // Filter posts based on title and content
-      const filtered = posts.filter(post =>
-        post.title.toLowerCase().includes(query.toLowerCase()) ||
-        post.content.toLowerCase().includes(query.toLowerCase())
+      const filtered = newsfeedPosts.filter(post =>
+        (post.user?.name || '').toLowerCase().includes(query.toLowerCase()) ||
+        (post.text || '').toLowerCase().includes(query.toLowerCase())
       );
       setFilteredPosts(filtered);
     }
@@ -435,24 +439,21 @@ const fetchNewsfeed = async () => {
   
   const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
-  
-    // Get the current authenticated user
+
     const user = auth.currentUser;
   
     if (!user) {
       console.log("No user is logged in");
       return;
     }
-    
-    // Use the user's email as the document ID
+
     const userEmail = user.email;
   
     if (!userEmail) {
       console.log("No email found for the user");
       return;
     }
-  
-    // Query the Firestore collection using the email as the document ID
+
     const userDocRef = doc(firestore, "Users", userEmail);
     try {
       const userDoc = await getDoc(userDocRef);
@@ -461,10 +462,8 @@ const fetchNewsfeed = async () => {
         const userData = userDoc.data();
         const { firstName, lastName, profileImage, role} = userData;
   
-        // If no profile image is found, use a default image
         const userProfileImage = profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
   
-        // Get current date (ensure it's a valid Date object)
         const postDate = new Date();
         if (!(postDate instanceof Date) || isNaN(postDate)) {
           console.error("Invalid Date object.");
@@ -480,18 +479,15 @@ const fetchNewsfeed = async () => {
           },
           text: postText,
           images: selectedImages,
-          date: postDate, // Add date here
-          comments: [], // Initialize empty comments array
+          date: postDate, 
+          comments: [], 
           likedBy: [],
         };
         setLoading(true);
         const postId = await savePost(newPost.user, postText, selectedImages);
-        //const postId = 2202;
-        //console.log(newPost);
-        setNewsfeedPosts([{ ...newPost, id: postId }, ...newsfeedPosts]);
-        discardPost(
-          
-        );
+        setNewsfeedPosts(prev => [{ ...newPost, id: postId }, ...prev]);
+        setVisiblePosts(prev => [{ ...newPost, id: postId }, ...prev]);
+        discardPost();
         
       } else {
         console.log("No such user found in Firestore");
@@ -511,7 +507,6 @@ const fetchNewsfeed = async () => {
     
     return (
         <View key={post.id} style={styles.postCard}>
-        {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
             <TouchableOpacity
@@ -519,7 +514,7 @@ const fetchNewsfeed = async () => {
                 if (currentUserEmail !== post.userId) {
                   navigation.navigate('UserOpen', {
                     postId: post.id,
-                    postEmail: post.userId, // assuming userId is their email
+                    postEmail: post.userId,
                   });
                 } else {
                   navigation.navigate('UserOwnProfilePage');
@@ -552,8 +547,6 @@ const fetchNewsfeed = async () => {
                 </Text>
               </View>
           </View>
-  
-          {/* Pinned Icon */}
           {post.pinned && (
             <Image
                 source={require('../assets/pin.png')}
@@ -566,7 +559,6 @@ const fetchNewsfeed = async () => {
           </TouchableOpacity>
         </View>
   
-        {/* Post Content */}
         <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
           {hasImages && (
@@ -581,8 +573,7 @@ const fetchNewsfeed = async () => {
               ))}
             </View>
           )}
-
-          {/* Modal for Viewing Image */}
+  
           {imageModalVisible && (
           <Modal
             visible={imageModalVisible}
@@ -604,7 +595,6 @@ const fetchNewsfeed = async () => {
         )}
         </View>
   
-        {/* Post Actions */}
         <View style={styles.postActions}>
           <TouchableOpacity
             style={styles.actionButton}
@@ -669,7 +659,6 @@ const fetchNewsfeed = async () => {
 
                         
             <Text style={styles.commentsTitle}>Comments</Text>
-            {/* Comment List */}
             <ScrollView>
               {postComments.map((comment) => (
                 <View key={comment.id} style={styles.commentCard}>
@@ -703,14 +692,12 @@ const fetchNewsfeed = async () => {
                   </View>
                 ))}
               </ScrollView>
-
-              {/* Input at Bottom */}
               <View style={styles.commentInputRow}>
               {userProfileImage ? (
                 <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
               ) : (
                 <FontAwesome name="user-circle-o" size={35} color="#999" />
-              )}
+              )} 
                 <TextInput
                   style={styles.commentInput}
                   placeholder="Add a comment..."
@@ -733,6 +720,7 @@ const fetchNewsfeed = async () => {
         </TouchableWithoutFeedback>
 
               
+
     </Modal>
 
         <Modal
@@ -743,13 +731,11 @@ const fetchNewsfeed = async () => {
         >
           <View style={styles.modalContainer}>
             <View style={styles.shareModalContent}>
-              {/* User Info */}
               <View style={styles.shareHeader}>
                 <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
                 <Text style={styles.shareUsername}>Username</Text>
               </View>
 
-              {/* Caption Input */}
               <TextInput
                 style={styles.shareCaptionInput}
                 placeholder="Write a caption..."
@@ -758,8 +744,8 @@ const fetchNewsfeed = async () => {
                 onChangeText={setShareCaption}
               />
 
-              {/* Share Now Button */}
-              <TouchableOpacity style={styles.shareButton} onPress={() => {/* share post */}}>
+
+              <TouchableOpacity style={styles.shareButton} onPress={() => {}}>
                 <Text style={styles.shareButtonText}>Share Now</Text>
               </TouchableOpacity>
             </View>
@@ -777,20 +763,28 @@ const fetchNewsfeed = async () => {
                       <View style={styles.loadingContainer}>
                         <View style={styles.loadingBox}>
                           <ActivityIndicator size="large" color="#FE070C" />
-                          {/* <Text style={{ marginTop: 10 }}>Logging your account...</Text> */}
                         </View>
                       </View>
                     )}
       <View style={styles.container}>
       <Header
-        posts={filteredPosts} // Send filtered posts as props
-        setFilteredPosts={setFilteredPosts} // Send setter function as props
+        posts={filteredPosts}
+        setFilteredPosts={setFilteredPosts}
         scrollY={scrollY}
       />
 
         <ScrollView
           onScroll={(event) => {
-          setScrollY(event.nativeEvent.contentOffset.y);
+          const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+          setScrollY(contentOffset.y);
+
+          const paddingToBottom = 20;
+          if (
+            layoutMeasurement.height + contentOffset.y >=
+            contentSize.height - paddingToBottom
+          ) {
+            loadMorePosts();
+          }
           }}
           scrollEventThrottle={16}
           contentContainerStyle={styles.scrollContent}
@@ -812,8 +806,7 @@ const fetchNewsfeed = async () => {
             </TouchableOpacity>
           </View>
 
-          {/* Render Newsfeed */}
-          {newsfeedPosts.map((post) => renderPost(post))}
+          {visiblePosts.map((post) => renderPost(post))}
         </ScrollView>
 
         <BottomNavBar />
@@ -896,7 +889,6 @@ const fetchNewsfeed = async () => {
                       )}
                     </View>
 
-                    {/* Options */}
                   <View style={styles.optionsGrid}>
                       <TouchableOpacity style={styles.optionButton} onPress={pickImage}>
                         <MaterialIcons name="photo-library" size={24} color="#2e89ff" />
