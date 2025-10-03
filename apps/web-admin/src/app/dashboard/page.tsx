@@ -1,20 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
-import { 
-  Users, 
-  Building2, 
-  Calendar, 
-  FileText,  
+import React, { useState, useEffect } from 'react';
+import {
+  Users,
+  Building2,
+  Calendar,
+  FileText,
   UserCheck,
   TrendingUp,
   Activity,
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { firestore } from '@/Firebase';
+import { getTotalUsers, getUserGrowth, getTotalJoinedStudents } from "@/services/users";
+import { getTotalOrganizations } from "@/services/organizations";
+
 
 const Dashboard = () => {
   const [activeNav, setActiveNav] = useState('Dashboard');
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [trendValue, setTrendValue] = useState<number | null>(null);
+  const [totalOrgs, setTotalOrgs] = useState(0);
+  const [joinedStudents, setJoinedStudents] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const total = await getTotalUsers();
+      const growth = await getUserGrowth();
+      const orgs = await getTotalOrganizations();
+      const joined = await getTotalJoinedStudents();
+
+      setTotalUsers(total);
+      setTrendValue(growth);
+      setTotalOrgs(orgs);
+      setJoinedStudents(joined);
+    };
+    fetchData();
+  }, []);
+
 
   // Sample data
   const stats = {
@@ -93,25 +118,24 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard
               title="Total Students"
-              value={stats.totalStudents}
+              value={totalUsers}
               icon={Users}
-              trend={true}
-              trendValue={8.5}
+              trend={trendValue !== null}
+              trendValue={trendValue ?? 0}
             />
             <StatCard
               title="Registered Organizations"
-              value={stats.registeredOrgs}
+              value={totalOrgs}
               icon={Building2}
-              trend={true}
-              trendValue={4.2}
+              trend={false}
             />
             <StatCard
-              title="RSO Officers"
-              value={stats.rsoOfficers}
+              title="Students in Organizations"
+              value={joinedStudents}
               icon={UserCheck}
-              trend={true}
-              trendValue={6.1}
+              trend={false}
             />
+
             <StatCard
               title="Active Events"
               value={stats.activeEvents}
@@ -131,17 +155,17 @@ const Dashboard = () => {
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="students" 
-                    stroke="#DC2626" 
+                  <Line
+                    type="monotone"
+                    dataKey="students"
+                    stroke="#DC2626"
                     strokeWidth={3}
                     name="Students"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="orgs" 
-                    stroke="#EF4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="orgs"
+                    stroke="#EF4444"
                     strokeWidth={3}
                     name="Organizations"
                   />
@@ -172,7 +196,7 @@ const Dashboard = () => {
                 <div className="lg:ml-4 mt-4 lg:mt-0">
                   {orgTypeData.map((item, index) => (
                     <div key={index} className="flex items-center mb-2">
-                      <div 
+                      <div
                         className="w-4 h-4 rounded-full mr-3"
                         style={{ backgroundColor: item.color }}
                       ></div>
