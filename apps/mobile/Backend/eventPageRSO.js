@@ -17,6 +17,21 @@ export async function fetchEvents() {
   }
 }
 
+// Fetch organizations for collab
+export async function fetchOrganizations() {
+  try {
+    const querySnapshot = await getDocs(collection(firestore, 'organizations'));
+    const organizations = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    return organizations;
+  } catch (error) {
+    console.error('Failed to fetch organizations:', error);
+    throw error;
+  }
+}
+
 // Function for add event
 export async function addEvent(newEvent) {
     try {
@@ -24,6 +39,8 @@ export async function addEvent(newEvent) {
       const eventWithStatus = {
         ...newEvent,
         status: newEvent.status || 'Applied',
+        isCollab: newEvent.isCollab || false,
+      collabOrgs: newEvent.collabOrgs || [],
       };
   
       const eventsSnapshot = await getDocs(collection(firestore, 'events'));

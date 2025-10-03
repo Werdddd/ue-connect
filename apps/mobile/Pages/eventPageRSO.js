@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
     View, Text, TouchableOpacity, SafeAreaView,
     KeyboardAvoidingView, Platform, ScrollView, StyleSheet,
-    Modal, TextInput, Image, Linking
+    Modal, TextInput, Image, Linking, Switch
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCardRSO from '../components/eventCardRSO';
-import { fetchEvents, addEvent } from '../Backend/eventPageRSO'; 
+import { fetchEvents, fetchOrganizations, addEvent } from '../Backend/eventPageRSO'; 
 import { getSuggestedDateTime } from '../Backend/eventPageRSO';
 import { launchImageLibrary } from 'react-native-image-picker';
 // import DocumentPicker from 'react-native-document-picker';
@@ -17,6 +17,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
+
 
 export default function EventPageRSO() {
     const navigation = useNavigation();
@@ -38,6 +39,13 @@ export default function EventPageRSO() {
 
     const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
     const [proposalLink, setProposalLink] = useState('');
+    const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+
+
+    const [isCollab, setIsCollab] = useState(false);
+    const [organizations, setOrganizations] = useState([]);
+    const [selectedOrgs, setSelectedOrgs] = useState([]);
+    const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
 
     useEffect(() => {
         loadEvents();
@@ -136,54 +144,238 @@ export default function EventPageRSO() {
     };
     
 
-    
+    useEffect(() => {
+  if (isModalVisible) {
+    (async () => {
+      const orgs = await fetchOrganizations();
+      setOrganizations(orgs);
+    })();
+  }
+}, [isModalVisible]);
 
     const handleAddEvent = async () => {
-        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants || !selectedBanner) {
-            alert('Please fill out all fields!');
-            return;
-        }
+    if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants || !selectedBanner) {
+        alert('Please fill out all fields!');
+        return;
+    }
 
-        const participants = parseInt(newParticipants, 10);
-        if (isNaN(participants)) {
-            alert('Please enter a valid number for participants!');
-            return;
-        }
+    const participants = parseInt(newParticipants, 10);
+    if (isNaN(participants)) {
+        alert('Please enter a valid number for participants!');
+        return;
+    }
 
-        const eventStatus = status || 'Applied'; 
-
-        const newEvent = {
-            banner: selectedBanner,
-            title: newTitle,
-            description: newDescription,
-            date: newDate,
-            time: newTime,
-            location: newLocation,
-            participants: participants,
-            org: organization,  
-            status: eventStatus, 
-            proposalLink: selectedProposal?.uri || null,
-            proposalName: selectedProposal?.name || null,
-        };
-
+    // ✅ Enhanced function to parse time strings
+    const parseTimeRange = (dateStr, timeStr) => {
         try {
-            await addEvent(newEvent);
-            await loadEvents();
-            setIsModalVisible(false);
-            setSelectedBanner(null);
-            setNewTitle('');
-            setNewDescription('');
-            setNewDate('');
-            setNewTime('');
-            setNewLocation('');
-            setNewParticipants('');
-            setStatus('');
-            setSelectedProposal(null); // Clear selected proposal
-        } catch (error) {
-            console.error('Error adding event:', error);
+            const [startStr, endStr] = timeStr.split('-').map(s => s?.trim());
+            
+            const parseTime = (timeString) => {
+                // Clean the time string
+                const cleanTime = timeString.trim();
+                
+                // Extract hours, minutes, and AM/PM
+                const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i;
+                const match = cleanTime.match(timeRegex);
+                
+                if (!match) {
+                    throw new Error('Invalid time format');
+                }
+                
+                let hours = parseInt(match[1], 10);
+                const minutes = match[2] ? parseInt(match[2], 10) : 0;
+                const meridiem = match[3] ? match[3].toUpperCase() : null;
+                
+                // Convert to 24-hour format
+                if (meridiem === 'PM' && hours !== 12) {
+                    hours += 12;
+                } else if (meridiem === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+                
+                // Parse the date string to extract month, day, year
+                const dateRegex = /(\w+)\s+(\d{1,2}),?\s+(\d{4})/;
+                const dateMatch = dateStr.match(dateRegex);
+                
+                if (!dateMatch) {
+                    throw new Error('Invalid date format');
+                }
+                
+                const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                                   'july', 'august', 'september', 'october', 'november', 'december'];
+                const monthIndex = monthNames.findIndex(m => 
+                    m.startsWith(dateMatch[1].toLowerCase().substring(0, 3))
+                );
+                
+                if (monthIndex === -1) {
+                    throw new Error('Invalid month');
+                }
+                
+                const day = parseInt(dateMatch[2], 10);
+                const year = parseInt(dateMatch[3], 10);
+                
+                // Create date object using individual components (more reliable)
+                const date = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+                
+                if (isNaN(date.getTime())) {
+                    throw new Error('Invalid date object created');
+                }
+                
+                return date.getTime();
+            };
+
+            if (endStr) {
+                return {
+                    start: parseTime(startStr),
+                    end: parseTime(endStr),
+                };
+            } else {
+                const start = parseTime(startStr);
+                // Default: add 1 hour if no end time provided
+                return {
+                    start,
+                    end: start + 60 * 60 * 1000,
+                };
+            }
+        } catch (err) {
+            console.warn("⏰ Error parsing time:", err.message, "Date:", dateStr, "Time:", timeStr);
+            return null;
         }
     };
 
+    // ✅ Normalize location for comparison (case-insensitive, trim spaces)
+    const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
+    const normalizedNewLocation = normalizeLocation(newLocation);
+
+    // 🔍 DEBUG: Log all events being checked
+    console.log('=== CONFLICT CHECK DEBUG ===');
+    console.log('New Event:', { date: newDate, time: newTime, location: newLocation });
+    console.log('Total events to check:', events.length);
+    console.log('Events:', events.map(e => ({ 
+        title: e.title, 
+        date: e.date, 
+        time: e.time, 
+        location: e.location, 
+        status: e.status 
+    })));
+
+    // ✅ Check conflicts against events with Applied or Approved status
+    const conflictingEvents = events.filter(event => {
+        console.log(`\nChecking event: ${event.title}`);
+        
+        // Only check Applied and Approved events
+        if (!(event.status === 'Applied' || event.status === 'Approved')) {
+            console.log(`  ❌ Skipped - Status is "${event.status}"`);
+            return false;
+        }
+        console.log(`  ✓ Status check passed: ${event.status}`);
+
+        // Check if same location (case-insensitive comparison)
+        const eventLoc = normalizeLocation(event.location);
+        console.log(`  Comparing locations: "${eventLoc}" vs "${normalizedNewLocation}"`);
+        if (eventLoc !== normalizedNewLocation) {
+            console.log(`  ❌ Different location`);
+            return false;
+        }
+        console.log(`  ✓ Same location`);
+
+        // Check if same date
+        console.log(`  Comparing dates: "${event.date}" vs "${newDate}"`);
+        if (event.date !== newDate) {
+            console.log(`  ❌ Different date`);
+            return false;
+        }
+        console.log(`  ✓ Same date`);
+
+        // Check time overlap
+        try {
+            const existing = parseTimeRange(event.date, event.time);
+            const incoming = parseTimeRange(newDate, newTime);
+
+            console.log(`  Existing time:`, existing);
+            console.log(`  Incoming time:`, incoming);
+
+            if (!existing || !incoming) {
+                console.log(`  ❌ Failed to parse times`);
+                return false;
+            }
+
+            // Overlap check: (A starts before B ends) AND (A ends after B starts)
+            const hasOverlap = incoming.start < existing.end && incoming.end > existing.start;
+            console.log(`  Time overlap: ${hasOverlap}`);
+            return hasOverlap;
+        } catch (err) {
+            console.warn("⚠️ Error checking conflict:", err);
+            return false;
+        }
+    });
+
+    console.log('\n🔍 Conflicting events found:', conflictingEvents.length);
+    console.log('=== END DEBUG ===\n');
+
+    // ✅ Show detailed warning if conflicts found
+    if (conflictingEvents.length > 0) {
+        const conflictDetails = conflictingEvents.map(event => 
+            `  • "${event.title}" at ${event.time} (${event.status})`
+        ).join('\n');
+        
+        alert(
+            `⚠️ LOCATION CONFLICT DETECTED\n\n` +
+            `The location "${newLocation}" is already booked on ${newDate}.\n\n` +
+            `Conflicting events:\n${conflictDetails}\n\n` +
+            `Please choose:\n` +
+            `  • A different time slot for ${newLocation}\n` +
+            `  • A different location\n` +
+            `  • A different date`
+        );
+        return;
+    }
+
+    const eventStatus = status || 'Applied'; 
+
+    const newEvent = {
+        banner: selectedBanner,
+        title: newTitle,
+        description: newDescription,
+        date: newDate,
+        time: newTime,
+        location: newLocation,
+        participants: participants,
+        org: organization,  
+        status: eventStatus, 
+        proposalLink: selectedProposal?.uri || null,
+        proposalName: selectedProposal?.name || null,
+        isCollab,
+    collabOrgs: selectedOrgs,
+    };
+
+    try {
+        await addEvent(newEvent);
+        await loadEvents();
+        setIsModalVisible(false);
+
+        setSelectedBanner(null);
+        setNewTitle('');
+        setNewDescription('');
+        setNewDate('');
+        setNewTime('');
+        setNewLocation('');
+        setNewParticipants('');
+        setStatus('');
+        setSelectedProposal(null);
+        setProposalLink('');
+
+        setIsSuccessModalVisible(true);
+
+        setIsCollab(false);
+    setSelectedOrgs([]);
+    } catch (error) {
+        console.error('Error adding event:', error);
+        alert('Failed to create event. Please try again.');
+    }
+};
+
+const [locationConflictWarning, setLocationConflictWarning] = useState('');
 
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
@@ -212,7 +404,91 @@ export default function EventPageRSO() {
             fetchSuggestion();
           }, []);
           
-        
+        useEffect(() => {
+            if (newDate && newTime && newLocation) {
+                const parseTimeRange = (dateStr, timeStr) => {
+                    try {
+                        const [startStr, endStr] = timeStr.split('-').map(s => s?.trim());
+                        
+                        const parseTime = (timeString) => {
+                            const cleanTime = timeString.trim();
+                            const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i;
+                            const match = cleanTime.match(timeRegex);
+                            
+                            if (!match) return null;
+                            
+                            let hours = parseInt(match[1], 10);
+                            const minutes = match[2] ? parseInt(match[2], 10) : 0;
+                            const meridiem = match[3] ? match[3].toUpperCase() : null;
+                            
+                            if (meridiem === 'PM' && hours !== 12) hours += 12;
+                            else if (meridiem === 'AM' && hours === 12) hours = 0;
+                            
+                            const dateRegex = /(\w+)\s+(\d{1,2}),?\s+(\d{4})/;
+                            const dateMatch = dateStr.match(dateRegex);
+                            if (!dateMatch) return null;
+                            
+                            const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                                            'july', 'august', 'september', 'october', 'november', 'december'];
+                            const monthIndex = monthNames.findIndex(m => 
+                                m.startsWith(dateMatch[1].toLowerCase().substring(0, 3))
+                            );
+                            if (monthIndex === -1) return null;
+                            
+                            const day = parseInt(dateMatch[2], 10);
+                            const year = parseInt(dateMatch[3], 10);
+                            const date = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+                            
+                            return isNaN(date.getTime()) ? null : date.getTime();
+                        };
+                        
+                        if (endStr) {
+                            return { start: parseTime(startStr), end: parseTime(endStr) };
+                        } else {
+                            const start = parseTime(startStr);
+                            return start ? { start, end: start + 60 * 60 * 1000 } : null;
+                        }
+                    } catch {
+                        return null;
+                    }
+                };
+
+                const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
+                const conflictingEvents = events.filter(event => {
+                    if (!(event.status === 'Applied' || event.status === 'Approved')) return false;
+                    if (normalizeLocation(event.location) !== normalizeLocation(newLocation)) return false;
+                    if (event.date !== newDate) return false;
+
+                    try {
+                        const existing = parseTimeRange(event.date, event.time);
+                        const incoming = parseTimeRange(newDate, newTime);
+                        if (!existing || !incoming) return false;
+                        return incoming.start < existing.end && incoming.end > existing.start;
+                    } catch {
+                        return false;
+                    }
+                });
+
+                if (conflictingEvents.length > 0) {
+                    const details = conflictingEvents.map(e => `${e.title} (${e.time})`).join(', ');
+                    setLocationConflictWarning(`⚠️ Conflict detected with: ${details}`);
+                } else {
+                    setLocationConflictWarning('');
+                }
+            } else {
+                setLocationConflictWarning('');
+            }
+        }, [newDate, newTime, newLocation, events]);
+
+
+// STEP 4 (OPTIONAL): Add this warning display in your modal
+// Place it right after the Event Location TextInput:
+
+{locationConflictWarning ? (
+    <View style={styles.warningContainer}>
+        <Text style={styles.warningText}>{locationConflictWarning}</Text>
+    </View>
+) : null}
     
 
     return (
@@ -255,8 +531,8 @@ export default function EventPageRSO() {
                                 description: event.description,
                                 participants: event.participants,
                                 location: event.location,
-                                status: event.status
-                                
+                                status: event.status,
+                                isCollab: event.isCollab || false,
                             }}
                         />
                     ))}
@@ -364,6 +640,11 @@ export default function EventPageRSO() {
                                 value={newLocation}
                                 onChangeText={setNewLocation}
                             />
+                            {locationConflictWarning ? (
+    <View style={styles.warningContainer}>
+        <Text style={styles.warningText}>{locationConflictWarning}</Text>
+    </View>
+) : null}
                             <Text style={styles.label}>Event Participants</Text>
                             <TextInput
                                 placeholder="100"
@@ -373,6 +654,7 @@ export default function EventPageRSO() {
                                 value={newParticipants}
                                 onChangeText={setNewParticipants}
                             />
+                            
                             <View style={styles.bannerFileRow}>
                                 <View style={styles.uploadSection}>
                                     <Text style={styles.label}>Event Banner</Text>
@@ -393,25 +675,43 @@ export default function EventPageRSO() {
                                     )}
                                 </View>
 
-                                <View style={styles.uploadSection}>
-                                    <Text style={styles.label}>Event Proposal</Text>
-                                   
-                                    
+                               <View style={styles.uploadSection}>
+                                <Text style={styles.label}>Event Proposal</Text>
+                                
+                                <TouchableOpacity
+                                    style={styles.uploadButton}
+                                    onPress={handleSelectProposal}
+                                >
+                                    <Text style={styles.buttonText}>
+                                        {selectedProposal ? 'Change Proposal' : 'Upload Proposal'}
+                                    </Text>
+                                </TouchableOpacity>
 
-                                    
-
-                                    <TouchableOpacity
-                                        style={styles.uploadButton}
-                                        onPress={handleSelectProposal} // Opens the modal to add/edit proposal link
-                                        >
-                                        <Text style={styles.buttonText}>
-                                            {selectedProposal ? 'Change Proposal' : 'Upload Proposal'}
-                                        </Text>
-                                    </TouchableOpacity>
-
-
-
-                                </View>
+                                {/* Proposal Preview Card */}
+                                {selectedProposal && (
+                                    <View style={styles.proposalPreview}>
+                                        <View style={styles.proposalIconContainer}>
+                                            <Text style={styles.proposalIcon}>📄</Text>
+                                        </View>
+                                        <View style={styles.proposalDetails}>
+                                            <Text style={styles.proposalTitle} numberOfLines={1}>
+                                                {selectedProposal.name}
+                                            </Text>
+                                            <TouchableOpacity 
+                                                onPress={() => Linking.openURL(selectedProposal.uri)}
+                                                style={styles.proposalLinkButton}
+                                            >
+                                                <Text style={styles.proposalLinkText} numberOfLines={2}>
+                                                    {selectedProposal.uri}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <View style={styles.proposalBadge}>
+                                                <Text style={styles.proposalBadgeText}>Google Document Link</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
                                 {/* Modal for Proposal Link Input */}
                                 <Modal
                                     animationType="slide"
@@ -421,12 +721,12 @@ export default function EventPageRSO() {
                                 >
                                     <View style={styles.modalContainer}>
                                     <View style={styles.modalContent}>
-                                        <Text style={styles.modalTitle}>Enter Proposal Link</Text>
+                                        <Text style={styles.modalTitle}>Enter Document Link</Text>
 
                                         
 
                                         <TextInput
-                                        placeholder="Enter Google Drive link"
+                                        placeholder="Enter Document link"
                                         placeholderTextColor="#D3D3D3"
                                         style={styles.input}
                                         value={proposalLink}
@@ -434,14 +734,14 @@ export default function EventPageRSO() {
                                         />
 
 
-                                        {proposalLink && (
+                                        {/* {proposalLink && (
                                         <View style={styles.previewContainer}>
                                             <Text style={styles.previewTitle}>Preview Link:</Text>
                                             <TouchableOpacity onPress={() => Linking.openURL(proposalLink)}>
                                             <Text style={styles.previewLink}>{proposalLink}</Text>
                                             </TouchableOpacity>
                                         </View>
-                                        )}
+                                        )} */}
 
                                         <View style={styles.proposalModalButtons}>
                                         <TouchableOpacity
@@ -470,6 +770,61 @@ export default function EventPageRSO() {
 
                             </View>
 
+                            <Text style={styles.label}>Collaboration Event?</Text>
+                                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+                                <Switch value={isCollab} onValueChange={setIsCollab} />
+                                <Text style={{ marginLeft: 8 }}>{isCollab ? "Yes" : "No"}</Text>
+                                </View>
+
+                                {isCollab && (
+                                    <View style={{ marginBottom: 15 }}>
+                                        <Text style={styles.label}>Select Partner Organizations</Text>
+
+                                        {/* Dropdown Toggle */}
+                                        <TouchableOpacity
+                                        style={styles.dropdownToggle}
+                                        onPress={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
+                                        >
+                                        <Text style={styles.dropdownText}>
+                                            {selectedOrgs.length > 0
+                                            ? `${selectedOrgs.length} selected`
+                                            : "Choose organizations"}
+                                        </Text>
+                                        <Text style={styles.dropdownArrow}>
+                                            {isOrgDropdownOpen ? "▲" : "▼"}
+                                        </Text>
+                                        </TouchableOpacity>
+
+                                        {/* Dropdown List */}
+                                        {isOrgDropdownOpen && (
+                                        <View style={styles.dropdownList}>
+                                            {organizations.map((org) => {
+                                            const isChecked = selectedOrgs.includes(org.id);
+                                            return (
+                                                <TouchableOpacity
+                                                key={org.id}
+                                                style={styles.dropdownItem}
+                                                onPress={() => {
+                                                    if (isChecked) {
+                                                    setSelectedOrgs(selectedOrgs.filter((o) => o !== org.id));
+                                                    } else {
+                                                    setSelectedOrgs([...selectedOrgs, org.id]);
+                                                    }
+                                                }}
+                                                >
+                                                <View style={styles.checkbox}>
+                                                    {isChecked && <Text style={styles.checkmark}>✓</Text>}
+                                                </View>
+                                                <Text style={styles.orgText}>{org.orgName}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                            })}
+                                        </View>
+                                        )}
+                                    </View>
+                                    )}
+
+
                             <View style={styles.modalButtons}>
                             <TouchableOpacity
                                 style={styles.cancelButtons}
@@ -478,6 +833,9 @@ export default function EventPageRSO() {
                                     // Clear the date and time inputs as well
                                     setNewDate('');
                                     setNewTime('');
+                                    setSelectedBanner(null);
+        setSelectedProposal(null);  // ← Add this line to clear proposal
+        setProposalLink('');
                                     
                                 }}
                             >
@@ -493,6 +851,30 @@ export default function EventPageRSO() {
                         </View>
                         </ScrollView>
                         </KeyboardAvoidingView>
+                    </View>
+                </Modal>
+                <Modal
+                    animationType="fade"
+                    transparent={true}
+                    visible={isSuccessModalVisible}
+                    onRequestClose={() => setIsSuccessModalVisible(false)}
+                >
+                    <View style={styles.successModalOverlay}>
+                        <View style={styles.successModalContent}>
+                            <View style={styles.successIconContainer}>
+                                <Text style={styles.successIcon}>✓</Text>
+                            </View>
+                            <Text style={styles.successTitle}>Event Submitted!</Text>
+                            <Text style={styles.successMessage}>
+                                Your event has been successfully submitted for approval.
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.successButton}
+                                onPress={() => setIsSuccessModalVisible(false)}
+                            >
+                                <Text style={styles.successButtonText}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </Modal>
             </KeyboardAvoidingView>
@@ -634,6 +1016,67 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         gap: 10,
     },
+
+    proposalPreview: {
+    width: '100%',
+    height: 150,
+    marginTop: 10,
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    padding: 10,
+    
+    justifyContent: 'center',
+    alignItems: 'center',
+},
+proposalIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 25,
+    backgroundColor: '#4285f4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+},
+proposalIcon: {
+    fontSize: 20,
+},
+proposalDetails: {
+    width: '100%',
+    alignItems: 'center',
+},
+proposalTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 5,
+    textAlign: 'center',
+},
+proposalLinkButton: {
+    marginVertical: 5,
+    paddingHorizontal: 10,
+},
+proposalLinkText: {
+    fontSize: 11,
+    color: '#4285f4',
+    textDecorationLine: 'underline',
+    textAlign: 'center',
+},
+proposalBadge: {
+    backgroundColor: '#e8f0fe',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 5,
+},
+proposalBadgeText: {
+    fontSize: 10,
+    color: '#1967d2',
+    fontWeight: '500',
+    textAlign: 'center',
+},
+
     suggestionContainer: {
         marginTop: 5,
       },
@@ -732,5 +1175,143 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         textAlign: 'center',
       },
-      
+      warningContainer: {
+    backgroundColor: '#fff3cd',
+    borderWidth: 1,
+    borderColor: '#ffc107',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
+    marginBottom: 10,
+},
+warningText: {
+    color: '#856404',
+    fontSize: 13,
+    lineHeight: 18,
+},
+
+successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+},
+successModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+},
+successIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+},
+successIcon: {
+    fontSize: 50,
+    color: '#fff',
+    fontWeight: 'bold',
+},
+successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+},
+successMessage: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 22,
+},
+successButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+    minWidth: 120,
+},
+successButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+},
+
+orgOption: {
+  padding: 10,
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 8,
+  marginVertical: 5,
+},
+orgSelected: {
+  backgroundColor: "#007BFF20",
+  borderColor: "#007BFF",
+},
+dropdownToggle: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 8,
+  padding: 10,
+  marginTop: 5,
+},
+dropdownText: {
+  fontSize: 16,
+  color: "#333",
+},
+dropdownArrow: {
+  fontSize: 14,
+  color: "#555",
+},
+dropdownList: {
+  marginTop: 5,
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 8,
+  backgroundColor: "#fff",
+  maxHeight: 200,
+},
+dropdownItem: {
+  flexDirection: "row",
+  alignItems: "center",
+  padding: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: "#eee",
+},
+checkbox: {
+  width: 20,
+  height: 20,
+  borderWidth: 1,
+  borderColor: "#555",
+  marginRight: 10,
+  alignItems: "center",
+  justifyContent: "center",
+},
+checkmark: {
+  fontSize: 14,
+  color: "#007BFF",
+},
+orgText: {
+  fontSize: 16,
+  color: "#333",
+},
+
+
 });
