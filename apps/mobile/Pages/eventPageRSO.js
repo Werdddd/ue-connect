@@ -17,6 +17,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { getAuth } from "firebase/auth"; // if using Firebase Auth
 
 
 export default function EventPageRSO() {
@@ -47,16 +48,23 @@ export default function EventPageRSO() {
     const [selectedOrgs, setSelectedOrgs] = useState([]);
     const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
 
+     const auth = getAuth();  
+    const currentUser = auth.currentUser; // logged-in user
+    const userId = currentUser?.uid;
+
     useEffect(() => {
         loadEvents();
     }, []);
 
     const loadEvents = async () => {
         try {
-            const data = await fetchEvents();
-            setEvents(data);
+            const data = await fetchEvents(); 
+
+            // ✅ Show only events created by the logged-in user
+            const userEvents = data.filter(event => event.createdBy === userId);
+            setEvents(userEvents);
         } catch (error) {
-            console.error('Failed to load events:', error);
+            console.error("Failed to load events:", error);
         }
     };
 
@@ -346,7 +354,8 @@ export default function EventPageRSO() {
         proposalLink: selectedProposal?.uri || null,
         proposalName: selectedProposal?.name || null,
         isCollab,
-    collabOrgs: selectedOrgs,
+        collabOrgs: selectedOrgs,
+        createdBy: userId,
     };
 
     try {
