@@ -11,7 +11,6 @@ import OrganizationBar from '../components/organizationBar';
 import EventCardSAO from '../components/eventCardSAO';
 import { fetchEvents, addEvent, updateEventStatus } from '../Backend/eventPageSAO';
 import { getSuggestedDateTime } from '../Backend/eventPageRSO';
-import { launchImageLibrary } from 'react-native-image-picker';
 // import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
