@@ -383,15 +383,26 @@ export default function Home() {
   const toggleLike = async (postId, likedBy) => {
     const postRef = doc(firestore, 'newsfeed', postId);
     const hasLiked = likedBy.includes(currentUserEmail);
-  
+
     try {
       await updateDoc(postRef, {
         likedBy: hasLiked
           ? arrayRemove(currentUserEmail)
           : arrayUnion(currentUserEmail),
       });
-  
       setNewsfeedPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                likedBy: hasLiked
+                  ? p.likedBy.filter(email => email !== currentUserEmail)
+                  : [...p.likedBy, currentUserEmail],
+              }
+            : p
+        )
+      );
+      setVisiblePosts(prev =>
         prev.map(p =>
           p.id === postId
             ? {
@@ -407,22 +418,21 @@ export default function Home() {
       if (!hasLiked) {
         const postSnap = await getDoc(postRef);
         const postData = postSnap.data();
-  
         const postOwner = postData.userId;
 
         if (postOwner && postOwner !== currentUserEmail) {
           await sendNotification({
-            userId: postOwner, 
+            userId: postOwner,
             type: 'like',
             content: `${userName} liked your post.`,
           });
         }
       }
-  
     } catch (e) {
       console.error('Error updating like or sending notification:', e);
     }
-  };  
+  };
+  
   
   const handleSearch = (query) => {
     setSearchQuery(query);

@@ -9,6 +9,7 @@ import {
   Button,
   Modal,
   Platform,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -80,25 +81,30 @@ const Header = ({ scrollY = 0, posts = [], setFilteredPosts = () => {} }) => {
       )}
 
       <Modal visible={isSearchActive} transparent animationType="fade">
-        <View style={styles.overlay}>
-          <View style={styles.modalBox}>
-            <TextInput
-              style={styles.input}
-              placeholder="Search..."
-              value={text}
-              onChangeText={setText}
-            />
-            <Button
-              title="Search"
-              onPress={() => {
-                closeSearch();
-                navigation.navigate('searchResult', { searchText: text });
-                setText('');
-              }}
-            />
+        <TouchableWithoutFeedback onPress={closeSearch}>
+          <View style={styles.overlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalBox}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Search..."
+                  value={text}
+                  onChangeText={setText}
+                />
+                <Button
+                  title="Search"
+                  onPress={() => {
+                    closeSearch();
+                    navigation.navigate('searchResult', { searchText: text });
+                    setText('');
+                  }}
+                />
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
+
     </View>
   );
 };
@@ -176,6 +182,14 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
   },
+    closeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 5,
+    zIndex: 1,
+  },
+
 });
 
 export default Header;

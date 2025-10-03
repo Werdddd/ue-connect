@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Image, Modal, TextInput
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { auth, firestore } from '../Firebase'; // Adjust the import based on your Firebase setup
 
 import Header from '../components/header';
@@ -28,8 +28,13 @@ export default function SearchResult({ route }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [postText, setPostText] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
+  const [searchQuery, setSearchQuery] = useState('');
  const [loading, setLoading] = useState(false);
+
+  const PAGE_SIZE = 5;
+  const [visiblePosts, setVisiblePosts] = useState([]);
+  const [page, setPage] = useState(1);
+
   const [newsfeedPosts, setNewsfeedPosts] = useState([]);
   const [userName, setusername] = useState('');
   const userComment = 'This is a sample comment.'; 
@@ -50,7 +55,6 @@ export default function SearchResult({ route }) {
   useEffect(() => {
   const searchPosts = async () => {
     if (!searchText) {
-      // If no searchText, show the full feed
       fetchNewsfeed();
       return;
     }
@@ -120,7 +124,6 @@ export default function SearchResult({ route }) {
         })
       );
 
-      // Sort the filtered posts
       const sortedPosts = results.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -136,11 +139,9 @@ export default function SearchResult({ route }) {
   searchPosts();
 }, [searchText]);
 
-//
 useEffect(() => {
   const searchPosts = async () => {
     if (!searchText) {
-      // If no searchText, show the full feed
       fetchNewsfeed();
       return;
     }
@@ -209,8 +210,6 @@ useEffect(() => {
           };
         })
       );
-
-      // Sort the filtered posts
       const sortedPosts = results.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (!a.pinned && b.pinned) return 1;
@@ -230,7 +229,6 @@ useEffect(() => {
     setIsSearchVisible(!isSearchVisible);
   };
 
-  // Function to filter posts based on search text
   const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
 
   useEffect(() => {
@@ -247,7 +245,6 @@ useEffect(() => {
       if (!user || !user.email) return;
     
       try {
-        // 1. Fetch user data by email
         const userRef = doc(firestore, "Users", user.email);
         const userDoc = await getDoc(userRef);
     
@@ -267,8 +264,6 @@ useEffect(() => {
         } else {
           console.log("User not found in Firestore");
         }
-    
-        // 2. Search posts by text (case-insensitive if needed)
         if (searchText) {
           const postsRef = collection(firestore, "newsfeed");
           const q = query(
@@ -294,7 +289,6 @@ useEffect(() => {
     };
     getUserDataAndSearchPosts();
 
-    // FETCH NEWSFEED
     const fetchNewsfeed = async () => {
       try {
         const snapshot = await getDocs(collection(firestore, 'newsfeed'));
@@ -303,24 +297,20 @@ useEffect(() => {
           snapshot.docs.map(async (docSnap) => {
             const d = docSnap.data();
     
-            // Handle date
             const rawDate = d.date || d.timestamp;
             const dateObj = rawDate?.toDate
               ? rawDate.toDate()
               : new Date(rawDate || Date.now());
     
-            // Normalize post images
             const images = (d.images || []).map((img) =>
               img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
             );
     
-            // Get comment count
             const commentsSnapshot = await getDocs(
               collection(firestore, 'newsfeed', docSnap.id, 'comments')
             );
             const commentCount = commentsSnapshot.size;
     
-            // Get user profile from Users collection
             let profileImage =
               'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
             let userName = d.userName || 'Anonymous';
@@ -358,28 +348,39 @@ useEffect(() => {
               },
               likedBy: d.likedBy || [],
               commentCount,
-              pinned: d.pinned === true, // ✅ Include pinned flag
+              pinned: d.pinned === true, 
             };
           })
         );
-    
-        // Filter posts based on searchText (case-insensitive)
         const filteredPosts = fetched.filter(post => {
           const lowerSearch = searchText.toLowerCase();
-          return (
+          
+  const loadMorePosts = () => {
+    const nextPage = page + 1;
+    const start = (nextPage - 1) * PAGE_SIZE;
+    const end = nextPage * PAGE_SIZE;
+
+    if (start < newsfeedPosts.length) {
+      setVisiblePosts(prev => [
+        ...prev,
+        ...newsfeedPosts.slice(start, end),
+      ]);
+      setPage(nextPage);
+    }
+  };
+
+  return (
             (post.text && post.text.toLowerCase().includes(lowerSearch)) ||
             (post.user.name && post.user.name.toLowerCase().includes(lowerSearch))
           );
         });
     
-        // ✅ Sort pinned posts first, then by date
         const sortedPosts = filteredPosts.sort((a, b) => {
           if (a.pinned && !b.pinned) return -1;
           if (!a.pinned && b.pinned) return 1;
           return b.date - a.date;
         });
     
-        // Update state with sorted and filtered posts
         setNewsfeedPosts(sortedPosts);
       } catch (e) {
         console.error('Error fetching newsfeed:', e);
@@ -387,7 +388,7 @@ useEffect(() => {
     };
     
     fetchNewsfeed();
-    }, [commentModalVisible, selectedPostId, searchText]);  // Add searchText as a dependency
+    }, [commentModalVisible, selectedPostId, searchText]); 
 
 
 
@@ -499,16 +500,13 @@ useEffect(() => {
     try {
       const commentData = {
         text: commentText,
-        userName: userName, // fetched from Firestore earlier
-        profileImage: userProfileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg', // optional
+        userName: userName, 
+        profileImage: userProfileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
         timestamp: serverTimestamp(),
         email: currentUserEmail,
       };
   
-      // Add comment to Firestore
       await addDoc(collection(firestore, 'newsfeed', selectedPostId, 'comments'), commentData);
-  
-      // Reset the comment input field
       setCommentText('');
 
       const postRef = doc(firestore, 'newsfeed', selectedPostId);
@@ -517,8 +515,6 @@ useEffect(() => {
       if (postSnap.exists()) {
         const postData = postSnap.data();
         const postOwner = postData.userId;
-  
-        // Avoid notifying yourself
         if (postOwner && postOwner !== currentUserEmail) {
           await sendNotification({
             userId: postOwner,
@@ -527,9 +523,7 @@ useEffect(() => {
           });
         }
       }
-  
-      // Immediately re-fetch the comments for the selected post to update the UI
-      fetchComments(selectedPostId); // Custom function to fetch comments
+      fetchComments(selectedPostId); 
     } catch (error) {
       console.error('Error adding comment:', error);
     }
@@ -581,16 +575,13 @@ useEffect(() => {
   const toggleLike = async (postId, likedBy) => {
     const postRef = doc(firestore, 'newsfeed', postId);
     const hasLiked = likedBy.includes(currentUserEmail);
-  
+
     try {
-      // Update the like in Firestore
       await updateDoc(postRef, {
         likedBy: hasLiked
           ? arrayRemove(currentUserEmail)
           : arrayUnion(currentUserEmail),
       });
-  
-      // Optimistically update UI
       setNewsfeedPosts(prev =>
         prev.map(p =>
           p.id === postId
@@ -603,37 +594,44 @@ useEffect(() => {
             : p
         )
       );
-  
-      // 🔔 Only send notification on NEW like
+
+      setFilteredPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                likedBy: hasLiked
+                  ? p.likedBy.filter(email => email !== currentUserEmail)
+                  : [...p.likedBy, currentUserEmail],
+              }
+            : p
+        )
+      );
+
       if (!hasLiked) {
         const postSnap = await getDoc(postRef);
         const postData = postSnap.data();
-  
-        const postOwner = postData.userId; // depends on your schema
-  
-        // Don't notify yourself
+        const postOwner = postData.userId;
         if (postOwner && postOwner !== currentUserEmail) {
           await sendNotification({
-            userId: postOwner, // This can be UID or email — use same ID type as your users
+            userId: postOwner,
             type: 'like',
             content: `${currentUserEmail} liked your post.`,
           });
         }
       }
-  
+
     } catch (e) {
       console.error('Error updating like or sending notification:', e);
     }
-  };  
+  };
+
   
   const handleSearch = (query) => {
     setSearchQuery(query);
-  
-    // Check if the query is empty, and display all posts if true
     if (query === '') {
-      setFilteredPosts(posts); // Show all posts if search is cleared
+      setFilteredPosts(posts);
     } else {
-      // Filter posts based on title and content
       const filtered = posts.filter(post =>
         post.title.toLowerCase().includes(query.toLowerCase()) ||
         post.content.toLowerCase().includes(query.toLowerCase())
@@ -644,24 +642,18 @@ useEffect(() => {
   
   const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
-  
-    // Get the current authenticated user
     const user = auth.currentUser;
   
     if (!user) {
       console.log("No user is logged in");
       return;
     }
-    
-    // Use the user's email as the document ID
     const userEmail = user.email;
   
     if (!userEmail) {
       console.log("No email found for the user");
       return;
     }
-  
-    // Query the Firestore collection using the email as the document ID
     const userDocRef = doc(firestore, "Users", userEmail);
     try {
       const userDoc = await getDoc(userDocRef);
@@ -669,11 +661,7 @@ useEffect(() => {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const { firstName, lastName, profileImage, role} = userData;
-  
-        // If no profile image is found, use a default image
         const userProfileImage = profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
-  
-        // Get current date (ensure it's a valid Date object)
         const postDate = new Date();
         if (!(postDate instanceof Date) || isNaN(postDate)) {
           console.error("Invalid Date object.");
@@ -689,14 +677,12 @@ useEffect(() => {
           },
           text: postText,
           images: selectedImages,
-          date: postDate, // Add date here
-          comments: [], // Initialize empty comments array
+          date: postDate, 
+          comments: [],
           likedBy: [],
         };
         setLoading(true);
         const postId = await savePost(newPost.user, postText, selectedImages);
-        //const postId = 2202;
-        //console.log(newPost);
         setNewsfeedPosts([{ ...newPost, id: postId }, ...newsfeedPosts]);
         discardPost(
           
@@ -720,7 +706,6 @@ useEffect(() => {
     
     return (
         <View key={post.id} style={styles.postCard}>
-        {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
           <TouchableOpacity
@@ -728,7 +713,7 @@ useEffect(() => {
               if (currentUserEmail !== post.userId) {
                 navigation.navigate('UserOpen', {
                   postId: post.id,
-                  postEmail: post.userId, // assuming userId is their email
+                  postEmail: post.userId,
                 });
               } else {
                 navigation.navigate('UserOwnProfilePage');
@@ -757,7 +742,6 @@ useEffect(() => {
             </View>
           </View>
   
-          {/* Pinned Icon */}
           {post.pinned && (
             <Image
                 source={require('../assets/pin.png')}
@@ -769,8 +753,6 @@ useEffect(() => {
             <Entypo name="dots-three-horizontal" size={20} color="#333" />
           </TouchableOpacity>
         </View>
-  
-        {/* Post Content */}
         <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
           {hasImages && (
@@ -786,7 +768,6 @@ useEffect(() => {
           )}
         </View>
   
-        {/* Post Actions */}
         <View style={styles.postActions}>
           <TouchableOpacity
             style={styles.actionButton}
@@ -851,7 +832,6 @@ useEffect(() => {
 
                         
             <Text style={styles.commentsTitle}>Comments</Text>
-            {/* Comment List */}
             <ScrollView>
               {postComments.map((comment) => (
                 <View key={comment.id} style={styles.commentCard}>
@@ -873,7 +853,6 @@ useEffect(() => {
                 ))}
               </ScrollView>
 
-              {/* Input at Bottom */}
               <View style={styles.commentInputRow}>
               {userProfileImage ? (
                 <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
@@ -912,13 +891,10 @@ useEffect(() => {
         >
           <View style={styles.modalContainer}>
             <View style={styles.shareModalContent}>
-              {/* User Info */}
               <View style={styles.shareHeader}>
                 <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
                 <Text style={styles.shareUsername}>Username</Text>
               </View>
-
-              {/* Caption Input */}
               <TextInput
                 style={styles.shareCaptionInput}
                 placeholder="Write a caption..."
@@ -926,9 +902,7 @@ useEffect(() => {
                 value={shareCaption}
                 onChangeText={setShareCaption}
               />
-
-              {/* Share Now Button */}
-              <TouchableOpacity style={styles.shareButton} onPress={() => {/* share post */}}>
+              <TouchableOpacity style={styles.shareButton} onPress={() => {}}>
                 <Text style={styles.shareButtonText}>Share Now</Text>
               </TouchableOpacity>
             </View>
@@ -946,14 +920,14 @@ useEffect(() => {
                       <View style={styles.loadingContainer}>
                         <View style={styles.loadingBox}>
                           <ActivityIndicator size="large" color="#FE070C" />
-                          {/* <Text style={{ marginTop: 10 }}>Logging your account...</Text> */}
+                          {}
                         </View>
                       </View>
                     )}
       <View style={styles.container}>
       <Header
-        posts={filteredPosts} // Send filtered posts as props
-        setFilteredPosts={setFilteredPosts} // Send setter function as props
+        posts={filteredPosts}
+        setFilteredPosts={setFilteredPosts}
         scrollY={scrollY}
       />
 
@@ -980,8 +954,6 @@ useEffect(() => {
               <Ionicons name="add-circle-outline" size={30} color="#333" />
             </TouchableOpacity>
           </View>
-
-          {/* Render Newsfeed */}
           {newsfeedPosts.map((post) => renderPost(post))}
         </ScrollView>
 
@@ -1064,8 +1036,6 @@ useEffect(() => {
                         </View>
                       )}
                     </View>
-
-                    {/* Options */}
                   <View style={styles.optionsGrid}>
                       <TouchableOpacity style={styles.optionButton} onPress={pickImage}>
                         <MaterialIcons name="photo-library" size={24} color="#2e89ff" />
@@ -1151,30 +1121,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     marginTop: 10,
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 1 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 2,
-    // elevation: 2,
     borderBottomColor: '#ccc',
     borderBottomWidth: 1,
     marginBottom: 15,
   },
   profileImage: {
-    width: 30,       // 👈 increase or decrease as needed
+    width: 30,       
     height: 30,
     borderRadius: 25,
     marginRight: 10,
   },
   profileImagePost: {
-    width: 35,       // 👈 increase or decrease as needed
+    width: 35,       
     height: 35,
     borderRadius: 25,
     marginRight: 0,
   },
   
   profileIcon: {
-    fontSize: 30,    // 👈 matches the profileImage size
+    fontSize: 30,    
     marginRight: 10,
   },
   postInputContainer: {
