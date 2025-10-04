@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView,
-  Platform, TouchableWithoutFeedback, ActivityIndicator
+  Platform, TouchableWithoutFeedback, ActivityIndicator,
+  Dimensions // <-- NEW: Import Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, FontAwesome, MaterialIcons, Entypo } from '@expo/vector-icons';
@@ -15,7 +16,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { firestore, auth } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
-import { sendNotification } from '../Backend/notifications'; 
+import { sendNotification } from '../Backend/notifications';
+
+const { width: screenWidth } = Dimensions.get('window'); 
 
 export default function Home() {
   const navigation = useNavigation();
@@ -27,38 +30,47 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [newsfeedPosts, setNewsfeedPosts] = useState([]);
   const [userName, setusername] = useState('');
-  const userComment = 'This is a sample comment.'; 
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [scrollY, setScrollY] = useState(0);
-  const [liked, setLiked] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [shareCaption, setShareCaption] = useState('');
   const [role, setRole] = useState('');
-  const [group, setGroup] = useState(false);
-  const [isEventPost, setIsEventPost] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [postComments, setPostComments] = useState([]);
-  const [commentCount, setCommentCount] = useState(0);
   const [comments, setComments] = useState([]);
-  const [filterEventOnly, setFilterEventOnly] = useState(false);
   const ss = "superadmin";
   const ss2 = "sheen";
 
   const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [selectedImagePic, setSelectedImagePic] = useState(null);
+  const [galleryImages, setGalleryImages] = useState([]); 
+  const [initialIndex, setInitialIndex] = useState(0); 
+  const scrollRef = useRef(null); 
 
-  const openImage = (uri) => {
-    setSelectedImagePic(uri);
+  const openImage = (allUris, tappedUri) => {
+    setGalleryImages(allUris);
+    const initialIndex = allUris.findIndex(uri => uri === tappedUri);
+    setInitialIndex(initialIndex);
     setImageModalVisible(true);
+    if (scrollRef.current) {
+        setTimeout(() => {
+            scrollRef.current.scrollTo({
+                x: initialIndex * screenWidth, 
+                y: 0, 
+                animated: false 
+            });
+        }, 50); 
+    }
   };
 
   const closeModalImage = () => {
     setImageModalVisible(false);
-    setSelectedImagePic(null);
+    setGalleryImages([]);
+    setInitialIndex(0);
   };
 
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
   const toggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
   };
@@ -68,7 +80,6 @@ export default function Home() {
   const PAGE_SIZE = 10;
   const [visiblePosts, setVisiblePosts] = useState([]);
   const [page, setPage] = useState(1);
-
   useEffect(() => {
     if (commentModalVisible && selectedPostId) {
       fetchComments(selectedPostId);
@@ -84,18 +95,19 @@ export default function Home() {
       try {
         const userDoc = await getDoc(doc(firestore, "Users", user.email));
         if (userDoc.exists()) {
-            const userData = userDoc.data();
+        
+          const userData = userDoc.data();
             setusername(`${userData.firstName} ${userData.lastName}`);
             if (userData?.profileImage) {
               const isBase64 = !userData.profileImage.startsWith('http');
               const imageSource = isBase64
                   ? `${userData.profileImage}`
-                  : userData.profileImage;
+             
+              : userData.profileImage;
               
               setUserProfileImage(imageSource);
             }
             setRole(userData.role);
-            setGroup(userData.group);
         }
       } catch (err) {
         console.warn('Error fetching user data in getUserData:', err);
@@ -106,8 +118,7 @@ export default function Home() {
 
     const fetchNewsfeed = async () => {
         try {
-          const snapshot = await getDocs(collection(firestore, 'newsfeed'));
-      
+          const snapshot = await getDocs(query(collection(firestore, 'newsfeed'), orderBy('timestamp', 'desc'))); // Use orderBy
           const fetched = await Promise.all(
             snapshot.docs.map(async (docSnap) => {
               const d = docSnap.data();
@@ -115,36 +126,35 @@ export default function Home() {
               // Handle date
               const rawDate = d.date || d.timestamp;
               const dateObj = rawDate?.toDate
-                ? rawDate.toDate()
+      
+              ? rawDate.toDate()
                 : new Date(rawDate || Date.now());
       
               // Normalize post images
               const images = (d.images || []).map((img) =>
                 img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
+      
               );
       
-              // Get comment count
               const commentsSnapshot = await getDocs(
                 collection(firestore, 'newsfeed', docSnap.id, 'comments')
               );
               const commentCount = commentsSnapshot.size;
-      
-              // Get user profile from Users collection
               let profileImage =
                 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
               let userName = d.userName || 'Anonymous';
               let role = '';
-      
               if (d.userId) {
                 try {
                   const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
                   if (userDoc.exists()) {
                     const userData = userDoc.data();
-      
                     userName =
                       userData.firstName && userData.lastName
-                        ? `${userData.firstName} ${userData.lastName}`
-                        : userData.firstName || 'Anonymous';
+                        ?
+                        `${userData.firstName} ${userData.lastName}`
+                        : userData.firstName ||
+                        'Anonymous';
       
                     profileImage = userData.profileImage || profileImage;
                     role = userData.role || '';
@@ -156,29 +166,29 @@ export default function Home() {
       
               return {
                 id: docSnap.id,
-                text: d.text || '',
+                text: d.text ||
+                '',
                 date: dateObj,
                 images,
                 userId: d.userId,
                 user: {
                   name: userName,
+              
                   profileImage,
                   role,
                 },
-                likedBy: d.likedBy || [],
+                likedBy: d.likedBy ||
+                [],
                 commentCount,
                 pinned: d.pinned === true, 
-                isEvent: d.isEvent === true,
               };
             })
           );
-      
           const sortedPosts = fetched.sort((a, b) => {
             if (a.pinned && !b.pinned) return -1;
             if (!a.pinned && b.pinned) return 1;
             return b.date - a.date;
           });
-      
           setNewsfeedPosts(sortedPosts);
 
           setVisiblePosts(sortedPosts.slice(0, PAGE_SIZE));
@@ -191,12 +201,10 @@ export default function Home() {
       
       fetchNewsfeed();
   }, [commentModalVisible, selectedPostId]);
-
   const loadMorePosts = () => {
     const nextPage = page + 1;
     const start = (nextPage - 1) * PAGE_SIZE;
     const end = nextPage * PAGE_SIZE;
-
     if (start < newsfeedPosts.length) {
       setVisiblePosts(prev => [
         ...prev,
@@ -222,8 +230,6 @@ export default function Home() {
       setSelectedImages([...selectedImages, ...uris]);
     }
   };
-  
-
   const [isDiscardConfirmVisible, setIsDiscardConfirmVisible] = useState(false);
 
   const discardPost = () => {
@@ -240,7 +246,6 @@ export default function Home() {
   };
 
   const translateY = useSharedValue(0);
-
   const closeModal = () => {
     if (postText.trim().length > 0 || selectedImages.length > 0) {
       setIsDiscardConfirmVisible(true);
@@ -249,11 +254,9 @@ export default function Home() {
       translateY.value = 0;
     }
   };
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
-
   const handleGesture = (event) => {
     if (event.nativeEvent.translationY > 100) {
       runOnJS(closeModal)();
@@ -261,13 +264,11 @@ export default function Home() {
       translateY.value = withSpring(0);
     }
   };
-
   const fetchComments = async (postId) => {
   try {
     const commentsSnapshot = await getDocs(
       collection(firestore, 'newsfeed', postId, 'comments')
     );
-
     const commentsData = await Promise.all(
       commentsSnapshot.docs.map(async (docSnapshot) => {
         const comment = docSnapshot.data();
@@ -278,7 +279,8 @@ export default function Home() {
         if (userEmail) {
           try {
             const userDocRef = doc(firestore, 'Users', userEmail);
-            const userDoc = await getDoc(userDocRef);
+            const userDoc = await 
+            getDoc(userDocRef);
 
             if (userDoc.exists()) {
               profileImage = userDoc.data().profileImage || null;
@@ -288,6 +290,7 @@ export default function Home() {
           }
         }
 
+       
         return {
           id: docSnapshot.id,
           ...comment,
@@ -295,7 +298,6 @@ export default function Home() {
         };
       })
     );
-
     setComments(commentsData);
     setPostComments(commentsData);
 
@@ -303,30 +305,26 @@ export default function Home() {
     console.error('Error fetching comments:', error);
   }
 };
-  
   const handleAddComment = async () => {
     if (commentText.trim() === '') return;
-  
     try {
       const commentData = {
         text: commentText,
         userName: userName, 
-        profileImage: userProfileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg', 
+        profileImage: userProfileImage ||
+        'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg', 
         timestamp: serverTimestamp(),
         email: currentUserEmail,
       };
-
       await addDoc(collection(firestore, 'newsfeed', selectedPostId, 'comments'), commentData);
   
       setCommentText('');
 
       const postRef = doc(firestore, 'newsfeed', selectedPostId);
       const postSnap = await getDoc(postRef);
-  
       if (postSnap.exists()) {
         const postData = postSnap.data();
         const postOwner = postData.userId;
-  
         if (postOwner && postOwner !== currentUserEmail) {
           await sendNotification({
             userId: postOwner,
@@ -336,7 +334,7 @@ export default function Home() {
         }
       }
 
-      fetchComments(selectedPostId); 
+      fetchComments(selectedPostId);
     } catch (error) {
       console.error('Error adding comment:', error);
     }
@@ -344,18 +342,14 @@ export default function Home() {
   
 
   const commentModalOpacity = useSharedValue(1);
-
   const commentModalAnimatedBackground = useAnimatedStyle(() => ({
     backgroundColor: `rgba(0,0,0,${commentModalOpacity.value})`
   }));
 
   const commentBackdropOpacity = useSharedValue(1);
-
- 
   const commentBackdropAnimatedStyle = useAnimatedStyle(() => ({
     opacity: commentBackdropOpacity.value,
   }));
-
   const handleCommentGesture = (event) => {
     if (event.nativeEvent.translationY > 100) {
       runOnJS(() => {
@@ -368,7 +362,6 @@ export default function Home() {
       commentTranslateY.value = withSpring(0);
     }
   };
-
   const handleCommentBackdropPress = () => {
     setCommentModalVisible(false);
     commentTranslateY.value = 0;
@@ -376,13 +369,11 @@ export default function Home() {
     setSelectedPostId(null);
     setPostComments([]);
   };
-
   const commentTranslateY = useSharedValue(0);
 
   const commentAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: commentTranslateY.value }],
   }));
-  
   const [likedPosts, setLikedPosts] = useState({});
 
   const toggleLike = async (postId, likedBy) => {
@@ -402,6 +393,7 @@ export default function Home() {
                 ...p,
                 likedBy: hasLiked
                   ? p.likedBy.filter(email => email !== currentUserEmail)
+         
                   : [...p.likedBy, currentUserEmail],
               }
             : p
@@ -414,12 +406,12 @@ export default function Home() {
                 ...p,
                 likedBy: hasLiked
                   ? p.likedBy.filter(email => email !== currentUserEmail)
+         
                   : [...p.likedBy, currentUserEmail],
               }
             : p
         )
       );
-
       if (!hasLiked) {
         const postSnap = await getDoc(postRef);
         const postData = postSnap.data();
@@ -454,7 +446,6 @@ export default function Home() {
   
   const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
-
     const user = auth.currentUser;
   
     if (!user) {
@@ -472,7 +463,6 @@ export default function Home() {
     const userDocRef = doc(firestore, "Users", userEmail);
     try {
       const userDoc = await getDoc(userDocRef);
-  
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const { firstName, lastName, profileImage, role} = userData;
@@ -493,14 +483,14 @@ export default function Home() {
             role,
           },
           text: postText,
+   
           images: selectedImages,
           date: postDate, 
-          isEvent: isEventPost,
           comments: [], 
           likedBy: [],
         };
         setLoading(true);
-        const postId = await savePost(newPost.user, postText, selectedImages, isEventPost);
+        const postId = await savePost(newPost.user, postText, selectedImages);
         setNewsfeedPosts(prev => [{ ...newPost, id: postId }, ...prev]);
         setVisiblePosts(prev => [{ ...newPost, id: postId }, ...prev]);
         discardPost();
@@ -518,9 +508,10 @@ export default function Home() {
     const hasText = post.text.trim().length > 0;
     const hasImages = post.images.length > 0;
     const isLiked = (post.likedBy || []).includes(currentUserEmail);
-
-
     
+    // Check image count for conditional styling
+    const isSingleImage = post.images.length === 1;
+
     return (
         <View key={post.id} style={styles.postCard}>
         <View style={styles.postHeader}>
@@ -529,38 +520,46 @@ export default function Home() {
               onPress={() => {
                 if (currentUserEmail !== post.userId) {
                   navigation.navigate('UserOpen', {
+  
                     postId: post.id,
                     postEmail: post.userId,
                   });
                 } else {
                   navigation.navigate('UserOwnProfilePage');
+      
                 }
               }}
               >
                 {post.user.profileImage ? (
                   <Image
                     source={{ uri: post.user.profileImage }}
+   
                     style={styles.profileImagePost}
                     resizeMode="cover"
                   />
                 ) : (
                   <FontAwesome name="user-circle-o" size={35} color="#999" />
+     
                 )}
               </TouchableOpacity>
   
               <View style={{ flexDirection: 'column', marginLeft: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text style={styles.postUserName}>{post.user.name}</Text>
-                  {(post.user.role === ss || post.user.role === ss2) && (
+            
+                  {(post.user.role === ss ||
+                  post.user.role === ss2) && (
                     <Image
                         source={require('../assets/switch2.png')}
                         style={{ width: 16, height: 16, marginLeft: 5 }}
                     />
-                   )}
+ 
+                  )}
                 </View>
                 <Text style={styles.postDate}>
                   {new Date(post.date).toLocaleString()}
                 </Text>
+              
               </View>
           </View>
           {post.pinned && (
@@ -570,6 +569,7 @@ export default function Home() {
             />
             )}
   
+        
           <TouchableOpacity>
             <Entypo name="dots-three-horizontal" size={20} color="#333" />
           </TouchableOpacity>
@@ -577,38 +577,27 @@ export default function Home() {
   
         <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
+          
           {hasImages && (
             <View style={styles.postImagesContainer}>
               {post.images.map((uri, idx) => (
-                <TouchableOpacity key={idx} onPress={() => openImage(uri)}>
+                <TouchableOpacity 
+                    key={idx} 
+                    // NEW: Pass all URIs and the tapped URI to openImage
+                    onPress={() => openImage(post.images, uri)}
+                    // Conditional style for single vs. multiple (grid)
+                    style={isSingleImage ? styles.postImageWrapperSingle : styles.postImageWrapperMultiple} 
+                >
                   <Image
                     source={{ uri }}
-                    style={styles.postImage}
+                    // Conditional style for single vs. multiple (thumbnail)
+                    style={isSingleImage ? styles.postImageSingle : styles.postImageThumbnail}
                   />
                 </TouchableOpacity>
               ))}
             </View>
           )}
   
-          {imageModalVisible && (
-          <Modal
-            visible={imageModalVisible}
-            animationType="fade"
-            transparent={true}
-            onRequestClose={closeModalImage}
-          >
-            <View style={styles.modalContainer}>
-              <TouchableOpacity style={styles.modalOverlay} onPress={closeModalImage} />
-              <View style={styles.modalContent}>
-                <Image
-                  source={{ uri: selectedImagePic }}
-                  style={styles.modalImage}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-          </Modal>
-        )}
         </View>
   
         <View style={styles.postActions}>
@@ -617,12 +606,15 @@ export default function Home() {
             onPress={() => toggleLike(post.id, post.likedBy)}
           >
             <Ionicons
-              name={isLiked ? 'heart' : 'heart-outline'}
+          
+            name={isLiked ? 'heart' : 'heart-outline'}
               size={20}
-              color={isLiked ? 'red' : '#555'}
+              color={isLiked ?
+              'red' : '#555'}
             />
             <Text style={styles.actionText}>
-              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
+              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ?
+              's' : ''}
             </Text>
           </TouchableOpacity>
   
@@ -636,7 +628,8 @@ export default function Home() {
           >
             <Ionicons name="chatbubble-outline" size={20} color="#555" />
             <Text style={styles.actionText}>
-              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
+              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ?
+              's' : ''}
             </Text>
           </TouchableOpacity>
   
@@ -647,7 +640,8 @@ export default function Home() {
       </View>
 
         <Modal
-          visible={commentModalVisible}
+       
+            visible={commentModalVisible}
           animationType="none"
           transparent={true}
           onRequestClose={handleCommentBackdropPress}
@@ -656,6 +650,7 @@ export default function Home() {
             <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
               <PanGestureHandler
                 onGestureEvent={(event) => {
+  
                   commentTranslateY.value = event.nativeEvent.translationY;
                   commentBackdropOpacity.value = 1 - (event.nativeEvent.translationY / 300);
                 }}
@@ -663,64 +658,79 @@ export default function Home() {
               >
                 <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
                   <KeyboardAvoidingView
-                        style={{ flex: 1 }}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 390 : 0}
+                        style={{ flex: 1 
+                        }}
+                        behavior={Platform.OS === 'ios' ?
+                        'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ?
+                        390 : 0}
                       >
                       <ScrollView
                         contentContainerStyle={{ flexGrow: 1 }}
                         keyboardShouldPersistTaps="handled"
+   
                         showsVerticalScrollIndicator={false}
                       >
 
                         
             <Text style={styles.commentsTitle}>Comments</Text>
             <ScrollView>
+        
               {postComments.map((comment) => (
                 <View key={comment.id} style={styles.commentCard}>
                 <TouchableOpacity
                 onPress={() => {
                     if (currentUserEmail !== comment.email) {
-                    navigation.navigate('UserOpen', {
+                
+                      navigation.navigate('UserOpen', {
                         postId: comment.id,
                         postEmail: comment.email,
                     });
                     } else {
-                    navigation.navigate('UserOwnProfilePage');
+   
+                      navigation.navigate('UserOwnProfilePage');
                     }
                 }}
                 >
-                  {comment.profileImage ? (
+                  {comment.profileImage ?
+                  (
                       <Image
                         source={{ uri: comment.profileImage }}
                         style={styles.profileImagePost}
                       />
-                    ) : (
+     
+                  ) : (
                       <FontAwesome name="user-circle-o" size={38} color="#999" />
                   )}
                   </TouchableOpacity>
                     <View>
-                    <Text style={styles.commentUserName}>
-                      {comment.userName || 'Anonymous'}
+ 
+                      <Text style={styles.commentUserName}>
+                      {comment.userName ||
+                      'Anonymous'}
                     </Text>
                       <Text style={styles.userComment}>{comment.text}</Text>
                     </View>
                   </View>
                 ))}
-              </ScrollView>
+   
+            </ScrollView>
               <View style={styles.commentInputRow}>
-              {userProfileImage ? (
+              {userProfileImage ?
+              (
                 <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
               ) : (
                 <FontAwesome name="user-circle-o" size={35} color="#999" />
               )} 
                 <TextInput
-                  style={styles.commentInput}
+           
+                        style={styles.commentInput}
                   placeholder="Add a comment..."
                   value={commentText}
                   onChangeText={setCommentText}
                 />
                 <TouchableOpacity onPress={handleAddComment}>
+    
                   <Ionicons name="send" size={24} color="#ff0000" />
                 </TouchableOpacity>
 
@@ -729,6 +739,7 @@ export default function Home() {
             </ScrollView>
             </KeyboardAvoidingView>
             </Animated.View>
+    
             </PanGestureHandler>
             
           </Animated.View>
@@ -742,6 +753,7 @@ export default function Home() {
         <Modal
           visible={shareModalVisible}
           animationType="slide"
+      
           transparent={true}
           onRequestClose={() => setShareModalVisible(false)}
         >
@@ -749,6 +761,7 @@ export default function Home() {
             <View style={styles.shareModalContent}>
               <View style={styles.shareHeader}>
                 <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
+               
                 <Text style={styles.shareUsername}>Username</Text>
               </View>
 
@@ -757,6 +770,7 @@ export default function Home() {
                 placeholder="Write a caption..."
                 multiline
                 value={shareCaption}
+    
                 onChangeText={setShareCaption}
               />
 
@@ -766,19 +780,21 @@ export default function Home() {
               </TouchableOpacity>
             </View>
           </View>
+  
         </Modal>
 
 
       </View>
     );
   };
-
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       {loading && (
                       <View style={styles.loadingContainer}>
                         <View style={styles.loadingBox}>
                           <ActivityIndicator size="large" color="#FE070C" />
+         
                         </View>
                       </View>
                     )}
@@ -787,6 +803,7 @@ export default function Home() {
         posts={filteredPosts}
         setFilteredPosts={setFilteredPosts}
         scrollY={scrollY}
+      
       />
 
         <ScrollView
@@ -797,7 +814,8 @@ export default function Home() {
           const paddingToBottom = 20;
           if (
             layoutMeasurement.height + contentOffset.y >=
-            contentSize.height - paddingToBottom
+            contentSize.height - 
+            paddingToBottom
           ) {
             loadMorePosts();
           }
@@ -806,13 +824,15 @@ export default function Home() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
           <View style={styles.postContainer}>
-            {userProfileImage ? (
+            {userProfileImage ?
+            (
               <Image source={{ uri: userProfileImage }} style={styles.profileImage} />
             ) : (
               <FontAwesome name="user-circle-o" size={50} color="#999" style={styles.profileIcon} />
             )}
             <TouchableOpacity
               style={styles.postInputContainer}
+         
               onPress={() => setIsModalVisible(true)}
             >
               <Text style={styles.placeholderText}>What's on your mind?</Text>
@@ -820,176 +840,195 @@ export default function Home() {
             <TouchableOpacity onPress={() => setIsModalVisible(true)}>
               <Ionicons name="add-circle-outline" size={30} color="#333" />
             </TouchableOpacity>
+      
           </View>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10 }}>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                filterEventOnly && styles.filterButtonActive,
-              ]}
-              onPress={() => {
-                const newFilter = !filterEventOnly;
-                setFilterEventOnly(newFilter);
-
-                if (newFilter) {
-                  const eventPosts = newsfeedPosts.filter((post) => post.isEvent);
-                  setVisiblePosts(eventPosts.slice(0, PAGE_SIZE));
-                } else {
-                  setVisiblePosts(newsfeedPosts.slice(0, PAGE_SIZE));
-                }
-              }}
-            >
-              <Ionicons
-                name={filterEventOnly ? 'checkmark-circle' : 'ellipse-outline'}
-                size={18}
-                color={filterEventOnly ? '#34a853' : '#777'}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={{ color: filterEventOnly ? '#34a853' : '#777' }}>
-                {filterEventOnly ? 'Showing Event Posts' : 'Show Event Posts Only'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
 
           {visiblePosts.map((post) => renderPost(post))}
         </ScrollView>
 
         <BottomNavBar />
 
+        {/* NEW/FIXED SWIPING IMAGE MODAL: Moved here from renderPost */}
+        {imageModalVisible && (
+          <Modal
+            visible={imageModalVisible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={closeModalImage}
+          >
+            <View style={styles.fullScreenModalContainer}>
+              {/* Close Button at the top */}
+              <TouchableOpacity style={styles.modalCloseButton} onPress={closeModalImage}>
+                <Ionicons name="close" size={30} color="#fff" />
+              </TouchableOpacity>
+
+              <ScrollView
+                ref={scrollRef} // Attach the ref for programmatic scrolling
+                horizontal
+                pagingEnabled // Enables snap-to-page effect
+                showsHorizontalScrollIndicator={false}
+                style={styles.fullScreenImageScroll}
+                contentContainerStyle={{ alignItems: 'center' }}
+              >
+                {galleryImages.map((uri, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri }}
+                    // Image dimensions set to full screen width/height for display
+                    style={{ width: screenWidth, height: '100%' }} 
+                    resizeMode="contain" // Use 'contain' to show the whole image
+                  />
+                ))}
+              </ScrollView>
+              
+              {/* Indicator for multiple images */}
+              {galleryImages.length > 1 && (
+                <View style={styles.imageGalleryIndicator}>
+                  <Text style={styles.imageGalleryIndicatorText}>
+                    {initialIndex + 1} / {galleryImages.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </Modal>
+        )}
+        
         {isModalVisible && (
           <View style={StyleSheet.absoluteFill}>
             <TouchableOpacity style={styles.modalBackground} activeOpacity={1} onPress={closeModal} />
 
             <PanGestureHandler onEnded={handleGesture} onGestureEvent={(event) => {
-              translateY.value = event.nativeEvent.translationY;
+              
+            translateY.value = event.nativeEvent.translationY;
             }}>
               <Animated.View style={[styles.modalContent, animatedStyle]}>
                 <KeyboardAvoidingView
                   style={{ flex: 1 }}
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+                  behavior={Platform.OS === 'ios' ?
+                  'padding' : 'height'}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ?
+                  60 : 0}
                 >
                   <ScrollView
                     contentContainerStyle={{ flexGrow: 1 }}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
+ 
                   >
                     <View style={styles.modalHeader}>
                       <TouchableOpacity onPress={closeModal}>
                         <Ionicons name="close" size={24} color="#333" />
+           
                       </TouchableOpacity>
                       <Text style={styles.modalTitle}>Create Post</Text>
                       <TouchableOpacity style={styles.postTextButton} onPress={handlePost}>
                         <Text style={styles.postText}>Post</Text>
+                
                       </TouchableOpacity>
                     </View>
 
                     <View style={styles.profileRow}>
-                      {userProfileImage ? (
+                      {userProfileImage ?
+                      (
                         <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
                       ) : (
                         <FontAwesome name="user-circle-o" size={30} color="#999" />
+                  
                       )}
                       <Text style={styles.userName}>{userName}</Text>
                     </View>
 
                     <View style={styles.postContentContainer}>
                       <TextInput
-                        placeholder="What's on your mind?"
+          
+                              placeholder="What's on your mind?"
                         placeholderTextColor="#777"
                         multiline
                         value={postText}
                         onChangeText={setPostText}
                         style={styles.placeholderInput}
+    
                       />
-
 
                       {selectedImages.length > 0 && (
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
+                        
                           {selectedImages.map((uri, index) => (
                             <View key={index} style={{ position: 'relative', marginRight: 10, marginBottom: 10 }}>
                               <Image
+                            
                                 source={{ uri }}
                                 style={{ width: 80, height: 80, borderRadius: 10 }}
                               />
+                         
                               <TouchableOpacity
                                 onPress={() => {
                                   const updatedImages = selectedImages.filter((_, i) => i !== index);
+                   
                                   setSelectedImages(updatedImages);
                                 }}
                                 style={{
                                   position: 'absolute',
+                                 
                                   top: -5,
                                   right: -5,
                                   backgroundColor: '#fff',
+                            
                                   borderRadius: 10,
                                   padding: 2,
                                   elevation: 3,
+                       
                                 }}
                               >
                                 <Ionicons name="close" size={16} color="#333" />
+                         
                               </TouchableOpacity>
                             </View>
                           ))}
                         </View>
+                 
                       )}
                     </View>
-
-                    {group && (
-                        <TouchableOpacity
-                          style={[
-                            styles.eventPostButton,
-                            isEventPost && styles.eventPostButtonActive,
-                          ]}
-                          onPress={() => setIsEventPost(!isEventPost)}
-                        >
-                          <Ionicons
-                            name={isEventPost ? "checkmark-circle" : "ellipse-outline"}
-                            size={20}
-                            color={isEventPost ? "#34a853" : "#777"}
-                            style={{ marginRight: 8 }}
-                          />
-                          <Text style={{ color: isEventPost ? "#34a853" : "#777", fontSize: 16 }}>
-                            Event Post
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    
 
                   <View style={styles.optionsGrid}>
                       <TouchableOpacity style={styles.optionButton} onPress={pickImage}>
                         <MaterialIcons name="photo-library" size={24} color="#2e89ff" />
+    
                         <Text style={styles.optionText}>Photo/Video</Text>
                       </TouchableOpacity>
 
 
                       <TouchableOpacity style={styles.optionButton}>
                           <MaterialIcons name="event" size={24} color="#f28b20" />
+    
                           <Text style={styles.optionText}>Create Event</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity style={styles.optionButton}>
                           <Ionicons name="gift-outline" size={24} color="#e1306c" />
+ 
                           <Text style={styles.optionText}>Occasion</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity style={styles.optionButton}>
-                          <Ionicons name="document-text-outline" size={24} color="#34a853" />
+                          <Ionicons name="document-text-outline" size={24} 
+                          color="#34a853" />
                           <Text style={styles.optionText}>Document</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity style={styles.optionButton}>
-                          <MaterialIcons name="poll" size={24} color="#fb8c00" />
+                          <MaterialIcons 
+                          name="poll" size={24} color="#fb8c00" />
                           <Text style={styles.optionText}>Create Poll</Text>
                       </TouchableOpacity>
                       
                       <TouchableOpacity style={styles.optionButton}>
+  
                           <MaterialIcons name="add-link" size={24} color="#6c63ff" />
                           <Text style={styles.optionText}>Add Link</Text>
                       </TouchableOpacity>
                   </View>
+    
                   </ScrollView>
                 </KeyboardAvoidingView>
               </Animated.View>
@@ -998,21 +1037,25 @@ export default function Home() {
             <Modal
               visible={isDiscardConfirmVisible}
               transparent
+    
               animationType="fade"
             >
               <View style={styles.discardModalOverlay}>
                 <View style={styles.discardModalBox}>
                   <Text style={styles.discardTitle}>Discard Post?</Text>
-                  <Text style={styles.discardMessage}>You have unsaved changes. Are you sure you want to discard?</Text>
+                  <Text style={styles.discardMessage}>You have unsaved changes.
+                  Are you sure you want to discard?</Text>
                   <View style={styles.discardButtons}>
                     <TouchableOpacity onPress={discardPost} style={styles.discardButton}>
                       <Text style={{ color: '#fff' }}>Discard</Text>
                     </TouchableOpacity>
+       
                     <TouchableOpacity onPress={keepEditing} style={styles.keepButton}>
                       <Text style={{ color: '#333' }}>Keep Editing</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
+    
               </View>
             </Modal>
           </View>
@@ -1045,30 +1088,26 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 10,
     marginTop: 10,
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 1 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 2,
-    // elevation: 2,
     borderBottomColor: '#ccc',
     borderBottomWidth: 1,
     marginBottom: 15,
   },
   profileImage: {
-    width: 30,       // 👈 increase or decrease as needed
+    width: 30,       
     height: 30,
     borderRadius: 25,
     marginRight: 10,
   },
   profileImagePost: {
-    width: 35,       // 👈 increase or decrease as needed
+    width: 35,       
+   
     height: 35,
     borderRadius: 25,
     marginRight: 0,
   },
   
   profileIcon: {
-    fontSize: 30,    // 👈 matches the profileImage size
+    fontSize: 30,    
     marginRight: 10,
   },
   postInputContainer: {
@@ -1086,6 +1125,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     
   },
+  
   textOnly: {
     fontSize: 16,
     marginBottom: 10,
@@ -1101,18 +1141,6 @@ const styles = StyleSheet.create({
   },
   imageItem: {
     borderRadius: 10,
-  },
-  singleImage: {
-    width: '100%',
-    height: 250,
-    resizeMode: 'cover',
-  },
-  multipleImage: {
-    width: 100,
-    height: 100,
-    resizeMode: 'cover',
-    marginRight: 10,
-    marginBottom: 10,
   },
   
   placeholderText: {
@@ -1136,6 +1164,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  
   },
   modalTitle: {
     fontSize: 16,
@@ -1161,6 +1190,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     marginLeft: 10,
+  
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -1185,6 +1215,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 20,
   },
+  
   optionButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1209,7 +1240,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
-    width: '80%',
+    width: 
+    '80%',
     alignItems: 'center',
   },
   discardTitle: {
@@ -1233,7 +1265,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#d11a2a',
     padding: 10,
     borderRadius: 8,
-    marginRight: 10,
+    marginRight: 
+    10,
     alignItems: 'center',
   },
   keepButton: {
@@ -1256,6 +1289,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   postHeader: {
+ 
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1280,30 +1314,52 @@ const styles = StyleSheet.create({
   },
   postBody: {
     marginTop: 5,
+  
   },
   postTextContent: {
     fontSize: 16,
     color: '#333',
     marginBottom: 10,
   },
+
   postImagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 5,
+    marginVertical: 5,
+    marginHorizontal: -1,
   },
-  postImage: {
-    width: 100,
-    height: 100,
+
+  postImageWrapperSingle: {
+      width: '100%',
+      marginBottom: 5,
+  },
+
+  postImageWrapperMultiple: {
+      width: '33.33%',
+      padding: 1,
+  },
+
+  postImageSingle: {
+    width: '100%',
+    height: 400,
     borderRadius: 10,
-    marginRight: 5,
-    marginBottom: 5,
+    resizeMode: 'fill',
   },
+
+  postImageThumbnail: {
+    width: '100%',
+    height: 200, 
+    borderRadius: 5,
+    resizeMode: 'fill',
+  },
+
   postActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#eee',
+  
     paddingTop: 10,
   },
   actionButton: {
@@ -1330,6 +1386,7 @@ const styles = StyleSheet.create({
   commentModalContent: {
     height: '60%',
     backgroundColor: '#fff',
+   
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -1355,6 +1412,7 @@ const styles = StyleSheet.create({
   commentUserName: {
     marginLeft: 10,
     fontSize: 16,
+   
     fontWeight: '600',
   },
   userComment: {
@@ -1379,6 +1437,7 @@ const styles = StyleSheet.create({
   commentInput: {
     flex: 1,
     backgroundColor: '#f0f0f0',
+    
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 8,
@@ -1405,6 +1464,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 10,
   },
+ 
   
   shareUsername: {
     fontWeight: 'bold',
@@ -1430,7 +1490,8 @@ const styles = StyleSheet.create({
   
   shareButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: 
+    'bold',
     fontSize: 16,
   },
   loadingContainer: {
@@ -1453,6 +1514,7 @@ const styles = StyleSheet.create({
   postUserName: {
     fontWeight: 'bold',
     fontSize: 14,
+  
   },
   pinIcon: {
     position: 'absolute',
@@ -1462,32 +1524,36 @@ const styles = StyleSheet.create({
     height: 33,
     zIndex: 10,
   },
-  eventPostButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-  },
-  eventPostButtonActive: {
-    borderColor: '#34a853',
-    backgroundColor: '#e8f5e9',
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  filterButtonActive: {
-    borderColor: '#34a853',
-    backgroundColor: '#e8f5e9',
-  },
 
-  
+  fullScreenModalContainer: {
+    flex: 1,
+    backgroundColor: '#000000f8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+  },
+  fullScreenImageScroll: {
+    flex: 1,
+    width: screenWidth,
+  },
+  imageGalleryIndicator: {
+    position: 'absolute',
+    bottom: 50,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 20,
+  },
+  imageGalleryIndicatorText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });
