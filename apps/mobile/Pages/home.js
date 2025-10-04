@@ -490,7 +490,7 @@ export default function Home() {
           likedBy: [],
         };
         setLoading(true);
-        const postId = await savePost(newPost.user, postText, selectedImages);
+        const postId = await savePost(newPost.user, postText, selectedImages, false);
         setNewsfeedPosts(prev => [{ ...newPost, id: postId }, ...prev]);
         setVisiblePosts(prev => [{ ...newPost, id: postId }, ...prev]);
         discardPost();
