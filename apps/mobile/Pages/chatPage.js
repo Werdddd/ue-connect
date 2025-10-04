@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView, Modal, TextInput, Keyboard, TouchableWithoutFeedback, Pressable, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { collection, getDocs, getDoc, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where, } from 'firebase/firestore';
+import { collection, getDocs, getDoc, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, setDoc, where, limit } from 'firebase/firestore';
 import { auth, firestore } from '../Firebase';
 import { formatDistanceToNow } from 'date-fns';
 import BottomNavBar from '../components/bottomNavBar';
@@ -75,48 +75,43 @@ export default function ChatPage() {
         .includes(searchTerm.trim().toLowerCase())
     )
     : Users;
-  const handleStartConversation = async () => {
-    if (!selectedUserId || !messageText.trim() || !currentUserId) return;
-
+  const getChatBetweenUsers = async (u1Id, u2Id) => {
     try {
-      const existingChat = await getChatBetweenUsers(currentUserId, selectedUserId);
-
-      if (existingChat) {
-        await sendMessage(existingChat.id);
-      } else {
-        const newChat = await createNewChat(selectedUserId);
-        await sendMessage(newChat.id);
-      }
-
-      toggleModal();
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-    }
-  };
-
-  // console.log("Fetching chats for: ", currentUserId, selectedUserId);
-  // console.log("All chats in state:", chats);
-  const getChatBetweenUsers = async () => {
-    try {
-      if (!currentUserId || !selectedUserId) return;
-
+      // Query the 'chats' collection for a chat containing both user IDs
       const chatQuery = query(
-        collection(firestore, 'chatRooms'),
-        where(`Users.${currentUserId}`, '==', true),
-        where(`Users.${selectedUserId}`, '==', true)
+        collection(firestore, 'chats'), 
+        where(`Users.${u1Id}`, '==', true),
+        where(`Users.${u2Id}`, '==', true),
+        limit(1) // Only need to find one chat
       );
-
-      const querySnapshot = await getDocs(chatQuery);
-
-      if (!querySnapshot.empty) {
-        const chatRoom = querySnapshot.docs[0].data();
-        setMessages(chatRoom.messages || []);
-      } else {
-        console.log('No chat found between users');
-        setMessages([]);
+    const querySnapshot = await getDocs(chatQuery);
+    if (!querySnapshot.empty) {
+      return querySnapshot.docs[0];
+    } else {
+      return null; // No existing chat found
+    }
+      } catch (error) {
+        console.error('Error fetching chat:', error);
+        return null;
       }
+    };
+
+    const handleStartConversation = async () => {
+      if (!selectedUserId || !messageText.trim() || !currentUserId) return;
+  try {
+        const existingChatDoc = await getChatBetweenUsers(currentUserId, selectedUserId);
+
+        let chatId;
+  if (existingChatDoc) {
+          chatId = existingChatDoc.id;
+        } else {
+          const newChatRef = await createNewChat(selectedUserId);
+          chatId = newChatRef.id;
+        }
+        await sendMessage(chatId);
+        toggleModal();
     } catch (error) {
-      console.error('Error fetching chat:', error);
+          console.error('Error starting conversation:', error);
     }
   };
 
@@ -219,7 +214,6 @@ export default function ChatPage() {
             <BottomNavBar />
           </View>
 
-          {/* Modal */}
           <Modal
             visible={shareModalVisible}
             animationType="slide"
@@ -230,64 +224,93 @@ export default function ChatPage() {
               <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
                   <Text style={styles.modalTitle}>Start a New Conversation</Text>
-
-                  <Text style={styles.label}>Select Recipient:</Text>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search for a user..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                  />
-
-                  <ScrollView style={styles.searchResults}>
-                    {Users.filter(user =>
-                      user.id !== currentUserId &&
-                      (`${user.firstName} ${user.lastName}`)
-                        .toLowerCase()
-                        .includes(searchQuery.toLowerCase())
-                    ).map(user => (
-                      <TouchableOpacity
-                        key={user.id}
-                        style={styles.searchItem}
+                  {selectedUserId ? (
+                    <>
+                      <Text style={styles.label}>Recipient:</Text>
+                      <Pressable 
+                        style={styles.recipientSelectedDisplay}
                         onPress={() => {
-                          setSelectedUserId(user.id);
-                          setSearchQuery(`${user.firstName} ${user.lastName}`);
+                          setSelectedUserId(''); 
+                          setSearchQuery(''); 
+                          setMessageText(''); 
                         }}
                       >
-                        <Image
-                          source={{ uri: user.profileImage }}
-                          style={styles.profileImage}
-                        />
-                        <View style={styles.userDetails}>
-                          <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
-                          <Text style={styles.courseYear}>{user.Course} {user.Year}</Text>
-                          <Text style={styles.email}>{user.email}</Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                        <Text style={styles.recipientSelectedName}>
+                          {Users.find(u => u.id === selectedUserId)?.firstName}{' '}
+                          {Users.find(u => u.id === selectedUserId)?.lastName}
+                        </Text>
+                        <Text style={styles.recipientChangeText}>Change Recipient</Text>
+                      </Pressable>
+                    </>
+                  ) : (
+                    <Text style={styles.selectionPrompt}>Select a recipient to start composing your message:</Text>
+                  )}
+                  {!selectedUserId && (
+                    <>
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search for a user..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                      />
 
-
-                  <Text style={styles.label}>Message:</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={messageText}
+                      <ScrollView style={styles.searchResults}>
+                        {Users.filter(user =>
+                          user.id !== currentUserId &&
+                          (`${user.firstName} ${user.lastName}`)
+                            .toLowerCase()
+                            .includes(searchQuery.toLowerCase())
+                        ).map(user => (
+                          <TouchableOpacity
+                            key={user.id}
+                            style={styles.searchItem}
+   
+                       onPress={() => {
+                            setSelectedUserId(user.id);
+                            setSearchQuery(''); 
+                            Keyboard.dismiss(); 
+                          }}
+                        >
+                          <Image
+                            source={{ uri: user.profileImage }}
+                            style={styles.profileImage}
+                          />
+                          <View style={styles.userDetails}>
+                            <Text style={styles.name}>{user.firstName} {user.lastName}</Text>
+                            <Text style={styles.courseYear}>{user.Course} {user.Year}</Text>
+                            <Text style={styles.email}>{user.email}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                      </ScrollView>
+                    </>
+                  )}
+                  {selectedUserId && (
+                    <>
+                      <Text style={styles.label}>Message:</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={messageText}
+    
                     onChangeText={setMessageText}
-                    placeholder="Type your message..."
-                    multiline
-                  />
-
-                  <TouchableOpacity
-                    style={styles.sendButton}
-                    onPress={handleStartConversation}
-                    disabled={!selectedUserId || !messageText.trim()}
-                  >
-                    <Text style={styles.sendButtonText}>Send Message</Text>
-                  </TouchableOpacity>
+                        placeholder="Type your message..."
+                        multiline
+                      />
+                      <TouchableOpacity
+              style={styles.sendButton}
+                        onPress={handleStartConversation}
+                        disabled={!selectedUserId || !messageText.trim()}
+                      >
+                        <Text style={styles.sendButtonText}>Send Message</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                  {/* --- END: MESSAGE COMPOSITION PHASE --- */}
 
                   <TouchableOpacity style={styles.closeButton} onPress={toggleModal}>
                     <Text style={styles.closeButtonText}>Cancel</Text>
-                  </TouchableOpacity>
+ 
+                 </TouchableOpacity>
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -386,6 +409,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 20,
     minHeight: 100,
+    height: 200,
   },
   sendButton: {
     backgroundColor: '#E50914',
@@ -414,7 +438,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   searchResults: {
-    maxHeight: 150,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
@@ -438,6 +461,34 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 12,
     backgroundColor: '#ddd',
+  },
+
+  recipientSelectedDisplay: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E50914',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+    backgroundColor: '#ffe6e6', // Light background for selection display
+  },
+  recipientSelectedName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#E50914',
+  },
+  recipientChangeText: {
+    fontSize: 14,
+    color: '#E50914',
+    textDecorationLine: 'underline',
+  },
+  selectionPrompt: {
+    fontSize: 16,
+    color: '#555',
+    textAlign: 'center',
+    marginVertical: 10,
   },
 
   userDetails: {
