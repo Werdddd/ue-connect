@@ -30,7 +30,7 @@ const convertToBase64 = async (uri) => {
 };
 
 // Save post with base64 images
-export const savePost = async (user, postText, images) => {
+export const savePost = async (user, postText, images, isEvent) => {
   const postId = Date.now().toString(); // Unique post ID
   let imageBase64List = [];
 
@@ -52,6 +52,7 @@ export const savePost = async (user, postText, images) => {
     userName: user.name,
     //profileImage: user.profileImage,
     text: postText,
+    isEvent: isEvent,
     images: imageBase64List,
     timestamp: serverTimestamp(),
     likedBy: [],
