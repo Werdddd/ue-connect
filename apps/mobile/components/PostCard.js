@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,    
     shadowRadius: 4,       
     paddingVertical: 0,  
-    paddingHorizontal: 0,         
+    paddingHorizontal: 0,   
   },
   optionButton: {
     paddingVertical: 10,  
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
   },
   optionText: {
-    fontSize: 16,         
+    fontSize: 13,         
     color: '#333',      
   },
   optionsButton: {

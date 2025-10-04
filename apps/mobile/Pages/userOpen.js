@@ -1,82 +1,101 @@
 import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    TouchableWithoutFeedback,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform, TouchableOpacity,
-    Pressable,
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  SafeAreaView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+  FlatList,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
-import { auth, firestore } from '../Firebase'; // your auth config
-import { collection, getDocs, query, where, doc, getDoc, onSnapshot} from 'firebase/firestore';
-import { useRoute } from '@react-navigation/native';
+import { auth, firestore } from '../Firebase';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+  onSnapshot,
+  limit,
+  startAfter,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  addDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import PostCard from '../components/PostCard';
-import { followUser } from '../Backend/follow'; 
-import { unfollowUser } from '../Backend/unfollow'; 
+import { followUser } from '../Backend/follow';
+import { unfollowUser } from '../Backend/unfollow';
+import { sendNotification } from '../Backend/notifications';
 
+export default function UserProfilePage() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { postEmail } = route.params;
+  const userEmail = postEmail;
 
-export default function UserOwnProfilePage() {
-    const navigation = useNavigation();
-    const [scrollY, setScrollY] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
+  const [name, setName] = useState({ firstName: '', lastName: '' });
+  const [year, setYear] = useState('');
+  const [profile, setProfile] = useState('');
+  const [course, setCourse] = useState('');
+  const [following, setFollowing] = useState(0);
+  const [followers, setFollowers] = useState(0);
+  const [organization, setOrganization] = useState(0);
+  const [member, setMember] = useState(0);
+  const [group, setGroup] = useState(false);
+  const [userPosts, setUserPosts] = useState([]);
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [followed, setFollowed] = useState(false);
+  const [userName, setUserName] = useState('');
 
-    const [name, setName] = useState({ firstName: '', lastName: '' });
-    const [year, setYear] = useState('');
-    const [profile, setProfile] = useState('');
-    const [course, setCourse] = useState('');
-    const [following, setFollowing] = useState(0);
-    const [followers, setFollowers] = useState(0);
-    const [organization, setOrganization] = useState(0);
-    const [member, setMember] = useState(0);
-    const [group, setGroup] = useState(false);
-    const [userPosts, setUserPosts] = useState([]);
-    const route = useRoute();
-    const { postEmail } = route.params;
-    const userEmail = postEmail;
-    const [currentUserEmail, setCurrentUserEmail] = useState('')
-    const [followed, setFollowed] = useState(false);
-    const [userName, setUser] = useState('');
+  // pagination
+  const [lastDoc, setLastDoc] = useState(null);
+  const [fetchingMore, setFetchingMore] = useState(false);
 
+  // comment/like state
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [postComments, setPostComments] = useState([]);
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = auth.currentUser;
+      if (user?.email) {
+        setCurrentUserEmail(user.email);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-          const user = auth.currentUser;
-          if (user?.email) {
-            setCurrentUserEmail(user.email);
-      
-            const userRef = doc(firestore, 'Users', user.email);
-            const userSnap = await getDoc(userRef);
-      
-            if (userSnap.exists()) {
-              const userData = userSnap.data();
-              setUser(`${userData.firstName} ${userData.lastName}`);
-              //console.log(`${userData.firstName} ${userData.lastName}`);
-            } else {
-              console.log('No such user document!');
-            }
-          }
-        };
-      
-        fetchUser();
-      }, []);
-      
+        const userRef = doc(firestore, 'Users', user.email);
+        const userSnap = await getDoc(userRef);
 
-    useEffect(() => {
-    let unsubscribe;
-    
-    const subscribeToProfile = () => {
-        const userRef = doc(firestore, 'Users', userEmail);
-    
-        unsubscribe = onSnapshot(userRef, (userSnap) => {
         if (userSnap.exists()) {
+          const userData = userSnap.data();
+          setUserName(`${userData.firstName} ${userData.lastName}`);
+        }
+      }
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    let unsubscribe;
+
+    const subscribeToProfile = () => {
+      const userRef = doc(firestore, 'Users', userEmail);
+
+      unsubscribe = onSnapshot(
+        userRef,
+        (userSnap) => {
+          if (userSnap.exists()) {
             const data = userSnap.data();
             setName({ firstName: data.firstName, lastName: data.lastName });
             setYear(data.Year);
@@ -88,250 +107,359 @@ export default function UserOwnProfilePage() {
             setGroup(data.group);
             setFollowed(data.followers?.includes(currentUserEmail));
             if (data.group) {
-                (async () => {
-                  try {
-                    const orgsRef = collection(firestore, 'organizations');
-                    const q = query(orgsRef, where('email', '==', userEmail));
-                    const querySnapshot = await getDocs(q);
-                    //console.log(userEmail);
-                    
-                    if (!querySnapshot.empty) {
-                      const orgData = querySnapshot.docs[0].data();
-                      setMember(orgData.members.length);
-                      //console.log("Organization found:", orgData.location); // or any other field
-                    } else {
-                      console.log("No organization found with that email.");
-                    }
-                  } catch (err) {
-                    console.error("Failed to fetch extra user data:", err);
+              (async () => {
+                try {
+                  const orgsRef = collection(firestore, 'organizations');
+                  const q = query(orgsRef, where('email', '==', userEmail));
+                  const querySnapshot = await getDocs(q);
+                  if (!querySnapshot.empty) {
+                    const orgData = querySnapshot.docs[0].data();
+                    setMember(orgData.members.length);
                   }
-                })();
-              }
-        } else {
-            console.log('No such user document!');
+                } catch (err) {
+                  console.error('Failed to fetch extra user data:', err);
+                }
+              })();
+            }
+          }
+        },
+        (error) => {
+          console.error('Error fetching real-time profile:', error.message);
         }
-        }, (error) => {
-        console.error('Error fetching real-time profile:', error.message);
-        });
+      );
     };
-    
+
     if (userEmail && currentUserEmail) {
-        subscribeToProfile();
-        fetchUserPosts(); // Still OK to run once here
-        //console.log("name", name);
+      subscribeToProfile();
+      fetchUserPosts(true); // initial load
     }
-    
+
     return () => {
-        if (unsubscribe) unsubscribe();
+      if (unsubscribe) unsubscribe();
     };
-    }, [userEmail, currentUserEmail]);
+  }, [userEmail, currentUserEmail]);
 
-    const fetchUserPosts = async () => {
-        if (!userEmail) return;
+  const fetchUserPosts = async (initial = false) => {
+    if (!userEmail) return;
 
-        try {
-            // 1) Query only this user's posts
-            const q = query(
-                collection(firestore, 'newsfeed'),
-                where('userId', '==', userEmail)
-            );
-            const snap = await getDocs(q);
+    try {
+      let q = query(
+        collection(firestore, 'newsfeed'),
+        where('userId', '==', userEmail),
+        limit(10)
+      );
+      if (!initial && lastDoc) {
+        q = query(
+          collection(firestore, 'newsfeed'),
+          where('userId', '==', userEmail),
+          startAfter(lastDoc),
+          limit(10)
+        );
+      }
 
-            // 2) For each post, fetch its author record from Users
-            const enriched = await Promise.all(
-                snap.docs.map(async (docSnap) => {
-                    const data = docSnap.data();
+      const snap = await getDocs(q);
+      const lastVisible = snap.docs[snap.docs.length - 1] || null;
+      setLastDoc(lastVisible);
 
-                    // Convert Firestore Timestamp → JS Date
-                    const dateObj = data.date?.toDate
-                        ? data.date.toDate()
-                        : new Date(data.date || Date.now());
+      const enriched = await Promise.all(
+        snap.docs.map(async (docSnap) => {
+          const data = docSnap.data();
+          const dateObj = data.date?.toDate
+            ? data.date.toDate()
+            : new Date(data.date || Date.now());
 
-                    // Normalize images
-                    const images = (data.images || []).map(img =>
-                        img.startsWith('http')
-                            ? img
-                            : `data:image/jpeg;base64,${img}`
-                    );
+          const images = (data.images || []).map((img) =>
+            img.startsWith('http')
+              ? img
+              : `data:image/jpeg;base64,${img}`
+          );
 
-                    // Fetch user profile
-                    let userProfile = {
-                        name: 'Anonymous',
-                        profileImage: 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
-                        role: ''
-                    };
-                    if (data.userId) {
-                        const userDoc = await getDoc(doc(firestore, 'Users', data.userId));
-                        if (userDoc.exists()) {
-                            const u = userDoc.data();
+          let userProfile = {
+            name: 'Anonymous',
+            profileImage:
+              'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
+            role: ''
+          };
+          if (data.userId) {
+            const userDoc = await getDoc(doc(firestore, 'Users', data.userId));
+            if (userDoc.exists()) {
+              const u = userDoc.data();
+              userProfile = {
+                name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Anonymous',
+                profileImage: u.profileImage?.startsWith('http')
+                  ? u.profileImage
+                  : u.profileImage || userProfile.profileImage,
+                role: u.role || ''
+              };
+            }
+          }
 
-                            //console.log("test");
-                            userProfile = {
-                                name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Anonymous',
-                                profileImage: u.profileImage
-                                    ? u.profileImage.startsWith('http')
-                                        ? u.profileImage
-                                        : `${u.profileImage}`
-                                    : userProfile.profileImage,
-                                role: u.role || ''
-                            };
-                        }
-                    }
+          const commentsSnap = await getDocs(
+            collection(firestore, 'newsfeed', docSnap.id, 'comments')
+          );
+          const commentCount = commentsSnap.size;
 
-                    // Count comments
-                    const commentsSnap = await getDocs(
-                        collection(firestore, 'newsfeed', docSnap.id, 'comments')
-                    );
-                    const commentCount = commentsSnap.size;
+          return {
+            id: docSnap.id,
+            text: data.text || '',
+            date: dateObj,
+            images,
+            likedBy: data.likedBy || [],
+            commentCount,
+            user: userProfile
+          };
+        })
+      );
 
-                    return {
-                        id: docSnap.id,
-                        text: data.text || '',
-                        date: dateObj,
-                        images,
-                        likedBy: data.likedBy || [],
-                        commentCount,
-                        user: userProfile
-                    };
-                })
-            );
+      if (initial) {
+        setUserPosts(enriched.reverse());
+      } else {
+        setUserPosts((prev) => [...prev, ...enriched.reverse()]);
+      }
+    } catch (err) {
+      console.error('Error fetching user posts:', err);
+    } finally {
+      setFetchingMore(false);
+    }
+  };
 
-            // 3) Reverse if you want newest first
-            setUserPosts(enriched.reverse());
-        } catch (err) {
-            console.error('Error fetching user posts:', err);
+  // LIKE
+  const toggleLike = async (postId, likedBy) => {
+    const postRef = doc(firestore, 'newsfeed', postId);
+    const hasLiked = likedBy.includes(currentUserEmail);
+
+    try {
+      await updateDoc(postRef, {
+        likedBy: hasLiked
+          ? arrayRemove(currentUserEmail)
+          : arrayUnion(currentUserEmail),
+      });
+
+      setUserPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                likedBy: hasLiked
+                  ? p.likedBy.filter(email => email !== currentUserEmail)
+                  : [...p.likedBy, currentUserEmail],
+              }
+            : p
+        )
+      );
+
+      if (!hasLiked) {
+        const postSnap = await getDoc(postRef);
+        const postData = postSnap.data();
+        const postOwner = postData.userId;
+
+        if (postOwner && postOwner !== currentUserEmail) {
+          await sendNotification({
+            userId: postOwner,
+            type: 'like',
+            content: `${userName} liked your post.`,
+          });
         }
-    };
+      }
+    } catch (e) {
+      console.error('Error updating like or sending notification:', e);
+    }
+  };
 
-    const handleFollow = async () => {
-        const res = await followUser(currentUserEmail, userEmail, userName);
-        if (res.success) {
-            setFollowed(true);
-            fetchProfile();
-        } else {
-            console.error('Follow failed:', res.error);
-        }
-    };
-    const handleUnfollow = async () => {
-        const res = await unfollowUser(currentUserEmail, userEmail);
-        if (res.success) {
-          setFollowed(false);
-          fetchProfile();
-        } else {
-          console.error('Unfollow failed:', res.error);
-        }
+  // COMMENTS
+  const fetchComments = async (postId) => {
+    try {
+      const commentsSnapshot = await getDocs(
+        collection(firestore, 'newsfeed', postId, 'comments')
+      );
+
+      const commentsData = await Promise.all(
+        commentsSnapshot.docs.map(async (docSnapshot) => {
+          const comment = docSnapshot.data();
+          const email = comment.email;
+          let profileImage = null;
+
+          if (email) {
+            try {
+              const userDocRef = doc(firestore, 'Users', email);
+              const userDoc = await getDoc(userDocRef);
+              if (userDoc.exists()) {
+                profileImage = userDoc.data().profileImage || null;
+              }
+            } catch (error) {
+              console.warn(`Error fetching user data for ${email}:`, error);
+            }
+          }
+
+          return {
+            id: docSnapshot.id,
+            ...comment,
+            profileImage,
+          };
+        })
+      );
+
+      setPostComments(commentsData);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (commentText.trim() === '') return;
+
+    try {
+      const commentData = {
+        text: commentText,
+        userName: userName,
+        profileImage: profile || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
+        timestamp: serverTimestamp(),
+        email: currentUserEmail,
       };
-      
 
+      await addDoc(collection(firestore, 'newsfeed', selectedPostId, 'comments'), commentData);
+      setCommentText('');
 
-    const dummyFunctions = () => { };
-    const dummyStateSetter = () => { };
-    const dummySharedValue = { value: 0 }; // for reanimated values
-    const dummyAnimatedStyle = {}; // optional for basic test
+      const postRef = doc(firestore, 'newsfeed', selectedPostId);
+      const postSnap = await getDoc(postRef);
 
-    return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <SafeAreaView style={styles.safeArea}>
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.container}
-                >
-                    <View style={styles.container}>
-                        <Header scrollY={scrollY} />
-                        <TouchableWithoutFeedback>
-                            <ScrollView
-                                keyboardShouldPersistTaps="handled"
-                                onScroll={(event) => {
-                                    setScrollY(event.nativeEvent.contentOffset.y);
-                                }}
-                                scrollEventThrottle={16}
-                                contentContainerStyle={styles.scrollContent}
-                                showsVerticalScrollIndicator={false}
-                            >
-                                <View style={styles.profileContainer}>
-                                    <Image
-                                        source={{ uri: profile }}
-                                        style={styles.userProfileImage}
-                                    />
+      if (postSnap.exists()) {
+        const postData = postSnap.data();
+        const postOwner = postData.userId;
 
-                                    <Text style={styles.userName}>
-                                    {name.firstName || name.lastName
-                                    ? `${name.firstName} ${name.lastName}`.trim()
-                                    : 'Unknown'}
-                                    </Text>
-                                    <View style={styles.followDataRow}>
-                                        <Text style={styles.textsNumber1}>{following}</Text>
-                                        <Text style={styles.textsNumber2}>{followers}</Text>
-                                        <Text style={styles.textsNumber3}>{group ? member : organization}</Text>
-                                    </View>
-                                    <View style={styles.followDetailRow}>
-                                        <Text style={styles.texts}>{'Following'}</Text>
-                                        <Text style={styles.texts}>{'Followers'}</Text>
-                                        <Text style={styles.texts}>{group ? 'Members' : 'Organizations'}</Text>
-                                    </View>
-                                    {!group && (
-                                    <View style={styles.infoDetailRow}>
-                                        <Text style={styles.userYear}>{year || 'Your Year'}</Text>
-                                        <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
-                                    </View>
-                                    )}
-                                    <View style={styles.followContainer}>
-                                    {followed ? (
-                                        <TouchableOpacity style={styles.followingButton} onPress={handleUnfollow}>
-                                        <Text style={styles.followingButtonText}>Following</Text>
-                                        </TouchableOpacity>
-                                    ) : (
-                                        <TouchableOpacity style={styles.followButton} onPress={handleFollow}>
-                                        <Text style={styles.followButtonText}>Follow</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                    </View>
-                                    <View style={styles.underline} />
-                                </View>
+        if (postOwner && postOwner !== currentUserEmail) {
+          await sendNotification({
+            userId: postOwner,
+            type: 'comment',
+            content: `${userName} commented on your post.`,
+          });
+        }
+      }
 
-                                {userPosts.map((post) => (
-                                    <PostCard
-                                        key={post.id}
-                                        post={post}
-                                        ss={"superadmin"}
-                                        ss2={"sheen"}
-                                        hasText={!!post.text}
-                                        hasImages={post.images?.length > 0}
-                                        isLiked={post.likedBy.includes(userEmail)}
-                                        commentModalVisible={false}
-                                        shareModalVisible={false}
-                                        postComments={[]}
-                                        commentText=""
-                                        shareCaption=""
-                                        setCommentModalVisible={dummyStateSetter}
-                                        setShareModalVisible={dummyStateSetter}
-                                        setSelectedPostId={dummyStateSetter}
-                                        fetchComments={dummyFunctions}
-                                        handleCommentBackdropPress={dummyFunctions}
-                                        handleCommentGesture={dummyFunctions}
-                                        commentBackdropAnimatedStyle={dummyAnimatedStyle}
-                                        commentAnimatedStyle={dummyAnimatedStyle}
-                                        commentTranslateY={dummySharedValue}
-                                        commentBackdropOpacity={dummySharedValue}
-                                        setCommentText={dummyStateSetter}
-                                        handleAddComment={dummyFunctions}
-                                        setShareCaption={dummyStateSetter}
-                                        toggleLike={dummyFunctions}
-                                        //onDeletePost={() => handleDeletePost(post.id)}
-                                        //onOptionsPress={handleToggleOptions}
-                                        //showOptions={showOptions}
-                                    />
-                                ))}
+      fetchComments(selectedPostId);
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
 
-                            </ScrollView>
-                        </TouchableWithoutFeedback>
-                        <BottomNavBar />
-                    </View>
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        </TouchableWithoutFeedback>
+  const handleFollow = async () => {
+    const res = await followUser(currentUserEmail, userEmail, userName);
+    if (res.success) {
+      setFollowed(true);
+    } else {
+      console.error('Follow failed:', res.error);
+    }
+  };
+  const handleUnfollow = async () => {
+    const res = await unfollowUser(currentUserEmail, userEmail);
+    if (res.success) {
+      setFollowed(false);
+    } else {
+      console.error('Unfollow failed:', res.error);
+    }
+  };
 
-    );
+  const renderHeader = () => (
+    <View style={styles.profileContainer}>
+      <Image source={{ uri: profile }} style={styles.userProfileImage} />
+
+      <Text style={styles.userName}>
+        {name.firstName || name.lastName
+          ? `${name.firstName} ${name.lastName}`.trim()
+          : 'Unknown'}
+      </Text>
+      <View style={styles.followDataRow}>
+        <Text style={styles.textsNumber1}>{following}</Text>
+        <Text style={styles.textsNumber2}>{followers}</Text>
+        <Text style={styles.textsNumber3}>{group ? member : organization}</Text>
+      </View>
+      <View style={styles.followDetailRow}>
+        <Text style={styles.texts}>{'Following'}</Text>
+        <Text style={styles.texts}>{'Followers'}</Text>
+        <Text style={styles.texts}>{group ? 'Members' : 'Organizations'}</Text>
+      </View>
+      {!group && (
+        <View style={styles.infoDetailRow}>
+          <Text style={styles.userYear}>{year || 'Your Year'}</Text>
+          <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
+        </View>
+      )}
+      <View style={styles.followContainer}>
+        {followed ? (
+          <TouchableOpacity style={styles.followingButton} onPress={handleUnfollow}>
+            <Text style={styles.followingButtonText}>Following</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.followButton} onPress={handleFollow}>
+            <Text style={styles.followButtonText}>Follow</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View style={styles.underline} />
+    </View>
+  );
+
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}
+        >
+          <View style={styles.container}>
+            <Header scrollY={scrollY} />
+
+            <FlatList
+              style={styles.containerPost}
+              data={userPosts}
+              keyExtractor={(item) => item.id}
+              ListHeaderComponent={renderHeader}
+              renderItem={({ item }) => (
+                <PostCard
+                  key={item.id}
+                  post={item}
+                  ss={'superadmin'}
+                  ss2={'sheen'}
+                  hasText={!!item.text}
+                  hasImages={item.images?.length > 0}
+                  isLiked={item.likedBy.includes(currentUserEmail)}
+                  commentModalVisible={commentModalVisible}
+                  shareModalVisible={false}
+                  postComments={postComments}
+                  commentText={commentText}
+                  shareCaption=""
+                  setCommentModalVisible={setCommentModalVisible}
+                  setShareModalVisible={() => {}}
+                  setSelectedPostId={setSelectedPostId}
+                  fetchComments={fetchComments}
+                  handleCommentBackdropPress={() => setCommentModalVisible(false)}
+                  handleCommentGesture={() => setCommentModalVisible(false)}
+                  commentBackdropAnimatedStyle={{}}
+                  commentAnimatedStyle={{}}
+                  commentTranslateY={{ value: 0 }}
+                  commentBackdropOpacity={{ value: 1 }}
+                  setCommentText={setCommentText}
+                  handleAddComment={handleAddComment}
+                  setShareCaption={() => {}}
+                  toggleLike={toggleLike}
+                />
+              )}
+              onEndReached={() => {
+                if (!fetchingMore && lastDoc) {
+                  setFetchingMore(true);
+                  fetchUserPosts(false);
+                }
+              }}
+              onEndReachedThreshold={0.5}
+              showsVerticalScrollIndicator={false}
+            />
+
+            <BottomNavBar />
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -341,6 +469,11 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
+        backgroundColor: '#fff',
+    },
+    containerPost: {
+        flex: 1,
+        padding: 15,
         backgroundColor: '#fff',
     },
     scrollContent: {
