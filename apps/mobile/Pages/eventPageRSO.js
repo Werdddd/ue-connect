@@ -254,71 +254,44 @@ export default function EventPageRSO() {
     const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
     const normalizedNewLocation = normalizeLocation(newLocation);
 
-    // 🔍 DEBUG: Log all events being checked
-    console.log('=== CONFLICT CHECK DEBUG ===');
-    console.log('New Event:', { date: newDate, time: newTime, location: newLocation });
-    console.log('Total events to check:', events.length);
-    console.log('Events:', events.map(e => ({ 
-        title: e.title, 
-        date: e.date, 
-        time: e.time, 
-        location: e.location, 
-        status: e.status 
-    })));
-
     // ✅ Check conflicts against events with Applied or Approved status
     const conflictingEvents = events.filter(event => {
-        console.log(`\nChecking event: ${event.title}`);
         
         // Only check Applied and Approved events
         if (!(event.status === 'Applied' || event.status === 'Approved')) {
-            console.log(`  ❌ Skipped - Status is "${event.status}"`);
             return false;
         }
-        console.log(`  ✓ Status check passed: ${event.status}`);
 
         // Check if same location (case-insensitive comparison)
         const eventLoc = normalizeLocation(event.location);
-        console.log(`  Comparing locations: "${eventLoc}" vs "${normalizedNewLocation}"`);
+
         if (eventLoc !== normalizedNewLocation) {
-            console.log(`  ❌ Different location`);
             return false;
         }
-        console.log(`  ✓ Same location`);
 
         // Check if same date
-        console.log(`  Comparing dates: "${event.date}" vs "${newDate}"`);
         if (event.date !== newDate) {
-            console.log(`  ❌ Different date`);
+
             return false;
         }
-        console.log(`  ✓ Same date`);
 
         // Check time overlap
         try {
             const existing = parseTimeRange(event.date, event.time);
             const incoming = parseTimeRange(newDate, newTime);
 
-            console.log(`  Existing time:`, existing);
-            console.log(`  Incoming time:`, incoming);
-
             if (!existing || !incoming) {
-                console.log(`  ❌ Failed to parse times`);
                 return false;
             }
 
             // Overlap check: (A starts before B ends) AND (A ends after B starts)
             const hasOverlap = incoming.start < existing.end && incoming.end > existing.start;
-            console.log(`  Time overlap: ${hasOverlap}`);
             return hasOverlap;
         } catch (err) {
             console.warn("⚠️ Error checking conflict:", err);
             return false;
         }
     });
-
-    console.log('\n🔍 Conflicting events found:', conflictingEvents.length);
-    console.log('=== END DEBUG ===\n');
 
     // ✅ Show detailed warning if conflicts found
     if (conflictingEvents.length > 0) {

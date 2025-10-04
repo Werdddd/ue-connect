@@ -70,10 +70,10 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
 
     useEffect(() => {
         if (event && event.proposalLink) {
-            //console.log('Proposal Link from Event:', event.proposalLink);
+
             setProposalLink(event.proposalLink);
         } else {
-            console.log('Proposal Link not found in event:', event);
+
         }
     }, [event]);
     

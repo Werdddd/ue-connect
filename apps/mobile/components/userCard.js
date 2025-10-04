@@ -124,7 +124,7 @@ export default function UserCard() {
   };
 
   const handleSearchSubmit = () => {
-    console.log("Search term:", searchText); // Log the search term when Enter is pressed
+    console.log("Search term:", searchText); 
   };
 
   const renderItem = ({ item }) => (

@@ -18,7 +18,6 @@ export async function fetchEvents() {
       ...doc.data(),
     }));
 
-    console.log('Loaded events (Approved + Finished):', events);
     return events;
   } catch (error) {
     console.error('Failed to load events:', error);

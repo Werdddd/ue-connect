@@ -12,21 +12,9 @@ import EventCard from '../components/eventCard';
 import { fetchEvents, addEvent } from '../Backend/eventPage';
 
 export default function Event() {
-    const navigation = useNavigation();
     const [selectedOrg, setSelectedOrg] = useState('All');
     const [scrollY, setScrollY] = useState(0);
     const [events, setEvents] = useState([]);
-    const [isModalVisible, setIsModalVisible] = useState(false);
-
-    // Inputs for new event
-    const [newTitle, setNewTitle] = useState('');
-    const [newDescription, setNewDescription] = useState('');
-    const [newDate, setNewDate] = useState('');
-    const [newTime, setNewTime] = useState('');
-    const [newLocation, setNewLocation] = useState('');
-    const [newParticipants, setNewParticipants] = useState('');
-    const [organization, setOrganization] = useState('');
-
     useEffect(() => {
         loadEvents();
     }, []);
@@ -34,7 +22,6 @@ export default function Event() {
     const loadEvents = async () => {
         try {
             const data = await fetchEvents();
-            console.log('Fetched events:', data);
     
             const visibleEvents = data.filter(event => {
                 const status = event.status?.toLowerCase();
@@ -47,46 +34,6 @@ export default function Event() {
         }
     };
     
-    
-
-    const handleAddEvent = async () => {
-        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants) {
-            alert('Please fill out all fields!');
-            return;
-        }
-
-        const participants = parseInt(newParticipants, 10);
-        if (isNaN(participants)) {
-            alert('Please enter a valid number for participants!');
-            return;
-        }
-
-        const newEvent = {
-            title: newTitle,
-            description: newDescription,
-            date: newDate,
-            time: newTime,
-            location: newLocation,
-            participants: participants,
-            org: organization,
-        };
-
-        try {
-            await addEvent(newEvent);
-            await loadEvents();
-            setIsModalVisible(false);
-
-            setNewTitle('');
-            setNewDescription('');
-            setNewDate('');
-            setNewTime('');
-            setNewLocation('');
-            setNewParticipants('');
-        } catch (error) {
-            console.error('Error adding event:', error);
-        }
-    };
-
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
             case 'All': return 'All Events';
