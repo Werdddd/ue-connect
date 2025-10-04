@@ -36,8 +36,34 @@ const Dashboard = () => {
   const [studentTrend, setStudentTrend] = useState<number>(0);
   const [monthlyData, setMonthlyData] = useState<{ month: string; students: number; orgs: number }[]>([]);
   const [orgTypeData, setOrgTypeData] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+
+  const [studentNumber, setStudentNumber] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [course, setCourse] = useState('');
+  const [year, setYear] = useState('');
 
 
+  const handleAddUser = async (formData: Record<string, any>) => {
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("User created successfully!");
+      } else {
+        alert("Error: " + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
   useEffect(() => {
     const fetchData = async () => {
       const total = await getTotalUsers();
@@ -243,7 +269,10 @@ const Dashboard = () => {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <button className="w-full p-3 text-left bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                <button
+                  onClick={() => setShowAddUserModal(true)}
+                  className="w-full p-3 text-left bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                >
                   <div className="flex items-center">
                     <Users className="h-5 w-5 text-red-600 mr-3" />
                     <span className="font-medium text-red-900">Add New User</span>
@@ -272,8 +301,160 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {showAddUserModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Background Blur */}
+          <div
+            className="absolute inset-0 backdrop-blur-sm"
+            onClick={() => setShowAddUserModal(false)}
+          ></div>
+
+          {/* Modal Box */}
+          <div className="relative bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg mx-4 border border-gray-200">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+              Add New User
+            </h2>
+
+            <form className="space-y-4" onSubmit={e => {
+              e.preventDefault();
+              handleAddUser({
+                studentNumber,
+                firstName,
+                lastName,
+                email,
+                password,
+                Course: course,
+                Year: year,
+              });
+              setShowAddUserModal(false);
+            }}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Student Number</label>
+                <input
+                  type="text"
+                  className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                  placeholder="e.g. 2021-12345"
+                  value={studentNumber}
+                  onChange={e => setStudentNumber(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text"
+                    className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text"
+                    className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                  placeholder="example@ue.edu.ph"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  type="password"
+                  className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </div>
+
+              {/* Course Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Course</label>
+                <select className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                  value={course}
+                  onChange={e => setCourse(e.target.value)}>
+                  <option value="">Select Course</option>
+                  <option disabled>--- College of Engineering ---</option>
+                  <option value="BSCE">BSCE</option>
+                  <option value="BSCpE">BSCpE</option>
+                  <option value="BSEE">BSEE</option>
+                  <option value="BSECE">BSECE</option>
+                  <option value="BSME">BSME</option>
+                  <option value="BSCS">BSCS</option>
+                  <option value="BSIT">BSIT</option>
+                  <option value="BSDS">BSDS</option>
+                  <option disabled>--- College of Fine Arts, Architecture and Design ---</option>
+                  <option value="BMA">BMA</option>
+                  <option value="BSID">BSID</option>
+                  <option value="BFA">BFA</option>
+                  <option value="BS Architecture">BS Architecture</option>
+                  <option disabled>--- Business Administration ---</option>
+                  <option value="BS Accountancy">BS Accountancy</option>
+                  <option value="BSMA">BSMA</option>
+                  <option value="BSBA">BSBA</option>
+                  <option disabled>--- College of Arts and Sciences ---</option>
+                  <option value="BSC">BSC</option>
+                  <option value="BSP">BSP</option>
+                  <option value="BSHM">BSHM</option>
+                  <option value="BSTM">BSTM</option>
+                </select>
+              </div>
+
+              {/* Year Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Year</label>
+                <select className="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                  value={year}
+                  onChange={e => setYear(e.target.value)}>
+                  <option value="">Select Year</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                >
+                  Add User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 };
+
 
 export default Dashboard;

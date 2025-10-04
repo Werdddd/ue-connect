@@ -38,3 +38,6 @@ yarn-error.*
 #Justin Guiriba
 .env
 justin.env
+
+#Kenny Francisco
+serviceAccountKey.json
