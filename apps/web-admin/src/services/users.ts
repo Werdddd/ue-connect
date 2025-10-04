@@ -1,5 +1,38 @@
 import { collection, query, where, getCountFromServer, Timestamp, getDocs } from "firebase/firestore";
-import { firestore } from "@/Firebase";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, firestore } from "@/Firebase"; // adjust path
+
+/**
+ * Only allow login with role superadmin (role === "superadmin")
+ */
+
+export const loginUser = async (email: string, password: string) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    const userDocRef = doc(firestore, "Users", user.email!.toLowerCase());
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+      await signOut(auth);
+      throw new Error("User record not found in Firestore.");
+    }
+
+    const userData = userDocSnap.data();
+
+    if (userData.role !== "superadmin") {
+      await signOut(auth);
+      throw new Error("Access denied. Only admins can log in.");
+    }
+
+    return { success: true, userData };
+  } catch (error: any) {
+    console.error("Login failed:", error);
+    throw new Error(error.message || "Failed to log in.");
+  }
+};
 
 /**
  * Get total number of students (role === "user")

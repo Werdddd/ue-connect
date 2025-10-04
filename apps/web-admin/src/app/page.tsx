@@ -2,10 +2,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, firestore } from "@/Firebase"; // adjust path
+import { loginUser } from "@/services/users"; 
 
 export default function Home() {
   const [email, setEmail] = useState('');
@@ -19,33 +16,15 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
-      // 1️⃣ Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // 2️⃣ Firestore: find doc with ID = email
-      const userDocRef = doc(firestore, "Users", user.email!.toLowerCase());
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-
-        if (userData.role === "admin") {
-          console.log("✅ Admin login:", userData);
-          router.push("/dashboard");
-        } else {
-          alert("❌ Access denied. Only admins can log in.");
-          await signOut(auth);
-        }
-      } else {
-        alert("❌ User record not found in Firestore.");
-        await signOut(auth);
-      }
-    } catch (error: any) {
-      console.error("Login error:", error);
-      alert(error.message || "Failed to log in.");
+      const { userData } = await loginUser(email, password);
+      console.log("✅ Admin login:", userData);
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
