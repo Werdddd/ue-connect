@@ -36,10 +36,13 @@ export default function Home() {
   const [commentText, setCommentText] = useState('');
   const [shareCaption, setShareCaption] = useState('');
   const [role, setRole] = useState('');
+  const [group, setGroup] = useState(false);
+  const [isEventPost, setIsEventPost] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [postComments, setPostComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
   const [comments, setComments] = useState([]);
+  const [filterEventOnly, setFilterEventOnly] = useState(false);
   const ss = "superadmin";
   const ss2 = "sheen";
 
@@ -92,6 +95,7 @@ export default function Home() {
               setUserProfileImage(imageSource);
             }
             setRole(userData.role);
+            setGroup(userData.group);
         }
       } catch (err) {
         console.warn('Error fetching user data in getUserData:', err);
@@ -164,6 +168,7 @@ export default function Home() {
                 likedBy: d.likedBy || [],
                 commentCount,
                 pinned: d.pinned === true, 
+                isEvent: d.isEvent === true,
               };
             })
           );
@@ -490,11 +495,12 @@ export default function Home() {
           text: postText,
           images: selectedImages,
           date: postDate, 
+          isEvent: isEventPost,
           comments: [], 
           likedBy: [],
         };
         setLoading(true);
-        const postId = await savePost(newPost.user, postText, selectedImages);
+        const postId = await savePost(newPost.user, postText, selectedImages, isEventPost);
         setNewsfeedPosts(prev => [{ ...newPost, id: postId }, ...prev]);
         setVisiblePosts(prev => [{ ...newPost, id: postId }, ...prev]);
         discardPost();
@@ -816,6 +822,37 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10 }}>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                filterEventOnly && styles.filterButtonActive,
+              ]}
+              onPress={() => {
+                const newFilter = !filterEventOnly;
+                setFilterEventOnly(newFilter);
+
+                if (newFilter) {
+                  const eventPosts = newsfeedPosts.filter((post) => post.isEvent);
+                  setVisiblePosts(eventPosts.slice(0, PAGE_SIZE));
+                } else {
+                  setVisiblePosts(newsfeedPosts.slice(0, PAGE_SIZE));
+                }
+              }}
+            >
+              <Ionicons
+                name={filterEventOnly ? 'checkmark-circle' : 'ellipse-outline'}
+                size={18}
+                color={filterEventOnly ? '#34a853' : '#777'}
+                style={{ marginRight: 5 }}
+              />
+              <Text style={{ color: filterEventOnly ? '#34a853' : '#777' }}>
+                {filterEventOnly ? 'Showing Event Posts' : 'Show Event Posts Only'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+
           {visiblePosts.map((post) => renderPost(post))}
         </ScrollView>
 
@@ -868,6 +905,7 @@ export default function Home() {
                         style={styles.placeholderInput}
                       />
 
+
                       {selectedImages.length > 0 && (
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
                           {selectedImages.map((uri, index) => (
@@ -898,6 +936,27 @@ export default function Home() {
                         </View>
                       )}
                     </View>
+
+                    {group && (
+                        <TouchableOpacity
+                          style={[
+                            styles.eventPostButton,
+                            isEventPost && styles.eventPostButtonActive,
+                          ]}
+                          onPress={() => setIsEventPost(!isEventPost)}
+                        >
+                          <Ionicons
+                            name={isEventPost ? "checkmark-circle" : "ellipse-outline"}
+                            size={20}
+                            color={isEventPost ? "#34a853" : "#777"}
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text style={{ color: isEventPost ? "#34a853" : "#777", fontSize: 16 }}>
+                            Event Post
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    
 
                   <View style={styles.optionsGrid}>
                       <TouchableOpacity style={styles.optionButton} onPress={pickImage}>
@@ -1403,5 +1462,32 @@ const styles = StyleSheet.create({
     height: 33,
     zIndex: 10,
   },
+  eventPostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+  },
+  eventPostButtonActive: {
+    borderColor: '#34a853',
+    backgroundColor: '#e8f5e9',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  filterButtonActive: {
+    borderColor: '#34a853',
+    backgroundColor: '#e8f5e9',
+  },
+
   
 });
