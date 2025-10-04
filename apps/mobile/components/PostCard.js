@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform, StyleSheet,
   Pressable,
+  FlatList,
+  Dimensions
 } from 'react-native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
@@ -48,12 +50,16 @@ const PostCard = ({
   onOptionsPress,
   onDeletePost,
   setShowOptions,
+  openImage
 
 }) => {
+
+  const images = post.images?.filter(uri => uri) || [];
+  const isSingleImage = images.length === 1;
+
   return (
     <Pressable>
       <View key={post.id} style={styles.postCard}>
-        {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
             {post.user.profileImage ? (
@@ -68,12 +74,13 @@ const PostCard = ({
             <View style={{ flexDirection: 'column', marginLeft: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.postUserName}>{post.user.name}</Text>
-                {(post.user.role === ss || post.user.role === ss2) && (
-                <Image
-                    source={require('../assets/switch2.png')}
-                    style={{ width: 16, height: 16, marginLeft: 5 }}
-                />
-                )}
+                {(post.user.role === ss ||
+                  post.user.role === ss2) && (
+                    <Image
+                      source={require('../assets/switch2.png')}
+                      style={{ width: 16, height: 16, marginLeft: 5 }}
+                    />
+                  )}
 
               </View>
               <Text style={styles.postDate}>
@@ -88,7 +95,7 @@ const PostCard = ({
             <Entypo name="dots-three-vertical" size={18} color="black" />
           </TouchableOpacity>
 
-          {showOptions === post.id &&(
+          {showOptions === post.id && (
             <View style={styles.optionsMenu}>
               <TouchableOpacity
                 onPress={() => onDeletePost(post.id)}
@@ -99,32 +106,56 @@ const PostCard = ({
             </View>
           )}
         </View>
-
-        {/* Post Content */}
         <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
+          
           {hasImages && (
             <View style={styles.postImagesContainer}>
-              {post.images.filter(uri => uri).map((uri, idx) => (
-                <Image key={idx} source={{ uri }} style={styles.postImage} />
-              ))}
+              {images.slice(0, 3).map((uri, idx) => { // MODIFICATION 1: Limit to a maximum of 3 images
+                
+                const isThirdImage = idx === 2;
+                const hasMoreImages = images.length > 3 && isThirdImage; // Check if it's the 3rd image AND there are more than 3 total
+                const imagesRemaining = images.length - 2; // Calculate the remaining images
+
+                return (
+                <TouchableOpacity 
+                  key={idx} 
+                  onPress={() => openImage(images, uri)} 
+                  style={isSingleImage ? styles.postImageWrapperSingle : styles.postImageWrapperMultiple} 
+                >
+                  <Image
+                    source={{ uri }}
+                    style={isSingleImage ? styles.postImageSingle : styles.postImageThumbnail}
+                    resizeMode="cover"
+                  />
+                  {hasMoreImages && (
+                    <View style={styles.moreImagesOverlay}>
+                        <Text style={styles.moreImagesText}>
+                            +{imagesRemaining}
+                        </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )})}
             </View>
           )}
         </View>
 
-        {/* Post Actions */}
         <View style={styles.postActions}>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => toggleLike(post.id, post.likedBy)}
           >
             <Ionicons
-              name={isLiked ? 'heart' : 'heart-outline'}
+              name={isLiked ?
+                'heart' : 'heart-outline'}
               size={20}
-              color={isLiked ? 'red' : '#555'}
+              color={isLiked ?
+                'red' : '#555'}
             />
             <Text style={styles.actionText}>
-              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
+              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ?
+                's' : ''}
             </Text>
           </TouchableOpacity>
 
@@ -138,7 +169,8 @@ const PostCard = ({
           >
             <Ionicons name="chatbubble-outline" size={20} color="#555" />
             <Text style={styles.actionText}>
-              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
+              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ?
+                's' : ''}
             </Text>
           </TouchableOpacity>
 
@@ -148,7 +180,6 @@ const PostCard = ({
           </TouchableOpacity>
         </View>
 
-        {/* Comment Modal */}
         <Modal
           visible={commentModalVisible}
           animationType="none"
@@ -167,8 +198,10 @@ const PostCard = ({
                 <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
                   <KeyboardAvoidingView
                     style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 390 : 0}
+                    behavior={Platform.OS === 'ios' ?
+                      'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ?
+                      390 : 0}
                   >
                     <ScrollView
                       contentContainerStyle={{ flexGrow: 1 }}
@@ -189,7 +222,8 @@ const PostCard = ({
                             )}
                             <View>
                               <Text style={styles.commentUserName}>
-                                {comment.userName || 'Anonymous'}
+                                {comment.userName ||
+                                  'Anonymous'}
                               </Text>
                               <Text style={styles.userComment}>{comment.text}</Text>
                             </View>
@@ -198,11 +232,12 @@ const PostCard = ({
                       </ScrollView>
 
                       <View style={styles.commentInputRow}>
-                        {post.user.profileImage ? (
-                          <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
-                        ) : (
-                          <FontAwesome name="user-circle-o" size={35} color="#999" />
-                        )}
+                        {post.user.profileImage ?
+                          (
+                            <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
+                          ) : (
+                            <FontAwesome name="user-circle-o" size={35} color="#999" />
+                          )}
                         <TextInput
                           style={styles.commentInput}
                           placeholder="Add a comment..."
@@ -221,7 +256,6 @@ const PostCard = ({
           </TouchableWithoutFeedback>
         </Modal>
 
-        {/* Share Modal */}
         <Modal
           visible={shareModalVisible}
           animationType="slide"
@@ -243,7 +277,7 @@ const PostCard = ({
                 onChangeText={setShareCaption}
               />
 
-              <TouchableOpacity style={styles.shareButton} onPress={() => { /* share logic */ }}>
+              <TouchableOpacity style={styles.shareButton} onPress={() => {}}>
                 <Text style={styles.shareButtonText}>Share Now</Text>
               </TouchableOpacity>
             </View>
@@ -253,9 +287,7 @@ const PostCard = ({
     </Pressable>
   );
 };
-
 export default PostCard;
-
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -279,7 +311,9 @@ const styles = StyleSheet.create({
     padding: 10,
     marginTop: 10,
     // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 1 },
+
+    // 
+    shadowOffset: { width: 0, height: 1 },
     // shadowOpacity: 0.1,
     // shadowRadius: 2,
     // elevation: 2,
@@ -288,20 +322,20 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   profileImage: {
-    width: 30,       // 👈 increase or decrease as needed
+    width: 30,       // 争 increase or decrease as needed
     height: 30,
     borderRadius: 25,
     marginRight: 10,
   },
   profileImagePost: {
-    width: 35,       // 👈 increase or decrease as needed
+    width: 35,       // 争 increase or decrease 
     height: 35,
     borderRadius: 25,
     marginRight: 1,
   },
 
   profileIcon: {
-    fontSize: 30,    // 👈 matches the profileImage size
+    fontSize: 30,    // 争 matches the profileImage size
     marginRight: 10,
   },
   postInputContainer: {
@@ -320,7 +354,8 @@ const styles = StyleSheet.create({
 
   },
   textOnly: {
-    fontSize: 16,
+    fontSize:
+      16,
     marginBottom: 10,
   },
   placeholderInput: {
@@ -345,7 +380,8 @@ const styles = StyleSheet.create({
     height: 100,
     resizeMode: 'cover',
     marginRight: 10,
-    marginBottom: 10,
+    marginBottom:
+      10,
   },
 
   placeholderText: {
@@ -371,7 +407,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize:
+      16,
     fontWeight: 'bold',
     textAlign: 'center',
     flex: 1,
@@ -395,7 +432,8 @@ const styles = StyleSheet.create({
   userName: {
     marginLeft: 10,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight:
+      'bold',
   },
 
   textInput: {
@@ -421,7 +459,8 @@ const styles = StyleSheet.create({
   optionButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: '30%',
+    width:
+      '30%',
     marginBottom: 20,
   },
 
@@ -447,7 +486,8 @@ const styles = StyleSheet.create({
   },
   discardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight:
+      'bold',
     marginBottom: 10,
   },
   discardMessage: {
@@ -471,7 +511,8 @@ const styles = StyleSheet.create({
   },
   keepButton: {
     flex: 1,
-    backgroundColor: '#eee',
+    backgroundColor:
+      '#eee',
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -494,7 +535,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  postUserInfo: {
+  postUserInfo:
+  {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -515,18 +557,57 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 10,
   },
+  
   postImagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 5,
   },
-  postImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    marginRight: 5,
+
+  postImageWrapperSingle: {
+    width: '100%',
+    height: 400, 
     marginBottom: 5,
+    borderRadius: 10,
+    overflow: 'hidden', 
   },
+
+  postImageSingle: {
+    width: '100%',
+    height: '100%', 
+    borderRadius: 10,
+  },
+
+  postImageWrapperMultiple: {
+    width: '32%',
+    height: 200,
+    padding: 1,
+  },
+
+  postImageThumbnail: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    borderRadius: 5, 
+  },
+  moreImagesOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 5,
+  },
+
+  moreImagesText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+
   postActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -544,9 +625,11 @@ const styles = StyleSheet.create({
     color: '#555',
     fontSize: 14,
   },
-  actionRow: {
+  actionRow: 
+  {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent:
+      'space-around',
     marginTop: 10,
   },
 
@@ -572,10 +655,12 @@ const styles = StyleSheet.create({
   },
 
   commentsTitle: {
-    fontSize: 16,
+    fontSize: 
+      16,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 13,
+    marginBottom:
+      13,
     paddingBottom: 10,
     borderBottomColor: '#555',
     borderBottomWidth: 1,
@@ -596,11 +681,13 @@ const styles = StyleSheet.create({
 
   commentInputRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: 
+      "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderColor: "#eee",
+    borderColor:
+      "#eee",
     backgroundColor: "#fff",
     marginBottom: 10,
   },
@@ -619,7 +706,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 15,
+    padding: 
+      15,
   },
 
   shareHeader: {
@@ -628,7 +716,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 
-  shareProfilePic: {
+  shareProfilePic:
+  {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -647,6 +736,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     padding: 10,
+    
     marginBottom: 20,
   },
 
@@ -654,7 +744,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#007bff',
     paddingVertical: 12,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems:
+      'center',
   },
 
   shareButtonText: {
@@ -671,6 +762,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+ 
     zIndex: 999,
   },
   loadingBox: {
@@ -678,36 +770,40 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     alignItems: 'center',
+
   },
   postUserName: {
     fontWeight: 'bold',
     fontSize: 14,
   },
   optionsMenu: {
-    position: 'absolute', 
-    top: 0,                
-    right: 0,              
-    backgroundColor: '#fff', 
-    borderRadius: 5,       
-    elevation: 5,          
-    shadowColor: '#000',  
-    shadowOpacity: 0.3,    
-    shadowRadius: 4,       
-    paddingVertical: 0,  
-    paddingHorizontal: 0,   
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    elevation: 5,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    paddingVertical: 0,
+ 
+    paddingHorizontal: 0,
   },
   optionButton: {
-    paddingVertical: 10,  
-    paddingHorizontal: 15, 
-    borderBottomWidth: 1, 
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
     borderBottomColor: '#ccc',
   },
   optionText: {
-    fontSize: 13,         
-    color: '#333',      
+    fontSize: 13,
+    color: '#333',
+
   },
   optionsButton: {
-    padding: 5,          
+    padding: 5,
     backgroundColor: 'transparent',
   },
 });

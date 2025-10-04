@@ -52,22 +52,15 @@ export default function Home() {
     setGalleryImages(allUris);
     const initialIndex = allUris.findIndex(uri => uri === tappedUri);
     setInitialIndex(initialIndex);
-    setImageModalVisible(true);
-    if (scrollRef.current) {
-        setTimeout(() => {
-            scrollRef.current.scrollTo({
-                x: initialIndex * screenWidth, 
-                y: 0, 
-                animated: false 
-            });
-        }, 50); 
-    }
+    setImageModalVisible(true); 
   };
 
+  const [didInitialScroll, setDidInitialScroll] = useState(false);
   const closeModalImage = () => {
     setImageModalVisible(false);
     setGalleryImages([]);
     setInitialIndex(0);
+    setDidInitialScroll(false);
   };
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -575,26 +568,38 @@ export default function Home() {
           </TouchableOpacity>
         </View>
   
-        <View style={styles.postBody}>
+                <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
           
-          {hasImages && (
+        
+  {hasImages && (
             <View style={styles.postImagesContainer}>
-              {post.images.map((uri, idx) => (
+              {post.images.slice(0, 3).map((uri, idx) => {
+                
+                const isThirdImage = idx === 2;
+                const hasMoreImages = post.images.length > 3 && isThirdImage;
+
+                return (
                 <TouchableOpacity 
                     key={idx} 
-                    // NEW: Pass all URIs and the tapped URI to openImage
+                    URI to openImage
                     onPress={() => openImage(post.images, uri)}
-                    // Conditional style for single vs. multiple (grid)
                     style={isSingleImage ? styles.postImageWrapperSingle : styles.postImageWrapperMultiple} 
                 >
                   <Image
                     source={{ uri }}
-                    // Conditional style for single vs. multiple (thumbnail)
                     style={isSingleImage ? styles.postImageSingle : styles.postImageThumbnail}
                   />
+
+                  {hasMoreImages && (
+                    <View style={styles.moreImagesOverlay}>
+                        <Text style={styles.moreImagesText}>
+                            +{post.images.length - 2}
+                        </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
-              ))}
+              )})}
             </View>
           )}
   
@@ -857,38 +862,37 @@ export default function Home() {
             onRequestClose={closeModalImage}
           >
             <View style={styles.fullScreenModalContainer}>
-              {/* Close Button at the top */}
               <TouchableOpacity style={styles.modalCloseButton} onPress={closeModalImage}>
                 <Ionicons name="close" size={30} color="#fff" />
               </TouchableOpacity>
-
+              
               <ScrollView
-                ref={scrollRef} // Attach the ref for programmatic scrolling
+                ref={scrollRef} 
                 horizontal
-                pagingEnabled // Enables snap-to-page effect
+                pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 style={styles.fullScreenImageScroll}
                 contentContainerStyle={{ alignItems: 'center' }}
+                onLayout={() => {
+                  if (initialIndex > 0 && !didInitialScroll) {
+                    scrollRef.current.scrollTo({
+                        x: initialIndex * screenWidth, 
+                        y: 0, 
+                        animated: false 
+                    });
+                    setDidInitialScroll(true);
+                  }
+                }}
               >
                 {galleryImages.map((uri, index) => (
                   <Image
                     key={index}
                     source={{ uri }}
-                    // Image dimensions set to full screen width/height for display
                     style={{ width: screenWidth, height: '100%' }} 
-                    resizeMode="contain" // Use 'contain' to show the whole image
+                    resizeMode="contain"
                   />
                 ))}
               </ScrollView>
-              
-              {/* Indicator for multiple images */}
-              {galleryImages.length > 1 && (
-                <View style={styles.imageGalleryIndicator}>
-                  <Text style={styles.imageGalleryIndicatorText}>
-                    {initialIndex + 1} / {galleryImages.length}
-                  </Text>
-                </View>
-              )}
             </View>
           </Modal>
         )}
@@ -1351,6 +1355,24 @@ const styles = StyleSheet.create({
     height: 200, 
     borderRadius: 5,
     resizeMode: 'fill',
+  },
+
+  moreImagesOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Dark overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 5,
+  },
+
+  moreImagesText: {
+    color: '#fff',
+    fontSize: 30,
+    fontWeight: 'bold',
   },
 
   postActions: {

@@ -11,13 +11,15 @@ import {
   Platform,
   TouchableOpacity,
   FlatList,
+  Modal, 
+  Dimensions 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import { getOwnUserProfile } from '../Backend/userOwnProfile';
 import { updateProfileImage, loadProfileImage } from '../Backend/changeProfile';
-import { sendNotification } from '../Backend/notifications'; // same as Home.js
+import { sendNotification } from '../Backend/notifications';
 import { auth, firestore } from '../Firebase';
 import {
   collection,
@@ -36,6 +38,9 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import PostCard from '../components/PostCard';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width, height } = Dimensions.get('window');
 
 export default function UserOwnProfilePage() {
   const [showOptions, setShowOptions] = useState(null);
@@ -54,18 +59,21 @@ export default function UserOwnProfilePage() {
   const [lastDoc, setLastDoc] = useState(null);
   const [fetchingMore, setFetchingMore] = useState(false);
 
-  // comment / like state
+  const [selectedImageUri, setSelectedImageUri] = useState('');
+
+  const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+  const [modalImages, setModalImages] = useState([]); 
+  const [initialImageUri, setInitialImageUri] = useState('');
+
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [postComments, setPostComments] = useState([]);
 
   const navigation = useNavigation();
-
   const handleToggleOptions = (postId) => {
     setShowOptions(showOptions === postId ? null : postId);
   };
-
   const handleDeletePost = async (postId) => {
     try {
       await deleteDoc(doc(firestore, 'newsfeed', postId));
@@ -73,6 +81,12 @@ export default function UserOwnProfilePage() {
     } catch (error) {
       console.error('Error deleting post:', error);
     }
+  };
+
+  const openImage = (images, uri) => {
+    setModalImages(images); 
+    setInitialImageUri(uri); 
+    setIsImageViewerVisible(true);
   };
 
   useEffect(() => {
@@ -98,10 +112,8 @@ export default function UserOwnProfilePage() {
       fetchUserPosts(true);
     }
   }, [userEmail]);
-
   const fetchUserPosts = async (initial = false) => {
     if (!userEmail) return;
-
     try {
       let q = query(
         collection(firestore, 'newsfeed'),
@@ -120,7 +132,6 @@ export default function UserOwnProfilePage() {
       const snap = await getDocs(q);
       const lastVisible = snap.docs[snap.docs.length - 1] || null;
       setLastDoc(lastVisible);
-
       const enriched = await Promise.all(
         snap.docs.map(async (docSnap) => {
           const data = docSnap.data();
@@ -181,7 +192,6 @@ export default function UserOwnProfilePage() {
       setFetchingMore(false);
     }
   };
-
   // === LIKE system ===
   const toggleLike = async (postId, likedBy) => {
     const postRef = doc(firestore, 'newsfeed', postId);
@@ -193,7 +203,6 @@ export default function UserOwnProfilePage() {
           ? arrayRemove(userEmail)
           : arrayUnion(userEmail),
       });
-
       // update UI instantly
       setUserPosts(prev =>
         prev.map(p =>
@@ -207,7 +216,6 @@ export default function UserOwnProfilePage() {
             : p
         )
       );
-
       if (!hasLiked) {
         const postSnap = await getDoc(postRef);
         const postData = postSnap.data();
@@ -232,7 +240,6 @@ export default function UserOwnProfilePage() {
       const commentsSnapshot = await getDocs(
         collection(firestore, 'newsfeed', postId, 'comments')
       );
-
       const commentsData = await Promise.all(
         commentsSnapshot.docs.map(async (docSnapshot) => {
           const comment = docSnapshot.data();
@@ -259,16 +266,13 @@ export default function UserOwnProfilePage() {
           };
         })
       );
-
       setPostComments(commentsData);
     } catch (error) {
       console.error('Error fetching comments:', error);
     }
   };
-
   const handleAddComment = async () => {
     if (commentText.trim() === '') return;
-
     try {
       const commentData = {
         text: commentText,
@@ -277,17 +281,14 @@ export default function UserOwnProfilePage() {
         timestamp: serverTimestamp(),
         email: userEmail,
       };
-
       await addDoc(collection(firestore, 'newsfeed', selectedPostId, 'comments'), commentData);
       setCommentText('');
 
       const postRef = doc(firestore, 'newsfeed', selectedPostId);
       const postSnap = await getDoc(postRef);
-
       if (postSnap.exists()) {
         const postData = postSnap.data();
         const postOwner = postData.userId;
-
         if (postOwner && postOwner !== userEmail) {
           await sendNotification({
             userId: postOwner,
@@ -302,7 +303,6 @@ export default function UserOwnProfilePage() {
       console.error('Error adding comment:', error);
     }
   };
-
   const renderHeader = () => (
     <View style={styles.profileContainer}>
       <TouchableOpacity onPress={() => updateProfileImage(userEmail, setProfile)}>
@@ -332,86 +332,139 @@ export default function UserOwnProfilePage() {
       <View style={styles.underline} />
     </View>
   );
+  return (
+    <TouchableWithoutFeedback
+      onPress={() => {
+        Keyboard.dismiss();
+        setShowOptions(null);
+      }}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}
+        >
+          <View style={styles.container}>
+            <Header scrollY={scrollY} />
 
- return (
-  <TouchableWithoutFeedback
-    onPress={() => {
-      Keyboard.dismiss();
-      setShowOptions(null); // close any open options menu when you tap outside
-    }}
-  >
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        <View style={styles.container}>
-          <Header scrollY={scrollY} />
-
-          {/* Transparent backdrop that closes the menu */}
-          {showOptions && (
-            <TouchableOpacity
-              style={StyleSheet.absoluteFillObject}
-              activeOpacity={1}
-              onPress={() => setShowOptions(null)}
-            />
-          )}
-
-          <FlatList
-            style={styles.containerPost}
-            data={userPosts}
-            keyExtractor={(item) => item.id}
-            ListHeaderComponent={renderHeader}
-            renderItem={({ item }) => (
-              <PostCard
-                key={item.id}
-                post={item}
-                ss={'superadmin'}
-                ss2={'sheen'}
-                hasText={!!item.text}
-                hasImages={item.images?.length > 0}
-                isLiked={item.likedBy.includes(userEmail)}
-                commentModalVisible={commentModalVisible}
-                shareModalVisible={false}
-                postComments={postComments}
-                commentText={commentText}
-                shareCaption=""
-                setCommentModalVisible={setCommentModalVisible}
-                setShareModalVisible={() => {}}
-                setSelectedPostId={setSelectedPostId}
-                fetchComments={fetchComments}
-                handleCommentBackdropPress={() => setCommentModalVisible(false)}
-                handleCommentGesture={() => setCommentModalVisible(false)}
-                commentBackdropAnimatedStyle={{}}
-                commentAnimatedStyle={{}}
-                commentTranslateY={{ value: 0 }}
-                commentBackdropOpacity={{ value: 1 }}
-                setCommentText={setCommentText}
-                handleAddComment={handleAddComment}
-                setShareCaption={() => {}}
-                toggleLike={toggleLike}
-                onDeletePost={() => handleDeletePost(item.id)}
-                onOptionsPress={() => handleToggleOptions(item.id)}
-                showOptions={showOptions}
+            {/* Transparent backdrop that closes the menu */}
+            {showOptions && (
+              <TouchableOpacity
+                style={StyleSheet.absoluteFillObject}
+                activeOpacity={1}
+                onPress={() => setShowOptions(null)}
               />
             )}
-            onEndReached={() => {
-              if (!fetchingMore && lastDoc) {
-                setFetchingMore(true);
-                fetchUserPosts(false);
-              }
-            }}
-            onEndReachedThreshold={0.5}
-            showsVerticalScrollIndicator={false}
-          />
 
-          <BottomNavBar />
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  </TouchableWithoutFeedback>
-);
+            <FlatList
+              style={styles.containerPost}
+              data={userPosts}
+              keyExtractor={(item) => item.id}
+              ListHeaderComponent={renderHeader}
+              renderItem={({ item }) => (
+                <PostCard
+                  key={item.id}
+                  post={item}
+                  ss={'superadmin'}
+                  ss2={'sheen'}
+                  hasText={!!item.text}
+                  hasImages={item.images?.length > 0}
+                  isLiked={item.likedBy.includes(userEmail)}
+                  commentModalVisible={commentModalVisible}
+                  shareModalVisible={false}
+                  postComments={postComments}
+                  commentText={commentText}
+                  shareCaption=""
+                  setCommentModalVisible={setCommentModalVisible}
+                  setShareModalVisible={() => {}}
+                  setSelectedPostId={setSelectedPostId}
+                  fetchComments={fetchComments}
+                  handleCommentBackdropPress={() => setCommentModalVisible(false)}
+                  handleCommentGesture={() => setCommentModalVisible(false)}
+                  commentBackdropAnimatedStyle={{}}
+                  commentAnimatedStyle={{}}
+                  commentTranslateY={{ value: 0 }}
+                  commentBackdropOpacity={{ value: 1 }}
+                  setCommentText={setCommentText}
+                  handleAddComment={handleAddComment}
+                  setShareCaption={() => {}}
+                  toggleLike={toggleLike}
+                  onDeletePost={() => handleDeletePost(item.id)}
+                  onOptionsPress={() => handleToggleOptions(item.id)}
+                  showOptions={showOptions}
+                  openImage={openImage}
+                />
+              )}
+              onEndReached={() => {
+                if (!fetchingMore && lastDoc) {
+                  setFetchingMore(true);
+                  fetchUserPosts(false);
+                }
+              }}
+              onEndReachedThreshold={0.5}
+              showsVerticalScrollIndicator={false}
+            />
+
+            <BottomNavBar />
+          </View>
+        </KeyboardAvoidingView>
+
+        <Modal
+            visible={isImageViewerVisible}
+            transparent={true}
+            onRequestClose={() => setIsImageViewerVisible(false)}
+            animationType="fade"
+        >
+          {modalImages.length > 0 && (
+            <View style={modalStyles.modalContainer}>
+                
+                <FlatList
+                    key={modalImages.join('')} 
+                    data={modalImages}
+                    keyExtractor={(item) => item}
+                    horizontal 
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    initialScrollIndex={
+                      modalImages.findIndex(uri => uri === initialImageUri) || 0
+                    }
+                    getItemLayout={(data, index) => (
+                      {length: width, offset: width * index, index}
+                    )}
+                    
+                    renderItem={({ item: uri }) => (
+                        <View style={modalStyles.imageWrapper}>
+                            <Image
+                                source={{ uri }}
+                                style={modalStyles.fullImage}
+                                resizeMode="contain" 
+                            />
+                        </View>
+                    )}
+                />
+
+                <SafeAreaView style={modalStyles.closeButtonContainer}>
+                    <TouchableOpacity
+                        style={modalStyles.closeButton}
+                        onPress={() => setIsImageViewerVisible(false)}
+                    >
+                        <Ionicons 
+                            name="close-circle" 
+                            size={40} 
+                            color="#AAAAAA" 
+                        />
+                    </TouchableOpacity>
+                </SafeAreaView>
+                
+            </View>
+          )}
+        </Modal>
+
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
+  );
 }
+
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -543,4 +596,39 @@ const styles = StyleSheet.create({
         width: '70%',
     }
 
+});
+
+const modalStyles = StyleSheet.create({
+    modalContainer: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.99)',
+    },
+    imageWrapper: {
+        width: width, 
+        height: height,   
+    },
+    fullImage: {
+        width: '100%',
+        height: '100%',
+    },
+    closeButtonContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10, 
+    },
+    closeButton: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 40 : 20, 
+        right: 20,
+        zIndex: 10,
+        padding: 10,
+        backgroundColor: 'black', 
+        borderRadius: 20,
+    }
 });
