@@ -5,12 +5,9 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import OrganizationCard from '../components/organizationCard';
-import { addOrganization, getOrganizations } from '../Backend/organizationHandler';
+import { getOrganizations } from '../Backend/organizationHandler';
 import { useEffect } from 'react';
-import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'react-native';
-import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+
 
 export default function OrganizationPage() {
     useEffect(() => {
@@ -28,97 +25,10 @@ export default function OrganizationPage() {
 
     const navigation = useNavigation();
     const [scrollY, setScrollY] = useState(0);
-    const [isModalVisible, setModalVisible] = useState(false);
-    const [newOrg, setNewOrg] = useState({
-        department: '',
-        orgName: '',
-        memberCount: '',
-        members: '',
-        shortdesc: '',
-        logoUri: '',
-        logoBase64: '',
-        fulldesc: '',
-        followers: '',
-        location: '',
-        email: '',
-        websitelink: '',
-    });
+
     const [organizations, setOrganizations] = useState([]);
 
     const [selectedDepartment, setSelectedDepartment] = useState('All');
-
-    async function getBase64(uri) {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-        });
-        return base64;
-    }
-
-    async function compressImage(uri) {
-        const compressed = await ImageManipulator.manipulateAsync(
-            uri,
-            [{ resize: { width: 100 } }],
-            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        return compressed.uri;
-    }
-
-    async function pickImage() {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 1,
-        });
-
-        if (!result.canceled) {
-            const asset = result.assets[0];
-            const base64 = await processImage(asset.uri);
-            setNewOrg(prev => ({
-                ...prev,
-                logoUri: asset.uri,
-                logoBase64: `data:image/jpeg;base64,${base64}`,
-            }));
-        }
-    }
-
-    async function processImage(uri) {
-        const compressedUri = await compressImage(uri);
-        const base64 = await getBase64(compressedUri);
-        return base64;
-    }
-
-    const handleAddOrganization = async () => {
-        try {
-            const newOrgData = {
-                department: newOrg.department,
-                orgName: newOrg.orgName,
-                memberCount: parseInt(0),
-                shortdesc: newOrg.shortdesc,
-                logoUri: newOrg.logoUri,
-                logoBase64: newOrg.logoBase64,
-                fulldesc: newOrg.fulldesc,
-                location: newOrg.location,
-                email: newOrg.email,
-                websitelink: newOrg.websitelink,
-                members: '',
-                followers: ''
-            };
-
-            await addOrganization(newOrgData);
-
-            setOrganizations(prevOrgs => [
-                ...prevOrgs,
-                { id: prevOrgs.length + 1, ...newOrgData }
-            ]);
-
-            setNewOrg({ department: '', orgName: '', memberCount: '', shortdesc: '', logoUri: '', logoBase64: '', fulldesc: '', location: '', email: '', websitelink: '' , members: '', followers: ''});
-            setModalVisible(false);
-
-        } catch (error) {
-            console.error('Error adding organization:', error);
-        }
-    };
-
 
     const getOrganizationTitle = () => {
         switch (selectedDepartment) {
@@ -170,94 +80,11 @@ export default function OrganizationPage() {
                                     orgName={org.orgName}
                                     memberCount={org.members.length}
                                     shortdesc={org.shortdesc}
-                                    logo={org.logoBase64}
+                                    logo={org.logoBase64 || null}
                                 />
                             );
                         })}
-                    
-                    <Modal
-                        animationType="slide"
-                        transparent={true}
-                        visible={isModalVisible}
-                        onRequestClose={() => setModalVisible(false)}
-                    >
-                        <View style={styles.modalBackground}>
-                            <View style={styles.modalContainer}>
-                                <Text style={styles.modalTitle}>Add New Organization</Text>
 
-                                <TextInput
-                                    placeholder="Organization Department (e.g. CSC)"
-                                    style={styles.input}
-                                    value={newOrg.department}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, department: text })}
-                                />
-                                <TextInput
-                                    placeholder="Full Organization Name"
-                                    style={styles.input}
-                                    value={newOrg.orgName}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, orgName: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Short Description"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.shortdesc}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, shortdesc: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Full Description"
-                                    style={[styles.input, { height: 80 }]}
-                                    multiline
-                                    value={newOrg.fulldesc}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, fulldesc: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Location (e.g. 2nd Floor, Main Building)"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.location}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, location: text })}
-                                />
-                                
-                                <TextInput
-                                    placeholder="Email"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.email}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, email: text })}
-                                />
-
-                                <TextInput
-                                    placeholder="Website (Optional)"
-                                    style={[styles.input, { height: 40 }]}
-                                    multiline
-                                    value={newOrg.websitelink}
-                                    onChangeText={(text) => setNewOrg({ ...newOrg, websitelink: text })}
-                                />
-
-                                <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
-                                    <Text style={styles.pickImageButtonText}>Pick Logo</Text>
-                                </TouchableOpacity>
-                                {(newOrg.logoUri || newOrg.logoBase64) && (
-                                    <Image
-                                        source={{ uri: newOrg.logoBase64 || newOrg.logoUri }}
-                                        style={{ width: 50, height: 50, marginVertical: 10, alignSelf: 'center' }}
-                                        resizeMode="contain"
-                                    />
-                                )}
-                                <TouchableOpacity style={styles.addButton} onPress={handleAddOrganization}>
-                                    <Text style={styles.addButtonText}>Add Organization</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </Modal>
                 </ScrollView>
 
                 <BottomNavBar />
