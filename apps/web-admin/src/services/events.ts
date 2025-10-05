@@ -32,7 +32,7 @@ export async function getOnGoingEventsCount(): Promise<number> {
 
 export async function getCompletedEventsCount(): Promise<number> {
   const ref = collection(firestore, "events");
-  const q = query(ref, where("status", "==", "Completed"));
+  const q = query(ref, where("status", "==", "Finished"));
   const snap = await getCountFromServer(q);
   return snap.data().count;
 }

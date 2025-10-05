@@ -39,24 +39,26 @@ const EventManagement = () => {
   const [filterProposalStatus, setFilterProposalStatus] = useState('all');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
 
-  const [totalEvents, setTotalEvents] = useState(0);      
-  const [pendingApproval, setPendingApproval] = useState(0);
-  const [OnGoingEvents, setOnGoing] = useState(0);
-  const [completedEvents, setCompletedEvents] = useState(0);
+  const [totalEvents, setTotalEvents] = useState(0);        // Approved
+  const [pendingApproval, setPendingApproval] = useState(0); // Applied
+  const [onGoingEvents, setOnGoingEvents] = useState(0);     // Ongoing
+  const [completedEvents, setCompletedEvents] = useState(0); // Finished
   const [loadingTotal, setLoadingTotal] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [approved, pending, completed] = await Promise.all([
+        const [approved, pending, ongoing, completed] = await Promise.all([
           getEventsCount(),
           getPendingEventsCount(),
-          getCompletedEventsCount (),
+          getOnGoingEventsCount(),
+          getCompletedEventsCount(),
         ]);
         if (!cancelled) {
           setTotalEvents(approved);
           setPendingApproval(pending);
+          setOnGoingEvents(ongoing);
           setCompletedEvents(completed);
         }
       } catch (e) {
@@ -359,14 +361,14 @@ const EventManagement = () => {
             />
             <StatCard
               title="On Going"
-              value={OnGoingEvents}
+              value={onGoingEvents}
               icon={PlayCircle}
               color="text-purple-600"
               bgColor="bg-purple-50"
             />
             <StatCard
               title="Completed Events"
-              value={stats.completedEvents}
+              value={completedEvents}
               icon={CheckCircle}
               color="text-blue-600"
               bgColor="bg-blue-50"
