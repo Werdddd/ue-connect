@@ -22,6 +22,7 @@ const PostCard = ({
   post,
   ss,
   ss2,
+  ss3,
   hasText,
   hasImages,
   isLiked,
@@ -75,7 +76,8 @@ const PostCard = ({
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.postUserName}>{post.user.name}</Text>
                 {(post.user.role === ss ||
-                  post.user.role === ss2) && (
+                  post.user.role === ss2 || 
+                  post.user.role === ss3) && (
                     <Image
                       source={require('../assets/switch2.png')}
                       style={{ width: 16, height: 16, marginLeft: 5 }}

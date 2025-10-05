@@ -367,6 +367,7 @@ export default function UserOwnProfilePage() {
                   post={item}
                   ss={'superadmin'}
                   ss2={'sheen'}
+                  ss3={'admin'}
                   hasText={!!item.text}
                   hasImages={item.images?.length > 0}
                   isLiked={item.likedBy.includes(userEmail)}
