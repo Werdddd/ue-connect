@@ -251,23 +251,23 @@ const PostCard = ({
           transparent={true}
           onRequestClose={handleCommentBackdropPress}
         >
-          <TouchableWithoutFeedback onPress={handleCommentBackdropPress}>
-            <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
-              <PanGestureHandler
-                onGestureEvent={(event) => {
-                  commentTranslateY.value = event.nativeEvent.translationY;
-                  commentBackdropOpacity.value = 1 - event.nativeEvent.translationY / 300;
-                }}
-                onEnded={handleCommentGesture}
-              >
-                <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
-                  <KeyboardAvoidingView
-                    style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ?
-                      'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ?
-                      390 : 0}
-                  >
+          <KeyboardAvoidingView
+            style={{
+              flex: 1
+            }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <TouchableWithoutFeedback onPress={handleCommentBackdropPress}>
+              <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
+                <PanGestureHandler
+                  onGestureEvent={(event) => {
+                    commentTranslateY.value = event.nativeEvent.translationY;
+                    commentBackdropOpacity.value = 1 - event.nativeEvent.translationY / 300;
+                  }}
+                  onEnded={handleCommentGesture}
+                >
+                  <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
+
                     <ScrollView
                       contentContainerStyle={{ flexGrow: 1 }}
                       keyboardShouldPersistTaps="handled"
@@ -314,11 +314,11 @@ const PostCard = ({
                         </TouchableOpacity>
                       </View>
                     </ScrollView>
-                  </KeyboardAvoidingView>
-                </Animated.View>
-              </PanGestureHandler>
-            </Animated.View>
-          </TouchableWithoutFeedback>
+                  </Animated.View>
+                </PanGestureHandler>
+              </Animated.View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </Modal>
 
         <Modal
@@ -702,6 +702,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   commentModalContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: '60%',
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
@@ -819,7 +823,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
- 
+
   commentCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -858,7 +862,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#eee",
     backgroundColor: "#fff",
-    marginBottom: 10,
   },
 
   commentInput: {

@@ -891,13 +891,13 @@ export default function Home() {
 
         {/* BODY */}
         <View style={styles.postBody}>
-        {hasText && (
-          <Text style={styles.postTextContent}>{post.text}</Text>
-        )}
+          {hasText && (
+            <Text style={styles.postTextContent}>{post.text}</Text>
+          )}
 
-        {isShared && post.sharedPostData && (
-          <View style={styles.sharedPostWrapper}>
-            {/* Shared header with icon
+          {isShared && post.sharedPostData && (
+            <View style={styles.sharedPostWrapper}>
+              {/* Shared header with icon
             <View style={styles.sharedHeader}>
               <View style={styles.sharedIconContainer}>
                 <FontAwesome name="share" size={12} color="#E50914" />
@@ -914,103 +914,103 @@ export default function Home() {
               </Text>
             </View> */}
 
-            {/* Original post card */}
-            <View style={styles.originalPostCard}>
-              {/* Original author header */}
-              <View style={styles.originalAuthorHeader}>
-              {post.sharedPostData.user?.profileImage ? (
-                <Image
-                  source={{ uri: post.sharedPostData.user.profileImage }}
-                  style={styles.originalAuthorAvatar}
-                />
-              ) : (
-                <View style={styles.originalAuthorAvatarPlaceholder}>
-                  <FontAwesome name="user" size={14} color="#999" />
-                </View>
-              )}
-              <View style={styles.originalAuthorInfo}>
-                <Text style={styles.originalAuthorName}>
-                  {post.sharedPostData.user?.name ||
-                    post.sharedPostData.userName ||
-                    'Unknown User'}
-                </Text>
-                <Text style={styles.originalPostTime}>
-                  {post.sharedPostData.timestamp || 'Original post'}
-                </Text>
-              </View>
-            </View>
-
-              {/* Original post content */}
-              {post.sharedPostData.text ? (
-                <Text style={styles.originalPostText} numberOfLines={4}>
-                  {post.sharedPostData.text}
-                </Text>
-              ) : null}
-
-              {/* Original post image */}
-              {Array.isArray(post.sharedPostData.images) &&
-                post.sharedPostData.images.length > 0 && (
-                  <View style={styles.originalImageWrapper}>
+              {/* Original post card */}
+              <View style={styles.originalPostCard}>
+                {/* Original author header */}
+                <View style={styles.originalAuthorHeader}>
+                  {post.sharedPostData.user?.profileImage ? (
                     <Image
-                      source={{
-                        uri: imageUriFromStored(post.sharedPostData.images[0]),
-                      }}
-                      style={styles.originalPostImage}
-                      resizeMode="cover"
+                      source={{ uri: post.sharedPostData.user.profileImage }}
+                      style={styles.originalAuthorAvatar}
                     />
-                    {post.sharedPostData.images.length > 1 && (
-                      <View style={styles.imageCountBadge}>
-                        <FontAwesome name="image" size={10} color="#fff" />
-                        <Text style={styles.imageCountText}>
-                          {post.sharedPostData.images.length}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-            </View>
-          </View>
-        )}
-
-        {hasImages && (
-          <View style={styles.postImagesContainer}>
-            {post.images.slice(0, 4).map((uri, idx) => {
-              const isLastImage = idx === 3 || idx === post.images.length - 1;
-              const remainingCount = post.images.length - 4;
-              
-              return (
-                <TouchableOpacity
-                  key={`${post.id}-img-${idx}`}
-                  onPress={() => openImage(post.images, uri)}
-                  style={[
-                    isSingleImage
-                      ? styles.postImageWrapperSingle
-                      : styles.postImageWrapperMultiple,
-                    post.images.length === 2 && styles.postImageWrapperDouble,
-                  ]}
-                  activeOpacity={0.9}
-                >
-                  <Image
-                    source={{ uri: imageUriFromStored(uri) }}
-                    style={
-                      isSingleImage
-                        ? styles.postImageSingle
-                        : styles.postImageThumbnail
-                    }
-                  />
-                  {/* More images overlay */}
-                  {post.images.length > 4 && idx === 3 && (
-                    <View style={styles.moreImagesOverlay}>
-                      <FontAwesome name="image" size={32} color="#fff" />
-                      <Text style={styles.moreImagesText}>+{remainingCount}</Text>
+                  ) : (
+                    <View style={styles.originalAuthorAvatarPlaceholder}>
+                      <FontAwesome name="user" size={14} color="#999" />
                     </View>
                   )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-      </View>
+                  <View style={styles.originalAuthorInfo}>
+                    <Text style={styles.originalAuthorName}>
+                      {post.sharedPostData.user?.name ||
+                        post.sharedPostData.userName ||
+                        'Unknown User'}
+                    </Text>
+                    <Text style={styles.originalPostTime}>
+                      {post.sharedPostData.timestamp || 'Original post'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Original post content */}
+                {post.sharedPostData.text ? (
+                  <Text style={styles.originalPostText} numberOfLines={4}>
+                    {post.sharedPostData.text}
+                  </Text>
+                ) : null}
+
+                {/* Original post image */}
+                {Array.isArray(post.sharedPostData.images) &&
+                  post.sharedPostData.images.length > 0 && (
+                    <View style={styles.originalImageWrapper}>
+                      <Image
+                        source={{
+                          uri: imageUriFromStored(post.sharedPostData.images[0]),
+                        }}
+                        style={styles.originalPostImage}
+                        resizeMode="cover"
+                      />
+                      {post.sharedPostData.images.length > 1 && (
+                        <View style={styles.imageCountBadge}>
+                          <FontAwesome name="image" size={10} color="#fff" />
+                          <Text style={styles.imageCountText}>
+                            {post.sharedPostData.images.length}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+              </View>
+            </View>
+          )}
+
+          {hasImages && (
+            <View style={styles.postImagesContainer}>
+              {post.images.slice(0, 4).map((uri, idx) => {
+                const isLastImage = idx === 3 || idx === post.images.length - 1;
+                const remainingCount = post.images.length - 4;
+
+                return (
+                  <TouchableOpacity
+                    key={`${post.id}-img-${idx}`}
+                    onPress={() => openImage(post.images, uri)}
+                    style={[
+                      isSingleImage
+                        ? styles.postImageWrapperSingle
+                        : styles.postImageWrapperMultiple,
+                      post.images.length === 2 && styles.postImageWrapperDouble,
+                    ]}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: imageUriFromStored(uri) }}
+                      style={
+                        isSingleImage
+                          ? styles.postImageSingle
+                          : styles.postImageThumbnail
+                      }
+                    />
+                    {/* More images overlay */}
+                    {post.images.length > 4 && idx === 3 && (
+                      <View style={styles.moreImagesOverlay}>
+                        <FontAwesome name="image" size={32} color="#fff" />
+                        <Text style={styles.moreImagesText}>+{remainingCount}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
 
         {/* ACTIONS */}
         <View style={styles.postActions}>
@@ -1038,7 +1038,7 @@ export default function Home() {
           >
             <Ionicons name="chatbubble-outline" size={20} color="#555" />
             <Text style={styles.actionText}>
-              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
+              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 0 ? 's' : ''}
             </Text>
           </TouchableOpacity>
 
@@ -1056,32 +1056,29 @@ export default function Home() {
 
 
         <Modal
-
           visible={commentModalVisible}
           animationType="none"
           transparent={true}
           onRequestClose={handleCommentBackdropPress}
         >
-          <TouchableWithoutFeedback onPress={handleCommentBackdropPress}>
-            <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
-              <PanGestureHandler
-                onGestureEvent={(event) => {
+          <KeyboardAvoidingView
+            style={{
+              flex: 1
+            }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <TouchableWithoutFeedback onPress={handleCommentBackdropPress}>
+              <Animated.View style={[styles.modalContainer, commentBackdropAnimatedStyle]}>
+                <PanGestureHandler
+                  onGestureEvent={(event) => {
 
-                  commentTranslateY.value = event.nativeEvent.translationY;
-                  commentBackdropOpacity.value = 1 - (event.nativeEvent.translationY / 300);
-                }}
-                onEnded={handleCommentGesture}
-              >
-                <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
-                  <KeyboardAvoidingView
-                    style={{
-                      flex: 1
-                    }}
-                    behavior={Platform.OS === 'ios' ?
-                      'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ?
-                      390 : 0}
-                  >
+                    commentTranslateY.value = event.nativeEvent.translationY;
+                    commentBackdropOpacity.value = 1 - (event.nativeEvent.translationY / 300);
+                  }}
+                  onEnded={handleCommentGesture}
+                >
+                  <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
+
                     <ScrollView
                       contentContainerStyle={{ flexGrow: 1 }}
                       keyboardShouldPersistTaps="handled"
@@ -1140,7 +1137,6 @@ export default function Home() {
                             <FontAwesome name="user-circle-o" size={35} color="#999" />
                           )}
                         <TextInput
-
                           style={styles.commentInput}
                           placeholder="Add a comment..."
                           value={commentText}
@@ -1154,132 +1150,130 @@ export default function Home() {
                       </View>
 
                     </ScrollView>
-                  </KeyboardAvoidingView>
-                </Animated.View>
 
-              </PanGestureHandler>
+                  </Animated.View>
 
-            </Animated.View>
+                </PanGestureHandler>
 
+              </Animated.View>
+
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </Modal>
+
+        <Modal
+          visible={shareModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShareModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setShareModalVisible(false)}>
+            <View style={styles.modalOverlay} />
           </TouchableWithoutFeedback>
 
 
 
+          <View style={styles.shareModalContent}>
+            {/* Drag indicator */}
+            <View style={styles.dragIndicator} />
+
+            {/* Header with close button */}
+            <View style={styles.shareModalHeader}>
+              <Text style={styles.shareModalTitle}>Share Post</Text>
+              <TouchableOpacity
+                onPress={() => setShareModalVisible(false)}
+                style={styles.closeButton}
+                activeOpacity={0.7}
+              >
+                <FontAwesome name="times" size={22} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* User info section */}
+            <View style={styles.shareHeader}>
+              {currentUserInfo.profileImage ? (
+                <Image
+                  source={{ uri: currentUserInfo.profileImage }}
+                  style={styles.shareProfilePic}
+                />
+              ) : (
+                <View style={styles.placeholderProfilePic}>
+                  <FontAwesome name="user" size={20} color="#fff" />
+                </View>
+              )}
+              <View style={styles.userInfoContainer}>
+                <Text style={styles.shareUsername}>
+                  {currentUserInfo.firstName} {currentUserInfo.lastName}
+                </Text>
+                <View style={styles.shareSubtextContainer}>
+                  <FontAwesome name="globe" size={12} color="#666" style={styles.globeIcon} />
+                  <Text style={styles.shareSubtext}>Sharing publicly</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Caption input with character count */}
+            <View style={styles.captionContainer}>
+              <TextInput
+                style={styles.shareCaptionInput}
+                placeholder="Say something about this..."
+                placeholderTextColor="#999"
+                multiline
+                maxLength={500}
+                value={shareCaption}
+                onChangeText={setShareCaption}
+                textAlignVertical="top"
+              />
+              <View style={styles.inputFooter}>
+
+                <Text style={[
+                  styles.characterCount,
+                  shareCaption.length > 450 && styles.characterCountWarning
+                ]}>
+                  {shareCaption.length}/500
+                </Text>
+              </View>
+            </View>
+
+            {/* Action buttons */}
+            <View style={styles.shareActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShareModalVisible(false);
+                  setShareCaption('');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.shareButton,
+                  !shareCaption.trim() && styles.shareButtonDisabled
+                ]}
+                onPress={() => {
+                  if (shareCaption.trim()) {
+                    handleSharePost();
+                    setShareModalVisible(false);
+                    setShareCaption('');
+                  }
+                }}
+                disabled={!shareCaption.trim()}
+                activeOpacity={0.8}
+              >
+                <FontAwesome
+                  name="paper-plane"
+                  size={16}
+                  color="#fff"
+                  style={styles.shareIcon}
+                />
+                <Text style={styles.shareButtonText}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </Modal>
-
-        <Modal
-  visible={shareModalVisible}
-  animationType="slide"
-  transparent={true}
-  onRequestClose={() => setShareModalVisible(false)}
->
-  <TouchableWithoutFeedback onPress={() => setShareModalVisible(false)}>
-    <View style={styles.modalOverlay} />
-  </TouchableWithoutFeedback>
-
-  
-
-  <View style={styles.shareModalContent}>
-    {/* Drag indicator */}
-    <View style={styles.dragIndicator} />
-    
-    {/* Header with close button */}
-    <View style={styles.shareModalHeader}>
-      <Text style={styles.shareModalTitle}>Share Post</Text>
-      <TouchableOpacity
-        onPress={() => setShareModalVisible(false)}
-        style={styles.closeButton}
-        activeOpacity={0.7}
-      >
-        <FontAwesome name="times" size={22} color="#666" />
-      </TouchableOpacity>
-    </View>
-
-    {/* User info section */}
-    <View style={styles.shareHeader}>
-      {currentUserInfo.profileImage ? (
-        <Image
-          source={{ uri: currentUserInfo.profileImage }}
-          style={styles.shareProfilePic}
-        />
-      ) : (
-        <View style={styles.placeholderProfilePic}>
-          <FontAwesome name="user" size={20} color="#fff" />
-        </View>
-      )}
-      <View style={styles.userInfoContainer}>
-        <Text style={styles.shareUsername}>
-          {currentUserInfo.firstName} {currentUserInfo.lastName}
-        </Text>
-        <View style={styles.shareSubtextContainer}>
-          <FontAwesome name="globe" size={12} color="#666" style={styles.globeIcon} />
-          <Text style={styles.shareSubtext}>Sharing publicly</Text>
-        </View>
-      </View>
-    </View>
-
-    {/* Caption input with character count */}
-    <View style={styles.captionContainer}>
-      <TextInput
-        style={styles.shareCaptionInput}
-        placeholder="Say something about this..."
-        placeholderTextColor="#999"
-        multiline
-        maxLength={500}
-        value={shareCaption}
-        onChangeText={setShareCaption}
-        textAlignVertical="top"
-      />
-      <View style={styles.inputFooter}>
-        
-        <Text style={[
-          styles.characterCount,
-          shareCaption.length > 450 && styles.characterCountWarning
-        ]}>
-          {shareCaption.length}/500
-        </Text>
-      </View>
-    </View>
-
-    {/* Action buttons */}
-    <View style={styles.shareActions}>
-      <TouchableOpacity
-        style={styles.cancelButton}
-        onPress={() => {
-          setShareModalVisible(false);
-          setShareCaption('');
-        }}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.cancelButtonText}>Cancel</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[
-          styles.shareButton,
-          !shareCaption.trim() && styles.shareButtonDisabled
-        ]}
-        onPress={() => {
-          if (shareCaption.trim()) {
-            handleSharePost();
-            setShareModalVisible(false);
-            setShareCaption('');
-          }
-        }}
-        disabled={!shareCaption.trim()}
-        activeOpacity={0.8}
-      >
-        <FontAwesome
-          name="paper-plane"
-          size={16}
-          color="#fff"
-          style={styles.shareIcon}
-        />
-        <Text style={styles.shareButtonText}>Share</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
 
       </View>
     );
@@ -1971,22 +1965,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-
   commentModalContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: '60%',
     backgroundColor: '#fff',
-
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-
   },
   sharedPostWrapper: {
     backgroundColor: '#f8f9fa',
     borderRadius: 16,
-   
     marginTop: 2,
-
   },
   sharedHeader: {
     flexDirection: 'row',
@@ -2094,11 +2087,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
- 
+
   commentCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 7,
+    marginBottom: 12,
   },
 
   commentsTitle: {
@@ -2114,7 +2107,6 @@ const styles = StyleSheet.create({
   commentUserName: {
     marginLeft: 10,
     fontSize: 16,
-
     fontWeight: '600',
   },
   userComment: {
@@ -2129,17 +2121,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 8,
     borderTopWidth: 1,
     borderColor: "#eee",
     backgroundColor: "#fff",
-    marginBottom: 10,
+    paddingTop: 10,
   },
 
   commentInput: {
     flex: 1,
     backgroundColor: '#f0f0f0',
-
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 8,
