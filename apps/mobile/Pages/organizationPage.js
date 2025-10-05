@@ -28,6 +28,7 @@ export default function OrganizationPage() {
     const [organizations, setOrganizations] = useState([]);
     const [selectedDepartment, setSelectedDepartment] = useState('All');
     const [showRequirementsModal, setShowRequirementsModal] = useState(false);
+    const [showReaccreditationModal, setShowReaccreditationModal] = useState(false);
 
     const getOrganizationTitle = () => {
         switch (selectedDepartment) {
@@ -62,16 +63,16 @@ export default function OrganizationPage() {
             description: "Must have at least one faculty adviser from the university"
         },
         {
-            title: "Mission & Vision",
-            description: "Clear mission and vision statements aligned with university values"
+            title: "Application for ATO",
+            description: "Complete list of officers with their respective positions and student IDs"
         },
         {
             title: "Officers List",
             description: "Complete list of officers with their respective positions and student IDs"
         },
         {
-            title: "Activity Plan",
-            description: "Proposed activity plan for the academic year"
+            title: "General Plans of Action (GPOA)",
+            description: "Proposed plans and programs for the academic year"
         },
         {
             title: "Registration Form",
@@ -79,9 +80,45 @@ export default function OrganizationPage() {
         }
     ];
 
+    const reaccreditationRequirements = [
+        {
+            title: "Accomplishment Report",
+            description: "Detailed report of activities and achievements from the previous academic year"
+        },
+        {
+            title: "Financial Report",
+            description: "Complete financial statements including income and expenses"
+        },
+        {
+            title: "Evaluation of Activities",
+            description: "Assessment and feedback on all conducted activities and events"
+        },
+        {
+            title: "Nomination of Adviser",
+            description: "Nomination letter for the organization's faculty adviser"
+        },
+        {
+            title: "Application for ATO",
+            description: "Updated application for Authority to Operate for the current academic year"
+        },
+        {
+            title: "Evaluation of Adviser",
+            description: "Performance evaluation of the current faculty adviser"
+        },
+        {
+            title: "Proposed Plans and Programs",
+            description: "Planned activities and programs for the upcoming academic year"
+        }
+    ];
+
     const handleRegisterNavigation = () => {
         setShowRequirementsModal(false);
         navigation.navigate('RegisterOrganization');
+    };
+
+    const handleReaccreditationNavigation = () => {
+        setShowReaccreditationModal(false);
+        navigation.navigate('ReaccreditOrganization');
     };
 
     return (
@@ -133,6 +170,22 @@ export default function OrganizationPage() {
                             >
                                 <Text style={styles.requirementsButtonText}>
                                     View Registration Requirements
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Reaccreditation Section */}
+                        <View style={[styles.registerCard, styles.reaccreditCard]}>
+                            <Text style={styles.registerTitle}>Existing Organization?</Text>
+                            <Text style={styles.registerSubtitle}>
+                                Keep your organization active with annual reaccreditation
+                            </Text>
+                            <TouchableOpacity 
+                                style={[styles.requirementsButton, styles.reaccreditButton]}
+                                onPress={() => setShowReaccreditationModal(true)}
+                            >
+                                <Text style={styles.requirementsButtonText}>
+                                    View Reaccreditation Requirements
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -195,6 +248,62 @@ export default function OrganizationPage() {
                     </View>
                 </Modal>
 
+                {/* Reaccreditation Modal */}
+                <Modal
+                    visible={showReaccreditationModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowReaccreditationModal(false)}
+                >
+                    <View style={styles.modalBackground}>
+                        <View style={styles.modalContainer}>
+                            <ScrollView 
+                                showsVerticalScrollIndicator={false}
+                                style={styles.modalScroll}
+                            >
+                                <Text style={styles.modalTitle}>
+                                    Organization Reaccreditation Requirements
+                                </Text>
+                                <Text style={styles.modalSubtitle}>
+                                    Submit the following documents for annual reaccreditation:
+                                </Text>
+
+                                {reaccreditationRequirements.map((req, index) => (
+                                    <View key={index} style={styles.requirementItem}>
+                                        <View style={[styles.requirementNumber, styles.reaccreditNumber]}>
+                                            <Text style={styles.requirementNumberText}>{index + 1}</Text>
+                                        </View>
+                                        <View style={styles.requirementContent}>
+                                            <Text style={styles.requirementTitle}>{req.title}</Text>
+                                            <Text style={styles.requirementDescription}>{req.description}</Text>
+                                        </View>
+                                    </View>
+                                ))}
+
+                                <View style={[styles.noteContainer, styles.reaccreditNote]}>
+                                    <Text style={styles.noteText}>
+                                        Note: Reaccreditation must be completed before the start of each academic year to maintain active status.
+                                    </Text>
+                                </View>
+
+                                <TouchableOpacity 
+                                    style={[styles.registerButton, styles.reaccreditButtonStyle]}
+                                    onPress={handleReaccreditationNavigation}
+                                >
+                                    <Text style={styles.registerButtonText}>Proceed to Reaccreditation</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity 
+                                    style={styles.cancelButton}
+                                    onPress={() => setShowReaccreditationModal(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
+                    </View>
+                </Modal>
+
                 <BottomNavBar />
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -237,6 +346,7 @@ const styles = StyleSheet.create({
         marginTop: 30,
         marginHorizontal: 20,
         marginBottom: 20,
+        gap: 16,
     },
     registerCard: {
         backgroundColor: '#FFF5F5',
@@ -245,6 +355,10 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FFE0E0',
         alignItems: 'center',
+    },
+    reaccreditCard: {
+        backgroundColor: '#F0F8FF',
+        borderColor: '#D0E8FF',
     },
     registerTitle: {
         fontSize: 20,
@@ -269,6 +383,9 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+    },
+    reaccreditButton: {
+        backgroundColor: '#1E88E5',
     },
     requirementsButtonText: {
         color: 'white',
