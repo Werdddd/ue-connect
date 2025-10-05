@@ -167,9 +167,6 @@ export default function RegisterOrganization() {
     };
 
 
-
-
-
     const handleSubmit = async () => {
         if (!validateForm()) return;
 

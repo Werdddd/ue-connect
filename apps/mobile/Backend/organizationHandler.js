@@ -139,7 +139,7 @@ export const registerOrganization = async (formData, documents, logo) => {
             console.log('Processing organization logo...');
             const base64Logo = await convertFileToBase64(logo.uri);
             processedLogo = {
-                base64: base64Logo,
+                base64: `data:image/jpeg;base64,${base64Logo}`,
                 fileName: logo.name || 'org_logo.png',
                 fileSize: logo.size || null,
                 mimeType: logo.mimeType || 'image/png',
