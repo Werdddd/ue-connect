@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView,
   Platform, TouchableWithoutFeedback, ActivityIndicator,
-  Dimensions // <-- NEW: Import Dimensions
+  Dimensions 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, FontAwesome, MaterialIcons, Entypo } from '@expo/vector-icons';
@@ -19,6 +19,8 @@ import { savePost } from '../Backend/uploadPost';
 import { sendNotification } from '../Backend/notifications';
 import EventCard from '../components/eventCard';
 import { fetchEvents, addEvent } from '../Backend/eventPage';
+
+import { calculateCosineSimilarity, buildInteractionMatrix, generateItemBasedRecommendations } from '../Backend/recommendation';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -54,6 +56,9 @@ export default function Home() {
   const [initialIndex, setInitialIndex] = useState(0);
   const scrollRef = useRef(null);
 
+  const [allUsers, setAllUsers] = useState([]);
+  const [recommendedPosts, setRecommendedPosts] = useState([]);
+
   const openImage = (allUris, tappedUri) => {
     setGalleryImages(allUris);
     const initialIndex = allUris.findIndex(uri => uri === tappedUri);
@@ -79,6 +84,38 @@ export default function Home() {
   const PAGE_SIZE = 10;
   const [visiblePosts, setVisiblePosts] = useState([]);
   const [page, setPage] = useState(1);
+
+  const runRecommendationEngine = (targetUserEmail, posts, users) => {
+    if (!targetUserEmail || posts.length === 0 || users.length === 0) {
+      setRecommendedPosts([]);
+      return;
+    }
+
+    const likedPostIds = posts
+      .filter(post => (post.likedBy || []).includes(targetUserEmail)) 
+      .map(post => post.id);
+    
+    const selfAuthoredPostIds = posts
+    .filter(post => post.userId === targetUserEmail)
+    .map(post => post.id);
+
+    const interactionMatrix = buildInteractionMatrix(posts, users);
+    const recommendedPostIds = generateItemBasedRecommendations(
+      interactionMatrix,
+      targetUserEmail,
+      likedPostIds,
+      selfAuthoredPostIds
+    );
+    
+    const recommendations = posts
+      .filter(post => recommendedPostIds.includes(post.id))
+      .sort((a, b) => recommendedPostIds.indexOf(a.id) - recommendedPostIds.indexOf(b.id)); 
+      
+    setRecommendedPosts(recommendations);
+    
+    console.log(`Generated ${recommendations.length} recommendations.`);
+  };
+  
   useEffect(() => {
     if (commentModalVisible && selectedPostId) {
       fetchComments(selectedPostId);
@@ -94,14 +131,12 @@ export default function Home() {
       try {
         const userDoc = await getDoc(doc(firestore, "Users", user.email));
         if (userDoc.exists()) {
-
           const userData = userDoc.data();
           setusername(`${userData.firstName} ${userData.lastName}`);
           if (userData?.profileImage) {
             const isBase64 = !userData.profileImage.startsWith('http');
             const imageSource = isBase64
               ? `${userData.profileImage}`
-
               : userData.profileImage;
 
             setUserProfileImage(imageSource);
@@ -113,44 +148,49 @@ export default function Home() {
         console.warn('Error fetching user data in getUserData:', err);
       }
     };
-
     getUserData();
 
-    
-
-    const fetchNewsfeed = async () => {
+    const fetchNewsfeedAndUsers = async () => {
+      setLoading(true); 
+      const email = auth.currentUser?.email; 
+      if (!email) {
+        setLoading(false);
+        return;
+      }
       try {
-        const snapshot = await getDocs(query(collection(firestore, 'newsfeed'), orderBy('timestamp', 'desc'))); // Use orderBy
+        const usersSnapshot = await getDocs(collection(firestore, 'Users'));
+        const fetchedUsers = usersSnapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data() 
+        }));
+        setAllUsers(fetchedUsers);
+        const snapshot = await getDocs(query(collection(firestore, 'newsfeed'), orderBy('timestamp', 'desc')));
         const fetchedPosts = await Promise.all(
           snapshot.docs.map(async (docSnap) => {
             const d = docSnap.data();
-
-            // Handle date
             const rawDate = d.date || d.timestamp;
             const dateObj = rawDate?.toDate
-
               ? rawDate.toDate()
               : new Date(rawDate || Date.now());
-
-            // Normalize post images
             const images = (d.images || []).map((img) =>
               img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
 
             );
 
-            const commentsSnapshot = await getDocs(
+            const commentsSnapshot = await 
+            getDocs(
               collection(firestore, 'newsfeed', docSnap.id, 'comments')
             );
             const commentCount = commentsSnapshot.size;
             let profileImage =
               'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
             let userName = d.userName || 'Anonymous';
+           
             let role = '';
             if (d.userId) {
               try {
-                const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
-                if (userDoc.exists()) {
-                  const userData = userDoc.data();
+                const userData = fetchedUsers.find(u => u.id === d.userId);
+                if (userData) {
                   userName =
                     userData.firstName && userData.lastName
                       ?
@@ -169,18 +209,19 @@ export default function Home() {
             return {
               id: docSnap.id,
               text: d.text ||
-                '',
+              '',
               date: dateObj,
               images,
-              userId: d.userId,
+              userId: d.userId, // This is the email
               user: {
                 name: userName,
 
                 profileImage,
+        
                 role,
               },
               likedBy: d.likedBy ||
-                [],
+              [], // This is an array of emails
               commentCount,
               pinned: d.pinned === true,
               isEvent: d.isEvent === true,
@@ -188,69 +229,91 @@ export default function Home() {
           })
         );
 
-        // Fetch events
-      const events = await fetchEvents(); // Should return array of event objects
-      const eventPosts = events.map(event => {
-      // Prefer Firestore createdAt timestamp
-      let eventDate = null;
-      if (event.createdAt && typeof event.createdAt.toDate === 'function') {
-        eventDate = event.createdAt.toDate();
-      } else if (event.date) {
-        eventDate = new Date(event.date);
-      }
+        const events = await fetchEvents();
+        const eventPosts = events.map(event => {
+          // Prefer Firestore createdAt timestamp
+          let eventDate = null;
+          if (event.createdAt && typeof event.createdAt.toDate === 'function') {
+            eventDate = event.createdAt.toDate();
+          } else if (event.date) {
+            eventDate = new Date(event.date);
+          }
 
-      return {
-        id: event.id,
-        text: event.description || event.title || '',
-        date: eventDate, // Use normalized date
-        images: event.images || [],
-        userId: event.organizerId || '',
-        user: {
-          name: event.organizerName || 'Event',
-          profileImage: event.organizerImage || 'default_event_image_url',
-          role: 'event',
-        },
-        likedBy: [],
-        commentCount: 0,
-        pinned: false,
-        isEvent: true,
-        eventData: event,
-      };
-    });
+          return {
+            id: event.id,
+            text: event.description || event.title || '',
+            date: eventDate, // Use normalized date
+            images: event.images || [],
+            userId: event.organizerId || '',
+            user: {
+              name: event.organizerName || 'Event',
+              profileImage: event.organizerImage || 'default_event_image_url',
+              role: 'event',
+    
+            },
+            likedBy: [],
+            commentCount: 0,
+            pinned: false,
+            isEvent: true,
+            eventData: event,
+          };
+        });
+        const allPosts = [...fetchedPosts, ...eventPosts];
 
-      // Merge and sort by date
-      const allPosts = [...fetchedPosts, ...eventPosts];
+        if (fetchedUsers.length > 0) {
+           runRecommendationEngine(email, allPosts, fetchedUsers);
+        }
+        
+        const sortedPosts = allPosts.sort((a, b) => {
+          const aTime = a.date instanceof Date && !isNaN(a.date) ? a.date.getTime() : null;
+          const bTime = b.date instanceof Date && !isNaN(b.date) ? b.date.getTime() : null;
 
-      const sortedPosts = allPosts.sort((a, b) => {
-      const aTime = a.date instanceof Date && !isNaN(a.date) ? a.date.getTime() : null;
-      const bTime = b.date instanceof Date && !isNaN(b.date) ? b.date.getTime() : null;
+          if (aTime && bTime) return bTime - aTime; 
+          if (aTime && !bTime) return -1;
+          if (!aTime && bTime) return 1;     
+          return 0;
+        });
+        
+        setNewsfeedPosts(sortedPosts);
+        setFilteredPosts(sortedPosts);
 
-      if (aTime && bTime) return bTime - aTime; // Both have date
-      if (aTime && !bTime) return -1;           // a has date, b doesn't
-      if (!aTime && bTime) return 1;            // b has date, a doesn't
-      return 0;                                 // Neither has date
-    });
-
-      setNewsfeedPosts(sortedPosts);
-      setVisiblePosts(sortedPosts.slice(0, PAGE_SIZE));
-      setFilteredPosts(sortedPosts);
       } catch (e) {
-        console.error('Error fetching newsfeed:', e);
+        console.error('Error fetching newsfeed or users:', e);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchNewsfeed();
+    fetchNewsfeedAndUsers();
   }, [commentModalVisible, selectedPostId]);
+
+  useEffect(() => {
+    if (newsfeedPosts.length > 0) {
+      const nonRecommendedPosts = newsfeedPosts.filter(
+        post => !recommendedPosts.some(rec => rec.id === post.id)
+      );
+      const initialFeed = [
+        ...recommendedPosts,
+        ...nonRecommendedPosts
+      ];
+      setVisiblePosts(initialFeed.slice(0, PAGE_SIZE));
+    }
+  }, [newsfeedPosts, recommendedPosts]);
+
   const loadMorePosts = () => {
     if (loadingMore) return;
     setLoadingMore(true);
     const nextPage = page + 1;
     const start = (nextPage - 1) * PAGE_SIZE;
     const end = nextPage * PAGE_SIZE;
+    const combinedFeed = [
+      ...recommendedPosts,
+      ...newsfeedPosts.filter(post => !recommendedPosts.some(rec => rec.id === post.id))
+    ];
 
-    if (start < newsfeedPosts.length) {
+    if (start < combinedFeed.length) {
       setVisiblePosts(prev => {
-        const nextPosts = newsfeedPosts.slice(start, end);
+        const nextPosts = combinedFeed.slice(start, end);
         const filtered = nextPosts.filter(
           np => !prev.some(p => p.id === np.id)
         );
@@ -553,33 +616,43 @@ export default function Home() {
 
   const renderPost = (post) => {
 
-    if (post.eventData) {
-    return (
-      <EventCard
-        key={post.id}
-        event={post.eventData}
-      />
-    );
-  }
+    const isRecommended = recommendedPosts.some(recPost => recPost.id === post.id);
 
-     const formattedDate = post.date.toLocaleString();
-  const hasText = post.text.trim().length > 0;
-  const hasImages = post.images.length > 0;
-  const isLiked = (post.likedBy || []).includes(currentUserEmail);
-  const isSingleImage = post.images.length === 1;
+    if (post.eventData) {
+      return (
+        <EventCard
+          key={post.id}
+          event={post.eventData}
+        />
+      );
+    }
+
+    const formattedDate = post.date.toLocaleString();
+    const hasText = post.text.trim().length > 0;
+    const hasImages = post.images.length > 0;
+    const isLiked = (post.likedBy || []).includes(currentUserEmail);
+    const isSingleImage = post.images.length === 1;
 
     return (
       <View
-      key={post.id}
-      post={post}
-      style={[
-        styles.postCard,
-        post.isEvent && styles.eventPostCard // <-- Conditional style
-      ]}
-    >
+        key={post.id}
+        post={post}
+        style={[
+          styles.postCard,
+          post.isEvent && styles.eventPostCard
+        ]}
+      >
       {post.isEvent && (
-        <Text style={styles.eventBadge}>Event</Text> // <-- Event badge
+        <Text style={styles.eventBadge}>Event</Text>
       )}
+
+      {isRecommended && (
+        <View style={styles.recommendationBadge}>
+          <Ionicons name="sparkles" size={14} color="#FFD700" />
+          <Text style={styles.recommendationText}>Recommended</Text>
+        </View>
+      )}
+
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
             <TouchableOpacity
@@ -605,7 +678,6 @@ export default function Home() {
                 />
               ) : (
                 <FontAwesome name="user-circle-o" size={35} color="#999" />
-
               )}
             </TouchableOpacity>
 
@@ -634,7 +706,6 @@ export default function Home() {
               style={styles.pinIcon}
             />
           )}
-
 
           <TouchableOpacity>
             <Entypo name="dots-three-horizontal" size={20} color="#333" />
@@ -867,7 +938,6 @@ export default function Home() {
         <View style={styles.loadingContainer}>
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color="#FE070C" />
-
           </View>
         </View>
       )}
@@ -876,11 +946,7 @@ export default function Home() {
           posts={filteredPosts}
           setFilteredPosts={setFilteredPosts}
           scrollY={scrollY}
-
         />
-
-
-
         <ScrollView
           onScroll={(event) => {
             const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -947,6 +1013,13 @@ export default function Home() {
               </Text>
             </TouchableOpacity>
           </View> */}
+
+          {recommendedPosts.length > 0 && (
+             <View style={styles.recommendationHeader}>
+                <Ionicons name="bulb-outline" size={20} color="#1E90FF" />
+                <Text style={styles.recommendationHeaderText}>Personalized Recommendations</Text>
+             </View>
+          )}
 
           {visiblePosts.map((post) => renderPost(post))}
         </ScrollView>
@@ -1188,8 +1261,6 @@ export default function Home() {
     </SafeAreaView>
   );
 }
-
-
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -1742,6 +1813,41 @@ const styles = StyleSheet.create({
   },
   filterButtonActive: {
     borderColor: '#E50914',
-  
+  },
+  recommendationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+    marginVertical: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1E90FF',
+  },
+  recommendationHeaderText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E90FF',
+  },
+  recommendationBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFACD',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  recommendationText: {
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#CC9900',
   },
 });
