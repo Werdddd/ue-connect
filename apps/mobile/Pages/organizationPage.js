@@ -155,7 +155,10 @@ export default function OrganizationPage() {
                     </View>
 
                     {organizations
-                        .filter(org => selectedDepartment === 'All' || org.department === selectedDepartment)
+                        .filter(org => 
+                            org.status === 'approved' && // Only show approved orgs
+                            (selectedDepartment === 'All' || org.department === selectedDepartment)
+                        )
                         .map(org => {
                             return (
                                 <OrganizationCard
@@ -168,8 +171,8 @@ export default function OrganizationPage() {
                             );
                         })}
 
-                   {/* Registration Section */}
-                    {!pendingOrg && (
+                  {/* Registration Section */}
+                    {(!pendingOrg || pendingOrg.status === 'rejected') && (
                     <View style={styles.registerSection}>
                         <View style={styles.registerCard}>
                         <Text style={styles.registerTitle}>Start Your Own Organization</Text>
@@ -205,15 +208,45 @@ export default function OrganizationPage() {
                     )}
 
                     {/* Pending Application Section */}
-                    {pendingOrg && (
-                    <View style={styles.registerCard}>
-                        <Text style={styles.registerTitle}>Pending Application</Text>
-                        <Text style={styles.registerSubtitle}>
-                        Your application for <Text style={{ fontWeight: 'bold' }}>{pendingOrg.acronym}</Text> 
-                        is currently under review.
-                        </Text>
-                    </View>
-                    )}
+                    {pendingOrg && (() => {
+                        let cardStyle = styles.statusCard;
+                        let titleColor = '#1E88E5'; // Default blue for applied
+                        let bgColor = '#F0F8FF';    // Default light blue for applied
+                        let borderColor = '#D0E8FF';
+
+                        if (pendingOrg.status === 'approved') {
+                            titleColor = '#34A853'; // Green
+                            bgColor = '#E6F9ED';    // Light green
+                            borderColor = '#34A853';
+                        } else if (pendingOrg.status === 'rejected') {
+                            titleColor = '#E50914'; // Red
+                            bgColor = '#FFF0F0';    // Light red
+                            borderColor = '#E50914';
+                        } else if (pendingOrg.status === 'applied') {
+                            titleColor = '#1E88E5'; // Blue
+                            bgColor = '#F0F8FF';    // Light blue
+                            borderColor = '#1E88E5';
+                        }
+
+                        return (
+                            <View style={[
+                                cardStyle,
+                                { borderColor: borderColor, backgroundColor: bgColor }
+                            ]}>
+                                <Text style={[styles.registerTitle, { color: titleColor }]}>
+                                    {pendingOrg.status === 'applied' && 'Pending Application'}
+                                    {pendingOrg.status === 'approved' && 'Application Approved'}
+                                    {pendingOrg.status === 'rejected' && 'Application Rejected'}
+                                </Text>
+                                <Text style={styles.registerSubtitle}>
+                                    Your application for <Text style={{ fontWeight: 'bold' }}>{pendingOrg.acronym}</Text>
+                                    {pendingOrg.status === 'applied' && ' is currently under review.'}
+                                    {pendingOrg.status === 'approved' && ' has been approved!'}
+                                    {pendingOrg.status === 'rejected' && ' was rejected. Please review requirements and try again.'}
+                                </Text>
+                            </View>
+                        );
+                    })()}
 
                 </ScrollView>
 
@@ -369,9 +402,13 @@ const styles = StyleSheet.create({
     // Registration Section Styles
     registerSection: {
         marginTop: 30,
-        marginHorizontal: 20,
+        marginHorizontal: 0,
         marginBottom: 20,
         gap: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E50914',
+        paddingTop: 20,
+        marginHorizontal: 20,
     },
     registerCard: {
         backgroundColor: '#FFF5F5',
@@ -381,6 +418,17 @@ const styles = StyleSheet.create({
         borderColor: '#FFE0E0',
         alignItems: 'center',
         marginTop: 10,
+    
+    },
+    statusCard: {
+        backgroundColor: '#FFF5F5',
+        borderRadius: 12,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: '#FFE0E0',
+        alignItems: 'center',
+        marginTop: 10,
+    marginHorizontal: 20,
     },
     reaccreditCard: {
         backgroundColor: '#F0F8FF',

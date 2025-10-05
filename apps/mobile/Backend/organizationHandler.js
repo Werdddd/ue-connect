@@ -156,6 +156,7 @@ export const registerOrganization = async (formData, documents, logo) => {
             shortdesc: formData.description || '',
             email: formData.email,
             contactNumber: formData.contactNumber || '',
+            location: formData.location || '',
 
             // President Info
             presidentName: formData.presidentName,
@@ -374,18 +375,25 @@ export const checkAppliedOrganization = async () => {
 
     const orgQuery = query(
       collection(firestore, 'organizations'),
-      where('registeredBy', '==', user.email),
-      where('status', '==', 'applied')
+      where('registeredBy', '==', user.email)
+      // Remove status filter to get all applications by user
     );
 
     const querySnapshot = await getDocs(orgQuery);
 
     if (!querySnapshot.empty) {
-      // return the first pending org
-      return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+      // Sort by createdAt or submittedAt (newest first)
+      const orgs = querySnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+          const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+          return bTime - aTime;
+        });
+      return orgs[0]; // Return the latest application
     }
 
-    return null; // no pending application
+    return null; // no application
   } catch (error) {
     console.error('Error checking pending organization:', error);
     return null;

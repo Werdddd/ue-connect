@@ -16,6 +16,7 @@ export default function RegisterOrganization() {
         acronym: '',
         department: '',
         description: '',
+        location: '',
         email: '',
         contactNumber: '',
         presidentName: '',
@@ -363,6 +364,16 @@ export default function RegisterOrganization() {
                                 value={formData.contactNumber}
                                 onChangeText={(text) => handleInputChange('contactNumber', text)}
                                 keyboardType="phone-pad"
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Location</Text>
+                            <TextInput
+                                style={[styles.input, styles.textArea]}
+                                placeholder="Location of your organization within the campus"
+                                value={formData.location}
+                                onChangeText={(text) => handleInputChange('location', text)}
                             />
                         </View>
                     </View>

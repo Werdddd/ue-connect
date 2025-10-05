@@ -47,8 +47,8 @@ export default function OrgProfilePage() {
                     const data = docSnap.data();
 
                     setName(data.orgName);
-                    setDescription(data.shortdesc);
-                    setFullDescription(data.fulldesc);
+                    setDescription(data.shortdesc || "No description");
+                    setFullDescription(data.shortdesc || "No description");
                     setMemberCount(Array.isArray(data.members) ? data.members.length : 0);
                     setLocation(data.location);
                     setEmail(data.email);
@@ -248,7 +248,7 @@ export default function OrgProfilePage() {
 
                                     <View style={styles.infoDetailRow}>
                                         <Ionicons name="information-circle-outline" size={20} color="#555" />
-                                        <Text style={styles.detailText}>{fullDescription}</Text>
+                                        <Text style={styles.detailText}>{description}</Text>
                                     </View>
 
                                     <View style={styles.detailRow}>
@@ -268,12 +268,12 @@ export default function OrgProfilePage() {
                                         </Text>
                                     </View>
 
-                                    <View style={styles.detailRow}>
+                                    {/* <View style={styles.detailRow}>
                                         <Feather name="link" size={20} color="#555" />
                                         <Text style={styles.detailLink} onPress={() => Linking.openURL(website)}>
                                             {website}
                                         </Text>
-                                    </View>
+                                    </View> */}
                                 </View>
                                 <View style={styles.underline} />
                             </View>
