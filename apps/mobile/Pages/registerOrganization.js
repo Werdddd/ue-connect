@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, TextInput, Alert, Platform, ActivityIndicator, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { registerOrganization } from '../Backend/organizationHandler';
 
 export default function RegisterOrganization() {
     const navigation = useNavigation();
-    
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [logo, setLogo] = useState(null);
     // Form state
     const [formData, setFormData] = useState({
         organizationName: '',
@@ -17,12 +20,13 @@ export default function RegisterOrganization() {
         contactNumber: '',
         presidentName: '',
         presidentId: '',
+        adviserName: '',
     });
 
     // Document state
     const [documents, setDocuments] = useState({
         constitutionByLaws: null,
-        facultyAdviser: null,
+        // facultyAdviser: null,
         atoApplication: null,
         officersList: null,
         gpoa: null,
@@ -41,27 +45,56 @@ export default function RegisterOrganization() {
     const pickDocument = async (documentType) => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
-                type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+                type: [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                ],
                 copyToCacheDirectory: true,
             });
 
             if (result.type === 'success' || !result.canceled) {
                 const file = result.assets ? result.assets[0] : result;
+
+                // Firestore per-field limit ~1MB (1048487 bytes)
+                // Base64 inflates ~33%, so we limit raw file size to ~750KB
+                const firestoreSafeLimit = 750 * 1024; 
+
+                if (file.size > firestoreSafeLimit) {
+                    Alert.alert(
+                        '⚠️ File Too Large',
+                        `The selected file "${file.name}" is ${(file.size / (1024 * 1024)).toFixed(2)} MB, which is too large to store.\n\nPlease upload a smaller file (<750KB).`,
+                        [
+                            {
+                                text: 'Re-upload',
+                                onPress: () => pickDocument(documentType),
+                                style: 'destructive',
+                            },
+                            { text: 'Cancel', style: 'cancel' },
+                        ]
+                    );
+                    return;
+                }
+
                 setDocuments(prev => ({
                     ...prev,
                     [documentType]: {
                         name: file.name,
                         uri: file.uri,
                         size: file.size,
+                        mimeType: file.mimeType || 'application/pdf',
                     }
                 }));
-                Alert.alert('Success', `${file.name} uploaded successfully!`);
+
+                Alert.alert('✅ Success', `${file.name} uploaded successfully!`);
             }
         } catch (error) {
             console.error('Error picking document:', error);
             Alert.alert('Error', 'Failed to upload document');
         }
     };
+
+
 
     const removeDocument = (documentType) => {
         setDocuments(prev => ({
@@ -73,7 +106,7 @@ export default function RegisterOrganization() {
     const validateForm = () => {
         // Check required fields
         if (!formData.organizationName || !formData.acronym || !formData.department || 
-            !formData.email || !formData.presidentName || !formData.presidentId) {
+            !formData.email || !formData.presidentName || !formData.presidentId || !formData.adviserName) {
             Alert.alert('Error', 'Please fill in all required fields');
             return false;
         }
@@ -91,43 +124,99 @@ export default function RegisterOrganization() {
         return true;
     };
 
+    const pickLogo = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images, // ✅ FIXED
+                allowsEditing: true,
+                aspect: [1, 1], // square crop
+                quality: 0.7,
+            });
+
+            if (!result.canceled) {
+                const file = result.assets[0];
+
+                // File size limit (5MB for logos)
+                const maxSize = 5 * 1024 * 1024;
+                if (file.fileSize && file.fileSize > maxSize) {
+                    Alert.alert(
+                        '⚠️ Logo Too Large',
+                        `The selected image "${file.fileName || "logo"}" is ${(file.fileSize / (1024 * 1024)).toFixed(2)} MB, which exceeds the 5MB limit.\n\nPlease upload a smaller image.`,
+                        [
+                            { text: 'Re-upload', onPress: () => pickLogo(), style: 'destructive' },
+                            { text: 'Cancel', style: 'cancel' },
+                        ]
+                    );
+                    return;
+                }
+
+                setLogo({
+                    uri: file.uri,
+                    name: file.fileName || "org-logo.jpg",
+                    type: file.type || "image/jpeg",
+                    size: file.fileSize || 0,
+                });
+
+                Alert.alert('✅ Success', 'Organization logo uploaded successfully!');
+            }
+        } catch (error) {
+            console.error("Error picking logo:", error);
+            Alert.alert("Error", "Failed to upload logo");
+        }
+    };
+
+
+
+
+
     const handleSubmit = async () => {
         if (!validateForm()) return;
+
+        // Validate ue.edu.ph email
+        if (!formData.email.toLowerCase().endsWith('@ue.edu.ph')) {
+            throw new Error('Email must end with @ue.edu.ph');
+        }
+
+
+        if (!logo) {
+            Alert.alert("Error", "Please upload your organization logo");
+            return;
+        }
 
         Alert.alert(
             'Confirm Submission',
             'Are you sure you want to submit this registration? This cannot be undone.',
             [
-                {
-                    text: 'Cancel',
-                    style: 'cancel'
-                },
+                { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Submit',
                     onPress: async () => {
+                        setIsSubmitting(true);
                         try {
-                            // Here you would implement your actual submission logic
-                            // For example: await submitOrganizationRegistration(formData, documents);
-                            
+                            console.log('Starting registration process...');
+
+                            // Send logo + formData + documents
+                            const result = await registerOrganization(formData, documents, logo);
+
+                            console.log('Registration successful:', result.id);
+
                             Alert.alert(
                                 'Success!',
-                                'Your organization registration has been submitted for review. You will be notified once it has been processed.',
-                                [
-                                    {
-                                        text: 'OK',
-                                        onPress: () => navigation.goBack()
-                                    }
-                                ]
+                                'Your organization registration has been submitted for review.',
+                                [{ text: 'OK', onPress: () => navigation.goBack() }]
                             );
                         } catch (error) {
                             console.error('Error submitting registration:', error);
                             Alert.alert('Error', 'Failed to submit registration. Please try again.');
+                        } finally {
+                            setIsSubmitting(false);
                         }
                     }
                 }
             ]
         );
     };
+
 
     const DocumentUploadCard = ({ title, documentType, document }) => (
         <View style={styles.documentCard}>
@@ -252,12 +341,18 @@ export default function RegisterOrganization() {
                             <Text style={styles.label}>Email Address *</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="organization@example.com"
+                                placeholder="organization@ue.edu.ph"
                                 value={formData.email}
                                 onChangeText={(text) => handleInputChange('email', text)}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
                             />
+                            {formData.email && !formData.email.toLowerCase().endsWith('@ue.edu.ph') && (
+                                <Text style={{ color: 'red', marginTop: 4 }}>
+                                    Email must end with @ue.edu.ph
+                                </Text>
+                            )}
+
                         </View>
 
                         <View style={styles.inputGroup}>
@@ -297,6 +392,48 @@ export default function RegisterOrganization() {
                         </View>
                     </View>
 
+                    {/* Adviser Information */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Adviser Information</Text>
+                        
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Full Name *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Enter adviser's full name"
+                                value={formData.adviserName}
+                                onChangeText={(text) => handleInputChange('adviserName', text)}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Logo Upload Section */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Organization Logo</Text>
+                        <Text style={styles.sectionSubtitle}>
+                            Upload your organization logo (JPG or PNG, max 5MB)
+                        </Text>
+
+                        {logo ? (
+                            <View style={styles.logoPreviewContainer}>
+                                <Image source={{ uri: logo.uri }} style={styles.logoPreview} />
+                                <TouchableOpacity 
+                                    style={styles.removeLogoButton} 
+                                    onPress={() => setLogo(null)}
+                                >
+                                    <Ionicons name="close-circle" size={28} color="#E50914" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity style={styles.uploadButton} onPress={pickLogo}>
+                                <Ionicons name="image-outline" size={28} color="#E50914" />
+                                <Text style={styles.uploadButtonText}>Upload Logo</Text>
+                                <Text style={styles.uploadHint}>JPG, PNG</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+
                     {/* Documents Section */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Required Documents</Text>
@@ -310,11 +447,11 @@ export default function RegisterOrganization() {
                             document={documents.constitutionByLaws}
                         />
 
-                        <DocumentUploadCard 
+                        {/* <DocumentUploadCard 
                             title="Faculty Adviser Documentation"
                             documentType="facultyAdviser"
                             document={documents.facultyAdviser}
-                        />
+                        /> */}
 
                         <DocumentUploadCard 
                             title="Application for ATO"
@@ -343,10 +480,20 @@ export default function RegisterOrganization() {
 
                     {/* Submit Button */}
                     <TouchableOpacity 
-                        style={styles.submitButton}
+                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
                         onPress={handleSubmit}
+                        disabled={isSubmitting}
                     >
-                        <Text style={styles.submitButtonText}>Submit Registration</Text>
+                        {isSubmitting ? (
+                            <View style={styles.submitButtonContent}>
+                                <ActivityIndicator color="#fff" size="small" />
+                                <Text style={[styles.submitButtonText, styles.submittingText]}>
+                                    Submitting...
+                                </Text>
+                            </View>
+                        ) : (
+                            <Text style={styles.submitButtonText}>Submit Registration</Text>
+                        )}
                     </TouchableOpacity>
 
                     <View style={styles.bottomPadding} />
@@ -546,12 +693,43 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 4,
     },
+    submitButtonDisabled: {
+        backgroundColor: '#999',
+        opacity: 0.7,
+    },
+    submitButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     submitButtonText: {
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
     },
+    submittingText: {
+        marginLeft: 10,
+    },
     bottomPadding: {
         height: 20,
     },
+    logoPreviewContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    marginTop: 10,
+    },
+    logoPreview: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 2,
+        borderColor: '#ddd',
+    },
+    removeLogoButton: {
+        position: 'absolute',
+        top: -10,
+        right: -10,
+        backgroundColor: '#fff',
+        borderRadius: 15,
+    },
+
 });
