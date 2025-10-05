@@ -363,6 +363,35 @@ export const getOrganizationsByDepartment = async (department) => {
     }
 };
 
+export const checkAppliedOrganization = async () => {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user || !user.email) {
+      return null; // no user logged in
+    }
+
+    const orgQuery = query(
+      collection(firestore, 'organizations'),
+      where('registeredBy', '==', user.email),
+      where('status', '==', 'applied')
+    );
+
+    const querySnapshot = await getDocs(orgQuery);
+
+    if (!querySnapshot.empty) {
+      // return the first pending org
+      return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+    }
+
+    return null; // no pending application
+  } catch (error) {
+    console.error('Error checking pending organization:', error);
+    return null;
+  }
+};
+
 /**
  * Helper function to download document from base64
  * @param {string} base64String - Base64 encoded document

@@ -6,6 +6,7 @@ import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import OrganizationCard from '../components/organizationCard';
 import { getApprovedOrganizations } from '../Backend/organizationHandler';
+import { checkAppliedOrganization } from '../Backend/organizationHandler';
 import { useEffect } from 'react';
 
 
@@ -121,6 +122,16 @@ export default function OrganizationPage() {
         navigation.navigate('ReaccreditOrganization');
     };
 
+    const [pendingOrg, setPendingOrg] = useState(null);
+
+    useEffect(() => {
+    const fetchPending = async () => {
+        const result = await checkAppliedOrganization();
+        setPendingOrg(result);
+    };
+    fetchPending();
+    }, []);
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView
@@ -157,39 +168,53 @@ export default function OrganizationPage() {
                             );
                         })}
 
-                    {/* Registration Section */}
+                   {/* Registration Section */}
+                    {!pendingOrg && (
                     <View style={styles.registerSection}>
                         <View style={styles.registerCard}>
-                            <Text style={styles.registerTitle}>Start Your Own Organization</Text>
-                            <Text style={styles.registerSubtitle}>
-                                Have an idea for a new student organization?
+                        <Text style={styles.registerTitle}>Start Your Own Organization</Text>
+                        <Text style={styles.registerSubtitle}>
+                            Have an idea for a new student organization?
+                        </Text>
+                        <TouchableOpacity 
+                            style={styles.requirementsButton}
+                            onPress={() => setShowRequirementsModal(true)}
+                        >
+                            <Text style={styles.requirementsButtonText}>
+                            View Registration Requirements
                             </Text>
-                            <TouchableOpacity 
-                                style={styles.requirementsButton}
-                                onPress={() => setShowRequirementsModal(true)}
-                            >
-                                <Text style={styles.requirementsButtonText}>
-                                    View Registration Requirements
-                                </Text>
-                            </TouchableOpacity>
+                        </TouchableOpacity>
                         </View>
 
                         {/* Reaccreditation Section */}
                         <View style={[styles.registerCard, styles.reaccreditCard]}>
-                            <Text style={styles.reaccredTitle}>Existing Organization?</Text>
-                            <Text style={styles.registerSubtitle}>
-                                Keep your organization active with annual reaccreditation
+                        <Text style={styles.reaccredTitle}>Existing Organization?</Text>
+                        <Text style={styles.registerSubtitle}>
+                            Keep your organization active with annual reaccreditation
+                        </Text>
+                        <TouchableOpacity 
+                            style={[styles.requirementsButton, styles.reaccreditButton]}
+                            onPress={() => setShowReaccreditationModal(true)}
+                        >
+                            <Text style={styles.requirementsButtonText}>
+                            View Reaccreditation Requirements
                             </Text>
-                            <TouchableOpacity 
-                                style={[styles.requirementsButton, styles.reaccreditButton]}
-                                onPress={() => setShowReaccreditationModal(true)}
-                            >
-                                <Text style={styles.requirementsButtonText}>
-                                    View Reaccreditation Requirements
-                                </Text>
-                            </TouchableOpacity>
+                        </TouchableOpacity>
                         </View>
                     </View>
+                    )}
+
+                    {/* Pending Application Section */}
+                    {pendingOrg && (
+                    <View style={styles.registerCard}>
+                        <Text style={styles.registerTitle}>Pending Application</Text>
+                        <Text style={styles.registerSubtitle}>
+                        Your application for <Text style={{ fontWeight: 'bold' }}>{pendingOrg.acronym}</Text> 
+                        is currently under review.
+                        </Text>
+                    </View>
+                    )}
+
                 </ScrollView>
 
                 {/* Requirements Modal */}
@@ -355,6 +380,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#FFE0E0',
         alignItems: 'center',
+        marginTop: 10,
     },
     reaccreditCard: {
         backgroundColor: '#F0F8FF',
