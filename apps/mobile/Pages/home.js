@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   SafeAreaView, ScrollView, Modal, TextInput, KeyboardAvoidingView,
   Platform, TouchableWithoutFeedback, ActivityIndicator,
-  Dimensions 
+  Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, FontAwesome, MaterialIcons, Entypo } from '@expo/vector-icons';
@@ -50,6 +50,11 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const ss = "superadmin";
   const ss2 = "sheen";
+  const [currentUserInfo, setCurrentUserInfo] = useState({
+    firstName: '',
+    lastName: '',
+    profileImage: null,
+  });
 
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [galleryImages, setGalleryImages] = useState([]);
@@ -92,12 +97,12 @@ export default function Home() {
     }
 
     const likedPostIds = posts
-      .filter(post => (post.likedBy || []).includes(targetUserEmail)) 
+      .filter(post => (post.likedBy || []).includes(targetUserEmail))
       .map(post => post.id);
-    
+
     const selfAuthoredPostIds = posts
-    .filter(post => post.userId === targetUserEmail)
-    .map(post => post.id);
+      .filter(post => post.userId === targetUserEmail)
+      .map(post => post.id);
 
     const interactionMatrix = buildInteractionMatrix(posts, users);
     const recommendedPostIds = generateItemBasedRecommendations(
@@ -106,16 +111,16 @@ export default function Home() {
       likedPostIds,
       selfAuthoredPostIds
     );
-    
+
     const recommendations = posts
       .filter(post => recommendedPostIds.includes(post.id))
-      .sort((a, b) => recommendedPostIds.indexOf(a.id) - recommendedPostIds.indexOf(b.id)); 
-      
+      .sort((a, b) => recommendedPostIds.indexOf(a.id) - recommendedPostIds.indexOf(b.id));
+
     setRecommendedPosts(recommendations);
-    
+
     console.log(`Generated ${recommendations.length} recommendations.`);
   };
-  
+
   useEffect(() => {
     if (commentModalVisible && selectedPostId) {
       fetchComments(selectedPostId);
@@ -151,17 +156,17 @@ export default function Home() {
     getUserData();
 
     const fetchNewsfeedAndUsers = async () => {
-      setLoading(true); 
-      const email = auth.currentUser?.email; 
+      setLoading(true);
+      const email = auth.currentUser?.email;
       if (!email) {
         setLoading(false);
         return;
       }
       try {
         const usersSnapshot = await getDocs(collection(firestore, 'Users'));
-        const fetchedUsers = usersSnapshot.docs.map(doc => ({ 
-            id: doc.id, 
-            ...doc.data() 
+        const fetchedUsers = usersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
         }));
         setAllUsers(fetchedUsers);
         const snapshot = await getDocs(query(collection(firestore, 'newsfeed'), orderBy('timestamp', 'desc')));
@@ -177,15 +182,15 @@ export default function Home() {
 
             );
 
-            const commentsSnapshot = await 
-            getDocs(
-              collection(firestore, 'newsfeed', docSnap.id, 'comments')
-            );
+            const commentsSnapshot = await
+              getDocs(
+                collection(firestore, 'newsfeed', docSnap.id, 'comments')
+              );
             const commentCount = commentsSnapshot.size;
             let profileImage =
               'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
             let userName = d.userName || 'Anonymous';
-           
+
             let role = '';
             if (d.userId) {
               try {
@@ -209,7 +214,7 @@ export default function Home() {
             return {
               id: docSnap.id,
               text: d.text ||
-              '',
+                '',
               date: dateObj,
               images,
               userId: d.userId, // This is the email
@@ -217,11 +222,11 @@ export default function Home() {
                 name: userName,
 
                 profileImage,
-        
+
                 role,
               },
               likedBy: d.likedBy ||
-              [], // This is an array of emails
+                [], // This is an array of emails
               commentCount,
               pinned: d.pinned === true,
               isEvent: d.isEvent === true,
@@ -249,7 +254,7 @@ export default function Home() {
               name: event.organizerName || 'Event',
               profileImage: event.organizerImage || 'default_event_image_url',
               role: 'event',
-    
+
             },
             likedBy: [],
             commentCount: 0,
@@ -261,19 +266,19 @@ export default function Home() {
         const allPosts = [...fetchedPosts, ...eventPosts];
 
         if (fetchedUsers.length > 0) {
-           runRecommendationEngine(email, allPosts, fetchedUsers);
+          runRecommendationEngine(email, allPosts, fetchedUsers);
         }
-        
+
         const sortedPosts = allPosts.sort((a, b) => {
           const aTime = a.date instanceof Date && !isNaN(a.date) ? a.date.getTime() : null;
           const bTime = b.date instanceof Date && !isNaN(b.date) ? b.date.getTime() : null;
 
-          if (aTime && bTime) return bTime - aTime; 
+          if (aTime && bTime) return bTime - aTime;
           if (aTime && !bTime) return -1;
-          if (!aTime && bTime) return 1;     
+          if (!aTime && bTime) return 1;
           return 0;
         });
-        
+
         setNewsfeedPosts(sortedPosts);
         setFilteredPosts(sortedPosts);
 
@@ -286,6 +291,29 @@ export default function Home() {
 
     fetchNewsfeedAndUsers();
   }, [commentModalVisible, selectedPostId]);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (!shareModalVisible) return;
+
+      const user = auth.currentUser;
+      if (!user?.email) return;
+
+      const userDocRef = doc(firestore, 'Users', user.email);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setCurrentUserInfo({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          profileImage: data.profileImage ? `${data.profileImage}` : null,
+        });
+      }
+    };
+
+    fetchUserInfo();
+  }, [shareModalVisible]);
 
   useEffect(() => {
     if (newsfeedPosts.length > 0) {
@@ -554,6 +582,51 @@ export default function Home() {
     }
   };
 
+  const handleSharePost = async () => {
+    if (!selectedPostId) return; // the post the user wants to share
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const userEmail = user.email;
+    if (!userEmail) return;
+
+    const userDocRef = doc(firestore, "Users", userEmail);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) return;
+
+    const userData = userDoc.data();
+    const { firstName, lastName, profileImage, role } = userData;
+
+    const newSharedPost = {
+      user: {
+        id: userEmail,
+        name: `${firstName} ${lastName}`,
+        profileImage: profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
+        role,
+      },
+      text: shareCaption || '',                    // the text the user adds in share modal
+      images: [],                                  // shared posts usually don’t add new images
+      date: new Date(),
+      isEvent: false,
+      comments: [],
+      likedBy: [],
+      sharedPostId: selectedPostId,               // reference to original post
+      sharedPostData: newsfeedPosts.find(p => p.id === selectedPostId), // optional for fast rendering
+    };
+
+    // Save to Firestore
+    const postId = await savePost(newSharedPost.user, newSharedPost.text, newSharedPost.images, false, {
+      sharedPostId: newSharedPost.sharedPostId,
+      sharedPostData: newSharedPost.sharedPostData
+    });
+
+    setNewsfeedPosts(prev => [{ ...newSharedPost, id: postId }, ...prev]);
+    setVisiblePosts(prev => [{ ...newSharedPost, id: postId }, ...prev]);
+    setShareModalVisible(false);
+    setShareCaption('');
+  };
+
   const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
     const user = auth.currentUser;
@@ -642,16 +715,16 @@ export default function Home() {
           post.isEvent && styles.eventPostCard
         ]}
       >
-      {post.isEvent && (
-        <Text style={styles.eventBadge}>Event</Text>
-      )}
+        {post.isEvent && (
+          <Text style={styles.eventBadge}>Event</Text>
+        )}
 
-      {isRecommended && (
-        <View style={styles.recommendationBadge}>
-          <Ionicons name="sparkles" size={14} color="#FFD700" />
-          <Text style={styles.recommendationText}>Recommended</Text>
-        </View>
-      )}
+        {isRecommended && (
+          <View style={styles.recommendationBadge}>
+            <Ionicons name="sparkles" size={14} color="#FFD700" />
+            <Text style={styles.recommendationText}>Recommended</Text>
+          </View>
+        )}
 
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
@@ -715,7 +788,15 @@ export default function Home() {
         <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
 
-
+          {/* {isShared && (
+            <View style={styles.sharedPostWrapper}>
+              <Text style={styles.sharedBadge}>
+                Shared from {post.sharedPostData.userName}
+              </Text>
+              {renderPost(post.sharedPostData)}
+            </View>
+          )} */}
+          
           {hasImages && (
             <View style={styles.postImagesContainer}>
               {post.images.slice(0, 3).map((uri, idx) => (
@@ -776,7 +857,13 @@ export default function Home() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={() => setShareModalVisible(true)}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setSelectedPostId(post.id);
+              setShareModalVisible(true);
+            }}
+          >
             <Ionicons name="share-social-outline" size={20} color="#555" />
             <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
@@ -897,34 +984,101 @@ export default function Home() {
         <Modal
           visible={shareModalVisible}
           animationType="slide"
-
           transparent={true}
           onRequestClose={() => setShareModalVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.shareModalContent}>
-              <View style={styles.shareHeader}>
-                <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
+          <TouchableWithoutFeedback onPress={() => setShareModalVisible(false)}>
+            <View style={styles.modalContainer} />
+          </TouchableWithoutFeedback>
 
-                <Text style={styles.shareUsername}>Username</Text>
+          <View style={styles.shareModalContent}>
+            {/* Header with close button */}
+            <View style={styles.shareModalHeader}>
+              <Text style={styles.shareModalTitle}>Share Post</Text>
+              <TouchableOpacity
+                onPress={() => setShareModalVisible(false)}
+                style={styles.closebtn}
+              >
+                <FontAwesome name="times" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* User info section */}
+            <View style={styles.shareHeader}>
+              {currentUserInfo.profileImage ? (
+                <Image
+                  source={{ uri: currentUserInfo.profileImage }}
+                  style={styles.shareProfilePic}
+                />
+              ) : (
+                <View style={styles.placeholderProfilePic}>
+                  <FontAwesome name="user" size={24} color="#fff" />
+                </View>
+              )}
+              <View style={styles.userInfoContainer}>
+                <Text style={styles.shareUsername}>
+                  {currentUserInfo.firstName} {currentUserInfo.lastName}
+                </Text>
+                <Text style={styles.shareSubtext}>Sharing to your timeline</Text>
               </View>
+            </View>
 
+            {/* Caption input with character count */}
+            <View style={styles.captionContainer}>
               <TextInput
                 style={styles.shareCaptionInput}
-                placeholder="Write a caption..."
+                placeholder="What's on your mind?"
+                placeholderTextColor="#999"
                 multiline
+                maxLength={500}
                 value={shareCaption}
-
                 onChangeText={setShareCaption}
+                textAlignVertical="top"
               />
+              <Text style={styles.characterCount}>
+                {shareCaption.length}/500
+              </Text>
+            </View>
 
+            {/* Action buttons */}
+            <View style={styles.shareActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShareModalVisible(false);
+                  setShareCaption(''); // Clear caption on cancel
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
 
-              <TouchableOpacity style={styles.shareButton} onPress={() => { }}>
+              <TouchableOpacity
+                style={[
+                  styles.shareButton,
+                  !shareCaption.trim() && styles.shareButtonDisabled
+                ]}
+                onPress={() => {
+                  if (shareCaption.trim()) {
+                    handleSharePost();
+                    setShareModalVisible(false);
+                    setShareCaption(''); // Clear after sharing
+                  }
+                }}
+                disabled={!shareCaption.trim()}
+              >
+                <FontAwesome
+                  name="send"
+                  size={16}
+                  color="#fff"
+                  style={styles.shareIcon}
+                />
                 <Text style={styles.shareButtonText}>Share Now</Text>
               </TouchableOpacity>
             </View>
           </View>
-
         </Modal>
 
 
@@ -1015,10 +1169,10 @@ export default function Home() {
           </View> */}
 
           {recommendedPosts.length > 0 && (
-             <View style={styles.recommendationHeader}>
-                <Ionicons name="bulb-outline" size={20} color="#1E90FF" />
-                <Text style={styles.recommendationHeaderText}>Personalized Recommendations</Text>
-             </View>
+            <View style={styles.recommendationHeader}>
+              <Ionicons name="bulb-outline" size={20} color="#1E90FF" />
+              <Text style={styles.recommendationHeaderText}>Personalized Recommendations</Text>
+            </View>
           )}
 
           {visiblePosts.map((post) => renderPost(post))}
@@ -1310,7 +1464,7 @@ const styles = StyleSheet.create({
   postInputContainer: {
     flex: 1,
     justifyContent: 'center',
-    
+
   },
 
   postContentContainer: {
@@ -1473,7 +1627,7 @@ const styles = StyleSheet.create({
   },
   eventPostCard: {
     borderColor: '#E50914',
-    
+
     // Add more event-specific styles here
   },
   eventBadge: {
@@ -1613,7 +1767,6 @@ const styles = StyleSheet.create({
 
   modalContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
 
@@ -1679,13 +1832,145 @@ const styles = StyleSheet.create({
   },
 
   shareModalContent: {
-    height: '50%',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 15,
+    paddingBottom: 20,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 10,
   },
-
+  shareModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 15,
+  },
+  shareModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+  },
+  closebtn: {
+    padding: 5,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginBottom: 15,
+  },
+  shareHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 15,
+    marginLeft: 5,
+  },
+  shareProfilePic: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    marginLeft: 15,
+  },
+  placeholderProfilePic: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  userInfoContainer: {
+    flex: 1,
+  },
+  shareUsername: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  shareSubtext: {
+    fontSize: 13,
+    color: '#666',
+  },
+  captionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  shareCaptionInput: {
+    fontSize: 15,
+    color: '#333',
+    minHeight: 100,
+    maxHeight: 200,
+    padding: 15,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginBottom: 8,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+  },
+  shareActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  shareButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  shareButtonDisabled: {
+    backgroundColor: '#ccc',
+    shadowOpacity: 0,
+  },
+  shareButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  shareIcon: {
+    marginRight: 8,
+  },
   shareHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1697,6 +1982,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 10,
+    marginLeft: 20,
   },
 
   shareUsername: {
