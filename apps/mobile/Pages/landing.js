@@ -7,8 +7,8 @@ export default function Landing() {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Welcome to UE Connect</Text>
+      <Image source={require('../assets/ueconnectlogo.png')} style={styles.logo} />
+    
       <TouchableOpacity
         style={styles.button1}
         onPress={() => navigation.navigate('Login')}
@@ -34,9 +34,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
+    width: 350,
+    height: 350,
+    marginBottom: 250,
   },
   title: {
     fontSize: 24,
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   },
   button1: {
     backgroundColor: '#FE070C',
-    width: '50%',
+    width: '60%',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 8,
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
   },
   button2: {
     backgroundColor: '#1C1C32',
-    width: '50%',
+    width: '60%',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 8,
