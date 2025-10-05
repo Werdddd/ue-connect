@@ -23,13 +23,13 @@ export default function OrganizationPageRSO() {
 
                 if (!orgSnapshot.empty) {
                     const orgData = orgSnapshot.docs[0].data();
-                    const appliedEmails = orgData.applied || [];
+                    const applicantEmails = orgData.applicants || []; // <-- changed from applied to applicants
                     const memberEmails = orgData.members || [];
 
                     const usersSnapshot = await getDocs(collection(firestore, 'Users'));
                     const allUsers = usersSnapshot.docs.map(doc => doc.data());
 
-                    const appliedList = allUsers.filter(user => appliedEmails.includes(user.email));
+                    const appliedList = allUsers.filter(user => applicantEmails.includes(user.email));
                     const memberList = allUsers.filter(user => memberEmails.includes(user.email));
 
                     setAppliedUsers(appliedList);
@@ -52,7 +52,7 @@ export default function OrganizationPageRSO() {
                 const orgRef = orgSnapshot.docs[0].ref;
 
                 await updateDoc(orgRef, {
-                    applied: arrayRemove(email),
+                    applicants: arrayRemove(email), // <-- changed from applied to applicants
                     members: arrayUnion(email),
                 });
 
@@ -60,7 +60,7 @@ export default function OrganizationPageRSO() {
 
                 try {
                     await updateDoc(userRef, {
-                        orgs: arrayUnion(orgName)  // Adds orgName to the 'orgs' array
+                        orgs: arrayUnion(orgName)
                     });
                     console.log("Organization added to user successfully");
                 } catch (error) {
@@ -84,7 +84,7 @@ export default function OrganizationPageRSO() {
                 const orgRef = orgSnapshot.docs[0].ref;
 
                 await updateDoc(orgRef, {
-                    applied: arrayRemove(email),
+                    applicants: arrayRemove(email), // <-- changed from applied to applicants
                 });
 
                 setAppliedUsers(prev => prev.filter(user => user.email !== email));

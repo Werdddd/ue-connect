@@ -92,10 +92,10 @@ export default function OrgProfilePage() {
                 const data = orgDoc.data();
 
                 const members = data.members || [];
-                const applied = data.applied || [];
+                const applicants = data.applicants || [];
 
-                setIsMember(members.includes(userEmail));
-                setIsApplied(applied.includes(userEmail));
+                setIsMember((data.members || []).includes(userEmail));
+setIsApplied((data.applicants || []).includes(userEmail));
             }
         };
         userCheck();
@@ -164,37 +164,34 @@ export default function OrgProfilePage() {
       };
 
     const addUserToApplication = async (orgName, userEmail) => {
-        try {
-            const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
-            const querySnapshot = await getDocs(q);
+    try {
+        const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+        const querySnapshot = await getDocs(q);
 
-            if (!querySnapshot.empty) {
-                const orgDoc = querySnapshot.docs[0];
-                const orgRef = doc(firestore, 'organizations', orgDoc.id);
+        if (!querySnapshot.empty) {
+            const orgDoc = querySnapshot.docs[0];
+            const orgRef = doc(firestore, 'organizations', orgDoc.id);
 
-                const data = orgDoc.data();
-                const applied = data.applied || [];
-                const members = data.members || [];
-                const userIsApplied = applied.includes(userEmail);
-                const userIsMember = members.includes(userEmail);
-                setIsApplied(!userIsApplied);
+            const data = orgDoc.data();
+            const applicants = data.applicants || [];
+            const userIsApplicant = applicants.includes(userEmail);
 
+            if (userIsApplicant) {
                 await updateDoc(orgRef, {
-                    applied: userIsApplied ? arrayRemove(userEmail) : arrayUnion(userEmail),
+                    applicants: applicants.filter(email => email !== userEmail),
                 });
-
-                console.log(
-                    userIsApplied
-                        ? `User ${userEmail} removed from application ${orgName}`
-                        : `User ${userEmail} added to application ${orgName}`
-                );
+                setIsApplied(false);
             } else {
-                console.log('Organization not found');
+                await updateDoc(orgRef, {
+                    applicants: [...applicants, userEmail],
+                });
+                setIsApplied(true);
             }
-        } catch (error) {
-            console.error('Error updating members:', error);
         }
-    };
+    } catch (error) {
+        console.error('Error updating applicants:', error);
+    }
+};
 
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -224,7 +221,7 @@ export default function OrgProfilePage() {
                                 <View style={styles.buttonRow}>
                                 <TouchableOpacity
                                     style={styles.joinButton}
-                                    onPress={() => addUserToApplication(orgName, userEmail)}
+                                    onPress={() => addUserToApplication(orgName, userEmail, currentUser.displayName)}
                                     disabled={isMember}>
                                     <Text style={styles.joinButtonText}>
                                         {isMember ? 'Joined' : isApplied ? 'Applied' : 'Join'}

@@ -422,3 +422,61 @@ export const downloadDocumentFromBase64 = (base64String, fileName, mimeType) => 
         throw error;
     }
 };
+
+const applyToOrganization = async (orgName, userEmail) => {
+    try {
+        const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const orgDoc = querySnapshot.docs[0];
+            const orgRef = doc(firestore, 'organizations', orgDoc.id);
+
+            const data = orgDoc.data();
+            const applicants = data.applicants || [];
+            const userIsApplicant = applicants.includes(userEmail);
+
+            // Toggle application status
+            await updateDoc(orgRef, {
+                applicants: userIsApplicant ? arrayRemove(userEmail) : arrayUnion(userEmail),
+            });
+
+            // Update local state
+            setIsApplied(!userIsApplicant);
+
+            console.log(
+                userIsApplicant
+                    ? `User ${userEmail} removed from applicants of ${orgName}`
+                    : `User ${userEmail} added to applicants of ${orgName}`
+            );
+        } else {
+            console.log('Organization not found');
+        }
+    } catch (error) {
+        console.error('Error updating applicants:', error);
+    }
+};
+
+export const acceptApplicant = async (orgId, userEmail) => {
+    try {
+        const orgRef = doc(firestore, 'organizations', orgId);
+        const orgSnap = await getDoc(orgRef);
+        if (!orgSnap.exists()) throw new Error('Organization not found');
+        const data = orgSnap.data();
+
+        const applicants = data.applicants || [];
+        const members = data.members || [];
+
+        if (!applicants.includes(userEmail)) throw new Error('Applicant not found');
+
+        await updateDoc(orgRef, {
+            applicants: applicants.filter(email => email !== userEmail),
+            members: [...members, userEmail],
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error accepting applicant:', error);
+        throw error;
+    }
+};
