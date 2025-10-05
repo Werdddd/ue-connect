@@ -17,6 +17,8 @@ import { getDoc, doc, collection, getDocs, updateDoc, arrayUnion, arrayRemove, a
 import { firestore, auth } from '../Firebase';
 import { savePost } from '../Backend/uploadPost';
 import { sendNotification } from '../Backend/notifications';
+import EventCard from '../components/eventCard';
+import { fetchEvents, addEvent } from '../Backend/eventPage';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -114,10 +116,12 @@ export default function Home() {
 
     getUserData();
 
+    
+
     const fetchNewsfeed = async () => {
       try {
         const snapshot = await getDocs(query(collection(firestore, 'newsfeed'), orderBy('timestamp', 'desc'))); // Use orderBy
-        const fetched = await Promise.all(
+        const fetchedPosts = await Promise.all(
           snapshot.docs.map(async (docSnap) => {
             const d = docSnap.data();
 
@@ -183,16 +187,53 @@ export default function Home() {
             };
           })
         );
-        const sortedPosts = fetched.sort((a, b) => {
-          if (a.pinned && !b.pinned) return -1;
-          if (!a.pinned && b.pinned) return 1;
-          return b.date - a.date;
-        });
-        setNewsfeedPosts(sortedPosts);
 
-        setVisiblePosts(sortedPosts.slice(0, PAGE_SIZE));
-        setPage(1);
-        setFilteredPosts(sortedPosts);
+        // Fetch events
+      const events = await fetchEvents(); // Should return array of event objects
+      const eventPosts = events.map(event => {
+      // Prefer Firestore createdAt timestamp
+      let eventDate = null;
+      if (event.createdAt && typeof event.createdAt.toDate === 'function') {
+        eventDate = event.createdAt.toDate();
+      } else if (event.date) {
+        eventDate = new Date(event.date);
+      }
+
+      return {
+        id: event.id,
+        text: event.description || event.title || '',
+        date: eventDate, // Use normalized date
+        images: event.images || [],
+        userId: event.organizerId || '',
+        user: {
+          name: event.organizerName || 'Event',
+          profileImage: event.organizerImage || 'default_event_image_url',
+          role: 'event',
+        },
+        likedBy: [],
+        commentCount: 0,
+        pinned: false,
+        isEvent: true,
+        eventData: event,
+      };
+    });
+
+      // Merge and sort by date
+      const allPosts = [...fetchedPosts, ...eventPosts];
+
+      const sortedPosts = allPosts.sort((a, b) => {
+      const aTime = a.date instanceof Date && !isNaN(a.date) ? a.date.getTime() : null;
+      const bTime = b.date instanceof Date && !isNaN(b.date) ? b.date.getTime() : null;
+
+      if (aTime && bTime) return bTime - aTime; // Both have date
+      if (aTime && !bTime) return -1;           // a has date, b doesn't
+      if (!aTime && bTime) return 1;            // b has date, a doesn't
+      return 0;                                 // Neither has date
+    });
+
+      setNewsfeedPosts(sortedPosts);
+      setVisiblePosts(sortedPosts.slice(0, PAGE_SIZE));
+      setFilteredPosts(sortedPosts);
       } catch (e) {
         console.error('Error fetching newsfeed:', e);
       }
@@ -511,13 +552,21 @@ export default function Home() {
   };
 
   const renderPost = (post) => {
-    const formattedDate = post.date.toLocaleString();
-    const hasText = post.text.trim().length > 0;
-    const hasImages = post.images.length > 0;
-    const isLiked = (post.likedBy || []).includes(currentUserEmail);
 
-    // Check image count for conditional styling
-    const isSingleImage = post.images.length === 1;
+    if (post.eventData) {
+    return (
+      <EventCard
+        key={post.id}
+        event={post.eventData}
+      />
+    );
+  }
+
+     const formattedDate = post.date.toLocaleString();
+  const hasText = post.text.trim().length > 0;
+  const hasImages = post.images.length > 0;
+  const isLiked = (post.likedBy || []).includes(currentUserEmail);
+  const isSingleImage = post.images.length === 1;
 
     return (
       <View
@@ -829,6 +878,8 @@ export default function Home() {
           scrollY={scrollY}
 
         />
+
+
 
         <ScrollView
           onScroll={(event) => {
@@ -1370,7 +1421,7 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginBottom: 10,
+    marginBottom: 12,
     padding: 16,
     borderWidth: 1,
     borderColor: '#e0e0e0',

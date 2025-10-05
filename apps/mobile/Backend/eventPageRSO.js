@@ -1,5 +1,5 @@
 import { firestore } from '../Firebase';
-import { collection, getDocs, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { format, addDays, isSameDay, parse } from "date-fns";
 import { getAuth } from "firebase/auth";
 
@@ -54,7 +54,7 @@ export async function addEvent(newEvent) {
       collabOrgs: newEvent.collabOrgs || [],
       createdBy: currentUser.uid,       // ✅ save UID
       createdByName: creatorName,       // ✅ save display name / org name
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
     };
 
     // custom ID like OrgEvent1, OrgEvent2...

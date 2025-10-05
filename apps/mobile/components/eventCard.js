@@ -327,20 +327,24 @@ export default function EventCard({ event }) {
 const styles = StyleSheet.create({
     card: {
         backgroundColor: '#fff',
-        borderRadius: 10,
-        marginBottom: 20,
+        borderRadius: 15,
+        marginBottom: 10,
         elevation: 3,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        marginHorizontal: 20,
+       
         borderWidth: 1,
         borderColor: '#ddd',
     },
     banner: {
         width: '100%',
         height: 150,
+        borderTopLeftRadius: 15,
+  borderTopRightRadius: 15,
+  borderBottomLeftRadius: 0,
+  borderBottomRightRadius: 0,
     },
     infoContainer: {
         padding: 15,

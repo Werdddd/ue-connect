@@ -161,7 +161,7 @@ export default function EventPageRSO() {
 }, [isModalVisible]);
 
     const handleAddEvent = async () => {
-    if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants || !selectedBanner) {
+    if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants ) {
         alert('Please fill out all fields!');
         return;
     }
@@ -875,6 +875,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingBottom: 80,
+        paddingHorizontal: 16,
     },
     titleContainer: {
         marginTop: 15,

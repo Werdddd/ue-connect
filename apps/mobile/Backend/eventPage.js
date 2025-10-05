@@ -1,7 +1,6 @@
 
 import { firestore } from '../Firebase';
-import { collection, getDocs, query, where, doc, updateDoc, getDoc, deleteField } from 'firebase/firestore'; // <-- import query and where
-
+import { collection, getDocs, query, where, doc, updateDoc, getDoc, deleteField, addDoc, serverTimestamp } from 'firebase/firestore'; // <-- add addDoc and serverTimestamp
 
 export async function fetchEvents() {
   try {
@@ -29,7 +28,11 @@ export async function fetchEvents() {
 // NEW FUNCTION to add an event
 export async function addEvent(newEvent) {
   try {
-    const docRef = await addDoc(collection(firestore, 'events'), newEvent);
+    const eventWithTimestamp = {
+      ...newEvent,
+      createdAt: serverTimestamp(), // Add createdAt field
+    };
+    const docRef = await addDoc(collection(firestore, 'events'), eventWithTimestamp);
     console.log('Event added with ID:', docRef.id);
     return docRef.id;
   } catch (error) {
@@ -37,6 +40,7 @@ export async function addEvent(newEvent) {
     throw error;
   }
 }
+
 export async function applyToEvent(eventId, email) {
   try {
     // Fetch user data from the users collection
