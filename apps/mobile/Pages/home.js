@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons, FontAwesome, MaterialIcons, Entypo } from '@expo/vector-icons';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withSequence, withTiming } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -43,6 +43,7 @@ export default function Home() {
   const [postComments, setPostComments] = useState([]);
   const [comments, setComments] = useState([]);
   const [filterEventOnly, setFilterEventOnly] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const ss = "superadmin";
   const ss2 = "sheen";
 
@@ -100,11 +101,11 @@ export default function Home() {
               ? `${userData.profileImage}`
 
               : userData.profileImage;
-              
-              setUserProfileImage(imageSource);
-            }
-            setRole(userData.role);
-            setGroup(userData.group);
+
+            setUserProfileImage(imageSource);
+          }
+          setRole(userData.role);
+          setGroup(userData.group);
         }
       } catch (err) {
         console.warn('Error fetching user data in getUserData:', err);
@@ -176,18 +177,18 @@ export default function Home() {
               },
               likedBy: d.likedBy ||
                 [],
-                commentCount,
-                pinned: d.pinned === true, 
-                isEvent: d.isEvent === true,
-              };
-            })
-          );
-          const sortedPosts = fetched.sort((a, b) => {
-            if (a.pinned && !b.pinned) return -1;
-            if (!a.pinned && b.pinned) return 1;
-            return b.date - a.date;
-          });
-          setNewsfeedPosts(sortedPosts);
+              commentCount,
+              pinned: d.pinned === true,
+              isEvent: d.isEvent === true,
+            };
+          })
+        );
+        const sortedPosts = fetched.sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1;
+          return b.date - a.date;
+        });
+        setNewsfeedPosts(sortedPosts);
 
         setVisiblePosts(sortedPosts.slice(0, PAGE_SIZE));
         setPage(1);
@@ -200,16 +201,23 @@ export default function Home() {
     fetchNewsfeed();
   }, [commentModalVisible, selectedPostId]);
   const loadMorePosts = () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
     const nextPage = page + 1;
     const start = (nextPage - 1) * PAGE_SIZE;
     const end = nextPage * PAGE_SIZE;
+
     if (start < newsfeedPosts.length) {
-      setVisiblePosts(prev => [
-        ...prev,
-        ...newsfeedPosts.slice(start, end),
-      ]);
+      setVisiblePosts(prev => {
+        const nextPosts = newsfeedPosts.slice(start, end);
+        const filtered = nextPosts.filter(
+          np => !prev.some(p => p.id === np.id)
+        );
+        return [...prev, ...filtered];
+      });
       setPage(nextPage);
     }
+    setLoadingMore(false);
   };
 
   const pickImage = async () => {
@@ -483,9 +491,9 @@ export default function Home() {
           text: postText,
 
           images: selectedImages,
-          date: postDate, 
+          date: postDate,
           isEvent: isEventPost,
-          comments: [], 
+          comments: [],
           likedBy: [],
         };
         setLoading(true);
@@ -512,7 +520,7 @@ export default function Home() {
     const isSingleImage = post.images.length === 1;
 
     return (
-      <View key={post.id} post={post}>
+      <View key={post.id} post={post} style={styles.postCard}>
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
             <TouchableOpacity
@@ -580,33 +588,26 @@ export default function Home() {
 
           {hasImages && (
             <View style={styles.postImagesContainer}>
-              {post.images.slice(0, 3).map((uri, idx) => {
+              {post.images.slice(0, 3).map((uri, idx) => (
+                <TouchableOpacity
+                  key={`${post.id}-img-${idx}`}
+                  onPress={() => openImage(post.images, uri)}
+                  style={isSingleImage ? styles.postImageWrapperSingle : styles.postImageWrapperMultiple}
+                >
+                  <Image
+                    source={{ uri }}
+                    style={isSingleImage ? styles.postImageSingle : styles.postImageThumbnail}
+                  />
+                  {post.images.length > 3 && idx === 2 && (
+                    <View style={styles.moreImagesOverlay}>
+                      <Text style={styles.moreImagesText}>
+                        +{post.images.length - 2}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
 
-                const isThirdImage = idx === 2;
-                const hasMoreImages = post.images.length > 3 && isThirdImage;
-
-                return (
-                  <TouchableOpacity
-                    key={uri}
-                    URI to openImage
-                    onPress={() => openImage(post.images, uri)}
-                    style={isSingleImage ? styles.postImageWrapperSingle : styles.postImageWrapperMultiple}
-                  >
-                    <Image
-                      source={{ uri }}
-                      style={isSingleImage ? styles.postImageSingle : styles.postImageThumbnail}
-                    />
-
-                    {hasMoreImages && (
-                      <View style={styles.moreImagesOverlay}>
-                        <Text style={styles.moreImagesText}>
-                          +{post.images.length - 2}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )
-              })}
             </View>
           )}
 
@@ -1033,26 +1034,26 @@ export default function Home() {
                     </View>
 
                     {group && (
-                        <TouchableOpacity
-                          style={[
-                            styles.eventPostButton,
-                            isEventPost && styles.eventPostButtonActive,
-                          ]}
-                          onPress={() => setIsEventPost(!isEventPost)}
-                        >
-                          <Ionicons
-                            name={isEventPost ? "checkmark-circle" : "ellipse-outline"}
-                            size={20}
-                            color={isEventPost ? "#34a853" : "#777"}
-                            style={{ marginRight: 8 }}
-                          />
-                          <Text style={{ color: isEventPost ? "#34a853" : "#777", fontSize: 16 }}>
-                            Event Post
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                      <TouchableOpacity
+                        style={[
+                          styles.eventPostButton,
+                          isEventPost && styles.eventPostButtonActive,
+                        ]}
+                        onPress={() => setIsEventPost(!isEventPost)}
+                      >
+                        <Ionicons
+                          name={isEventPost ? "checkmark-circle" : "ellipse-outline"}
+                          size={20}
+                          color={isEventPost ? "#34a853" : "#777"}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={{ color: isEventPost ? "#34a853" : "#777", fontSize: 16 }}>
+                          Event Post
+                        </Text>
+                      </TouchableOpacity>
+                    )}
 
-                  <View style={styles.optionsGrid}>
+                    <View style={styles.optionsGrid}>
                       <TouchableOpacity style={styles.optionButton} onPress={pickImage}>
                         <MaterialIcons name="photo-library" size={24} color="#2e89ff" />
 
@@ -1132,15 +1133,15 @@ export default function Home() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 80,
   },
   postContainer: {
@@ -1148,28 +1149,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 10,
-    marginTop: 10,
-    borderBottomColor: '#ccc',
-    borderBottomWidth: 1,
-    marginBottom: 15,
+    padding: 12,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   profileImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 25,
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
     marginRight: 10,
   },
   profileImagePost: {
-    width: 35,
-
-    height: 35,
-    borderRadius: 25,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     marginRight: 0,
   },
 
   profileIcon: {
-    fontSize: 30,
+    fontSize: 35,
     marginRight: 10,
   },
   postInputContainer: {
@@ -1179,13 +1181,13 @@ const styles = StyleSheet.create({
   },
 
   postContentContainer: {
-    borderColor: '#ccc',
+    borderColor: '#e0e0e0',
     borderWidth: 1,
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     minHeight: '60%',
     marginBottom: 20,
-
+    backgroundColor: '#fafafa',
   },
 
   textOnly: {
@@ -1194,7 +1196,7 @@ const styles = StyleSheet.create({
   },
   placeholderInput: {
     fontSize: 16,
-    color: '#777',
+    color: '#333',
   },
   imageGrid: {
     flexDirection: 'row',
@@ -1206,8 +1208,8 @@ const styles = StyleSheet.create({
   },
 
   placeholderText: {
-    color: '#777',
-    fontSize: 16,
+    color: '#888',
+    fontSize: 15,
   },
   modalBackground: {
     flex: 1,
@@ -1302,8 +1304,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
-    width:
-      '80%',
+    width: '80%',
     alignItems: 'center',
   },
   discardTitle: {
@@ -1327,8 +1328,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#d11a2a',
     padding: 10,
     borderRadius: 8,
-    marginRight:
-      10,
+    marginRight: 10,
     alignItems: 'center',
   },
   keepButton: {
@@ -1340,55 +1340,58 @@ const styles = StyleSheet.create({
   },
   postCard: {
     backgroundColor: '#fff',
-    borderRadius: 15,
-
-    marginBottom: 15,
-    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   postHeader: {
-
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   postUserInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   postUserName: {
-
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
     marginBottom: 0,
     paddingBottom: 0,
   },
   postDate: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#888',
-    marginTop: 0,
+    marginTop: 2,
     paddingTop: 0,
   },
   postBody: {
-    marginTop: 5,
-
+    marginTop: 8,
   },
   postTextContent: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#333',
-    marginBottom: 10,
+    lineHeight: 22,
+    marginBottom: 12,
   },
 
   postImagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginVertical: 5,
-    marginHorizontal: -1,
+    marginVertical: 8,
+    marginHorizontal: -2,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
 
   postImageWrapperSingle: {
@@ -1398,58 +1401,58 @@ const styles = StyleSheet.create({
 
   postImageWrapperMultiple: {
     width: '33.33%',
-    padding: 1,
+    padding: 2,
   },
 
   postImageSingle: {
     width: '100%',
     height: 400,
-    borderRadius: 10,
-    resizeMode: 'fill',
+    borderRadius: 8,
+    resizeMode: 'cover',
   },
 
   postImageThumbnail: {
     width: '100%',
     height: 200,
-    borderRadius: 5,
-    resizeMode: 'fill',
+    borderRadius: 6,
+    resizeMode: 'cover',
   },
 
   moreImagesOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Dark overlay
+    top: 2,
+    left: 2,
+    right: 2,
+    bottom: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 6,
   },
 
   moreImagesText: {
     color: '#fff',
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: 'bold',
   },
 
   postActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 10,
+    marginTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-
-    paddingTop: 10,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 12,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   actionText: {
     color: '#555',
     fontSize: 14,
+    fontWeight: '500',
   },
   actionRow: {
     flexDirection: 'row',
@@ -1544,7 +1547,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 10,
   },
-
 
   shareUsername: {
     fontWeight: 'bold',
