@@ -50,6 +50,8 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const ss = "superadmin";
   const ss2 = "sheen";
+  const ss3 = "admin";
+
   const [currentUserInfo, setCurrentUserInfo] = useState({
     firstName: '',
     lastName: '',
