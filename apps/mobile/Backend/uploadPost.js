@@ -29,7 +29,7 @@ const convertToBase64 = async (uri) => {
   });
 };
 
-export const savePost = async (user, postText, images, isEvent = false) => {
+export const savePost = async (user, postText, images, isEvent) => {
   const postId = Date.now().toString(); // Unique post ID
   let imageBase64List = [];
 
@@ -51,8 +51,7 @@ export const savePost = async (user, postText, images, isEvent = false) => {
     userName: user.name,
     //profileImage: user.profileImage,
     text: postText,
-    // Note: The isEvent variable is now guaranteed to be 'false' if undefined was passed.
-    isEvent: isEvent, 
+    isEvent: isEvent,
     images: imageBase64List,
     timestamp: serverTimestamp(),
     likedBy: [],
