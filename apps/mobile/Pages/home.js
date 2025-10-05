@@ -548,6 +548,7 @@ export default function Home() {
           ? arrayRemove(currentUserEmail)
           : arrayUnion(currentUserEmail),
       });
+
       setNewsfeedPosts(prev =>
         prev.map(p =>
           p.id === postId
@@ -555,12 +556,12 @@ export default function Home() {
               ...p,
               likedBy: hasLiked
                 ? p.likedBy.filter(email => email !== currentUserEmail)
-
                 : [...p.likedBy, currentUserEmail],
             }
             : p
         )
       );
+
       setVisiblePosts(prev =>
         prev.map(p =>
           p.id === postId
@@ -568,12 +569,25 @@ export default function Home() {
               ...p,
               likedBy: hasLiked
                 ? p.likedBy.filter(email => email !== currentUserEmail)
-
                 : [...p.likedBy, currentUserEmail],
             }
             : p
         )
       );
+
+      setRecommendedPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+              ...p,
+              likedBy: hasLiked
+                ? p.likedBy.filter(email => email !== currentUserEmail)
+                : [...p.likedBy, currentUserEmail],
+            }
+            : p
+        )
+      );
+
       if (!hasLiked) {
         const postSnap = await getDoc(postRef);
         const postData = postSnap.data();
