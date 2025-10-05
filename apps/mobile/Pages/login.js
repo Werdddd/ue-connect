@@ -1,43 +1,44 @@
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform, ActivityIndicator, } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform, ActivityIndicator, } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { loginUser } from '../Backend/login';
 import { Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Login() {
   const [studentNumber, setStudentNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const navigation = useNavigation();  
+  const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     const studentNumberRegex = /^[0-9]{11}$/;
     const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
-  
+
     //Input validation
     // if (!studentNumber.match(studentNumberRegex)) {
     //   Alert.alert('Invalid Input', 'Student number must be exactly 11 digits.');
     //   return;
     // }
-  
+
     if (!email.match(ueEmailRegex)) {
       Alert.alert('Invalid Input', 'Use a valid UE email address.');
       return;
     }
-  
+
     if (password.length < 6) {
       Alert.alert('Invalid Input', 'Password must be at least 6 characters long.');
       return;
     }
-  
+
     setLoading(true);
-  
+
     const { success, user, error } = await loginUser({ email, password });
-  
+
     setLoading(false);
-  
+
     if (success) {
       navigation.navigate('Home');
     } else {
@@ -49,24 +50,29 @@ export default function Login() {
       );
     }
   };
-  
-  
+
+
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container}>
-        {loading && (
-                <View style={styles.loadingContainer}>
-                  <View style={styles.loadingBox}>
-                    <ActivityIndicator size="large" color="#FE070C" />
-                    <Text style={{ marginTop: 10 }}>Logging your account...</Text>
-                  </View>
-                </View>
-              )}
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.container}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
         >
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="large" color="#FE070C" />
+                <Text style={{ marginTop: 10 }}>Logging your account...</Text>
+              </View>
+            </View>
+          )}
+
           <View
             keyboardShouldPersistTaps="handled"
           >
@@ -106,7 +112,7 @@ export default function Login() {
             <TouchableOpacity onPress={() => console.log('Forgot Password pressed')}>
               <Text style={styles.forgotPassword}>Forgot Password?</Text>
             </TouchableOpacity>
-                
+
             <TouchableOpacity style={styles.button} onPress={handleLogin}>
               <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
@@ -118,9 +124,9 @@ export default function Login() {
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -130,6 +136,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 10,
     backgroundColor: '#fff',
+    minHeight: '100%',
   },
   title: {
     fontSize: 20,
@@ -179,6 +186,7 @@ const styles = StyleSheet.create({
     height: 220,
     marginBottom: 10,
     alignSelf: 'center',
+    marginTop: 70,
   },
   forgotPassword: {
     textAlign: 'right',
