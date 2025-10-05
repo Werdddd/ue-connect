@@ -57,6 +57,7 @@ export default function UserProfilePage() {
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [followed, setFollowed] = useState(false);
   const [userName, setUserName] = useState('');
+  const [currentUserProfileImage, setCurrentUserProfileImage] = useState('');
 
   // pagination
   const [lastDoc, setLastDoc] = useState(null);
@@ -71,16 +72,20 @@ export default function UserProfilePage() {
   useEffect(() => {
     const fetchUser = async () => {
       const user = auth.currentUser;
+
+
       if (user?.email) {
         setCurrentUserEmail(user.email);
 
         const userRef = doc(firestore, 'Users', user.email);
         const userSnap = await getDoc(userRef);
 
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          setUserName(`${userData.firstName} ${userData.lastName}`);
-        }
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        setUserName(`${userData.firstName} ${userData.lastName}`);
+        setCurrentUserProfileImage(userData.profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg');
+      }
+
       }
     };
     fetchUser();
@@ -141,17 +146,18 @@ export default function UserProfilePage() {
 
   const fetchUserPosts = async (initial = false) => {
     if (!userEmail) return;
-
     try {
+      // 🔧 Build query using nested field "user.id" instead of userId
       let q = query(
         collection(firestore, 'newsfeed'),
-        where('userId', '==', userEmail),
+        where('user.id', '==', userEmail),
         limit(10)
       );
+
       if (!initial && lastDoc) {
         q = query(
           collection(firestore, 'newsfeed'),
-          where('userId', '==', userEmail),
+          where('user.id', '==', userEmail),
           startAfter(lastDoc),
           limit(10)
         );
@@ -164,41 +170,93 @@ export default function UserProfilePage() {
       const enriched = await Promise.all(
         snap.docs.map(async (docSnap) => {
           const data = docSnap.data();
-          const dateObj = data.date?.toDate
-            ? data.date.toDate()
-            : new Date(data.date || Date.now());
 
+          // ✅ Handle timestamp
+          let dateObj = new Date();
+          const rawDate = data.timestamp || data.date;
+          if (rawDate?.toDate) {
+            dateObj = rawDate.toDate();
+          } else if (typeof rawDate === 'number' || typeof rawDate === 'string') {
+            dateObj = new Date(rawDate);
+          }
+
+          // ✅ Normalize images
           const images = (data.images || []).map((img) =>
-            img.startsWith('http')
-              ? img
-              : `data:image/jpeg;base64,${img}`
+            img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
           );
 
+          // ✅ Fetch user info (sharer)
           let userProfile = {
             name: 'Anonymous',
             profileImage:
               'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
-            role: ''
+            role: '',
           };
-          if (data.userId) {
-            const userDoc = await getDoc(doc(firestore, 'Users', data.userId));
+
+          const userId = data.user?.id || data.userId;
+          if (userId) {
+            const userDoc = await getDoc(doc(firestore, 'Users', userId));
             if (userDoc.exists()) {
               const u = userDoc.data();
               userProfile = {
                 name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'Anonymous',
-                profileImage: u.profileImage?.startsWith('http')
-                  ? u.profileImage
-                  : u.profileImage || userProfile.profileImage,
-                role: u.role || ''
+                profileImage:
+                  u.profileImage?.startsWith('http') || u.profileImage?.startsWith('data:')
+                    ? u.profileImage
+                    : u.profileImage || userProfile.profileImage,
+                role: u.role || '',
+              };
+            } else if (data.user?.name) {
+              userProfile = {
+                name: data.user.name,
+                profileImage: data.user.profileImage || userProfile.profileImage,
+                role: data.user.role || '',
               };
             }
           }
 
+          // ✅ Fetch comment count
           const commentsSnap = await getDocs(
             collection(firestore, 'newsfeed', docSnap.id, 'comments')
           );
           const commentCount = commentsSnap.size;
 
+          // ✅ Handle shared post data if this is a shared post
+          let sharedPostData = null;
+          if (data.isShared && data.sharedPostData) {
+            const sp = data.sharedPostData;
+            const sharedUserId = sp.user?.id || sp.userId;
+            let sharedUserProfile = {
+              name: sp.user?.name || sp.userName || 'Unknown',
+              profileImage:
+                sp.user?.profileImage ||
+                'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
+            };
+
+            // Try to enrich with Users collection
+            if (sharedUserId) {
+              const sharedUserDoc = await getDoc(doc(firestore, 'Users', sharedUserId));
+              if (sharedUserDoc.exists()) {
+                const su = sharedUserDoc.data();
+                sharedUserProfile = {
+                  name: `${su.firstName || ''} ${su.lastName || ''}`.trim() || 'Unknown',
+                  profileImage:
+                    su.profileImage?.startsWith('http') || su.profileImage?.startsWith('data:')
+                      ? su.profileImage
+                      : su.profileImage || sharedUserProfile.profileImage,
+                };
+              }
+            }
+
+            sharedPostData = {
+              id: sp.id || null,
+              text: sp.text || '',
+              images: sp.images || [],
+              user: sharedUserProfile,
+            };
+          }
+
+          // ✅ Return enriched post
           return {
             id: docSnap.id,
             text: data.text || '',
@@ -206,11 +264,16 @@ export default function UserProfilePage() {
             images,
             likedBy: data.likedBy || [],
             commentCount,
-            user: userProfile
+            pinned: data.pinned === true,
+            isEvent: data.isEvent === true,
+            isShared: data.isShared === true,
+            sharedPostData,
+            user: userProfile,
           };
         })
       );
 
+      // ✅ Merge results
       if (initial) {
         setUserPosts(enriched.reverse());
       } else {
@@ -239,11 +302,11 @@ export default function UserProfilePage() {
         prev.map(p =>
           p.id === postId
             ? {
-                ...p,
-                likedBy: hasLiked
-                  ? p.likedBy.filter(email => email !== currentUserEmail)
-                  : [...p.likedBy, currentUserEmail],
-              }
+              ...p,
+              likedBy: hasLiked
+                ? p.likedBy.filter(email => email !== currentUserEmail)
+                : [...p.likedBy, currentUserEmail],
+            }
             : p
         )
       );
@@ -416,6 +479,7 @@ export default function UserProfilePage() {
               ListHeaderComponent={renderHeader}
               renderItem={({ item }) => (
                 <PostCard
+                  currentUserProfileImage={currentUserProfileImage}
                   key={item.id}
                   post={item}
                   ss={'superadmin'}
@@ -429,7 +493,7 @@ export default function UserProfilePage() {
                   commentText={commentText}
                   shareCaption=""
                   setCommentModalVisible={setCommentModalVisible}
-                  setShareModalVisible={() => {}}
+                  setShareModalVisible={() => { }}
                   setSelectedPostId={setSelectedPostId}
                   fetchComments={fetchComments}
                   handleCommentBackdropPress={() => setCommentModalVisible(false)}
@@ -440,7 +504,7 @@ export default function UserProfilePage() {
                   commentBackdropOpacity={{ value: 1 }}
                   setCommentText={setCommentText}
                   handleAddComment={handleAddComment}
-                  setShareCaption={() => {}}
+                  setShareCaption={() => { }}
                   toggleLike={toggleLike}
                 />
               )}
@@ -463,164 +527,164 @@ export default function UserProfilePage() {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
-    containerPost: {
-        flex: 1,
-        padding: 15,
-        backgroundColor: '#fff',
-    },
-    scrollContent: {
-        flexGrow: 1,
-        paddingHorizontal: 20,
-        paddingBottom: 80,
-    },
-    profileContainer: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    userProfileImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        marginBottom: 15,
-        borderWidth: 1,
-        borderColor: '#ccc',
-    },
-    userName: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 5,
-    },
-    userYear: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#777',
-        marginBottom: 0,
-    },
-    userCourse: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#777',
-        marginBottom: 0,
-    },
-    texts: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#777',
-        marginBottom: 8,
-        // borderColor: '#000',
-        // borderStyle: 'solid',
-        // borderWidth: 1,
-        width: '30%',
-    },
-    textsNumber1: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#000',
-        marginBottom: -14,
-        fontWeight: 800,
-        // borderColor: '#000',
-        // borderStyle: 'solid',
-        // borderWidth: 1,
-        width: '20%',
-        marginLeft: -10,
-        //marginLeft: 0
-    },
-    textsNumber2: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#000',
-        marginBottom: -14,
-        fontWeight: 800,
-        // borderColor: '#000',
-        // borderStyle: 'solid',
-        // borderWidth: 1,
-        width: '20%',
-        marginLeft: -2,
-        //width: '10%',
-        //marginLeft: 0
-    },
-    textsNumber3: {
-        fontSize: 14,
-        textAlign: 'center',
-        color: '#000',
-        marginBottom: -14,
-        fontWeight: 800,
-        // borderColor: '#000',
-        // borderStyle: 'solid',
-        // borderWidth: 1,
-        width: '20%',
-        marginLeft: 0,
-        marginRight: -12,
-        //width: '10%',
-        //marginLeft: 0
-    },
-    underline: {
-        alignSelf: 'center',
-        height: 1,
-        backgroundColor: '#555',
-        width: '100%',
-        marginTop: 2,
-    },
-    infoDetailRow: {
-        flexDirection: 'row',
-        alignItems: 'top',
-        marginTop: 0,
-        marginBottom: 0,
-        justifyContent: 'space-between',
-        width: '50%',
-    },
-    followDetailRow: {
-        flexDirection: 'row',
-        alignItems: 'top',
-        marginTop: 10,
-        justifyContent: 'space-between',
-        width: '90%',
-    },
-    followDataRow: {
-        flexDirection: 'row',
-        alignItems: 'top',
-        marginTop: 10,
-        justifyContent: 'space-between',
-        width: '70%',
-    },
-    followContainer: {
-        alignItems: 'center',
-        marginTop: 10,
-        marginBottom: 8,
-      },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  containerPost: {
+    flex: 1,
+    padding: 15,
+    backgroundColor: '#fff',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 80,
+  },
+  profileContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  userProfileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  userYear: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#777',
+    marginBottom: 0,
+  },
+  userCourse: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#777',
+    marginBottom: 0,
+  },
+  texts: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#777',
+    marginBottom: 8,
+    // borderColor: '#000',
+    // borderStyle: 'solid',
+    // borderWidth: 1,
+    width: '30%',
+  },
+  textsNumber1: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#000',
+    marginBottom: -14,
+    fontWeight: 800,
+    // borderColor: '#000',
+    // borderStyle: 'solid',
+    // borderWidth: 1,
+    width: '20%',
+    marginLeft: -10,
+    //marginLeft: 0
+  },
+  textsNumber2: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#000',
+    marginBottom: -14,
+    fontWeight: 800,
+    // borderColor: '#000',
+    // borderStyle: 'solid',
+    // borderWidth: 1,
+    width: '20%',
+    marginLeft: -2,
+    //width: '10%',
+    //marginLeft: 0
+  },
+  textsNumber3: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#000',
+    marginBottom: -14,
+    fontWeight: 800,
+    // borderColor: '#000',
+    // borderStyle: 'solid',
+    // borderWidth: 1,
+    width: '20%',
+    marginLeft: 0,
+    marginRight: -12,
+    //width: '10%',
+    //marginLeft: 0
+  },
+  underline: {
+    alignSelf: 'center',
+    height: 1,
+    backgroundColor: '#555',
+    width: '100%',
+    marginTop: 2,
+  },
+  infoDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'top',
+    marginTop: 0,
+    marginBottom: 0,
+    justifyContent: 'space-between',
+    width: '50%',
+  },
+  followDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'top',
+    marginTop: 10,
+    justifyContent: 'space-between',
+    width: '90%',
+  },
+  followDataRow: {
+    flexDirection: 'row',
+    alignItems: 'top',
+    marginTop: 10,
+    justifyContent: 'space-between',
+    width: '70%',
+  },
+  followContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+  },
 
-      followButton: {
-        backgroundColor: '#E50914',
-        paddingVertical: 8,
-        paddingHorizontal: 20,
-        borderRadius: 20,
-      },
-      
-      followButtonText: {
-        color: '#fff',
-        fontWeight: '600',
-      },
-      followingButton: {
-        backgroundColor: '#fff',
-        borderColor: '#E50914',
-        borderWidth: 1,
-        paddingVertical: 7,
-        paddingHorizontal: 18,
-        borderRadius: 20,
-      },
-      
-      followingButtonText: {
-        color: '#E50914',
-        fontWeight: '600',
-      }
+  followButton: {
+    backgroundColor: '#E50914',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+  },
+
+  followButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  followingButton: {
+    backgroundColor: '#fff',
+    borderColor: '#E50914',
+    borderWidth: 1,
+    paddingVertical: 7,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+  },
+
+  followingButtonText: {
+    color: '#E50914',
+    fontWeight: '600',
+  }
 
 });

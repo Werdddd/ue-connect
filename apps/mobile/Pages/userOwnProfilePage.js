@@ -69,6 +69,7 @@ export default function UserOwnProfilePage() {
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [postComments, setPostComments] = useState([]);
+  const [currentUserProfileImage, setCurrentUserProfileImage] = useState('');
 
   const navigation = useNavigation();
   const handleToggleOptions = (postId) => {
@@ -424,6 +425,7 @@ export default function UserOwnProfilePage() {
               ListHeaderComponent={renderHeader}
               renderItem={({ item }) => (
                 <PostCard
+                  currentUserProfileImage={profile}
                   key={item.id}
                   post={item}
                   ss={'superadmin'}

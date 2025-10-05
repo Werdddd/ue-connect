@@ -19,6 +19,7 @@ import { PanGestureHandler } from 'react-native-gesture-handler';
 import { FontAwesome, Entypo, Ionicons } from '@expo/vector-icons';
 
 const PostCard = ({
+  currentUserProfileImage,
   post,
   ss,
   ss2,
@@ -297,12 +298,11 @@ const PostCard = ({
                       </ScrollView>
 
                       <View style={styles.commentInputRow}>
-                        {post.user.profileImage ?
-                          (
-                            <Image source={{ uri: post.user.profileImage }} style={styles.profileImagePost} />
-                          ) : (
-                            <FontAwesome name="user-circle-o" size={35} color="#999" />
-                          )}
+                        {currentUserProfileImage ? (
+                          <Image source={{ uri: currentUserProfileImage }} style={styles.profileImagePost} />
+                        ) : (
+                          <FontAwesome name="user-circle-o" size={35} color="#999" />
+                        )}
                         <TextInput
                           style={styles.commentInput}
                           placeholder="Add a comment..."
