@@ -51,89 +51,88 @@ export default function Login() {
     }
   };
 
-
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {loading && (
-            <View style={styles.loadingContainer}>
-              <View style={styles.loadingBox}>
-                <ActivityIndicator size="large" color="#FE070C" />
-                <Text style={{ marginTop: 10 }}>Logging your account...</Text>
-              </View>
-            </View>
-          )}
-
-          <View
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
             keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
           >
-            <Image source={require('../assets/logo.png')} style={styles.logo} />
-            <Text style={styles.title}>Login to your Account</Text>
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <View style={styles.loadingBox}>
+                  <ActivityIndicator size="large" color="#FE070C" />
+                  <Text style={{ marginTop: 10 }}>Logging your account...</Text>
+                </View>
+              </View>
+            )}
 
-            {/* <TextInput
+            <View
+              keyboardShouldPersistTaps="handled"
+            >
+              <Image source={require('../assets/logo.png')} style={styles.logo} />
+              <Text style={styles.title}>Login to your Account</Text>
+
+              {/* <TextInput
               style={styles.input}
               placeholder="Student Number"
               value={studentNumber}
               onChangeText={setStudentNumber}
               keyboardType="numeric"
             /> */}
-            <Text style={styles.label} >UE Email Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="UE Email Address"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <Text style={styles.label} >Password</Text>
-            <View style={styles.passwordContainer}>
+              <Text style={styles.label} >UE Email Address</Text>
               <TextInput
-                style={styles.passwordInput}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
+                style={styles.input}
+                placeholder="UE Email Address"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+              <Text style={styles.label} >Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Text style={styles.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity onPress={() => console.log('Forgot Password pressed')}>
+                <Text style={styles.forgotPassword}>Forgot Password?</Text>
               </TouchableOpacity>
-            </View>
 
-            <TouchableOpacity onPress={() => console.log('Forgot Password pressed')}>
-              <Text style={styles.forgotPassword}>Forgot Password?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.button} onPress={handleLogin}>
-              <Text style={styles.buttonText}>Login</Text>
-            </TouchableOpacity>
-
-            <View style={styles.signUpContainer}>
-              <Text style={styles.dontHaveAccount}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-                <Text style={styles.signUp}>Sign up</Text>
+              <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                <Text style={styles.buttonText}>Login</Text>
               </TouchableOpacity>
+
+              <View style={styles.signUpContainer}>
+                <Text style={styles.dontHaveAccount}>Don't have an account? </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+                  <Text style={styles.signUp}>Sign up</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 10,
     backgroundColor: '#fff',
     minHeight: '100%',
