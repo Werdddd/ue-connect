@@ -176,7 +176,7 @@ export default function OrganizationPage() {
 
                         {/* Reaccreditation Section */}
                         <View style={[styles.registerCard, styles.reaccreditCard]}>
-                            <Text style={styles.registerTitle}>Existing Organization?</Text>
+                            <Text style={styles.reaccredTitle}>Existing Organization?</Text>
                             <Text style={styles.registerSubtitle}>
                                 Keep your organization active with annual reaccreditation
                             </Text>
@@ -364,6 +364,13 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#E50914',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    reaccredTitle:{
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#1E88E5',
         marginBottom: 8,
         textAlign: 'center',
     },
