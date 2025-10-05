@@ -520,7 +520,17 @@ export default function Home() {
     const isSingleImage = post.images.length === 1;
 
     return (
-      <View key={post.id} post={post} style={styles.postCard}>
+      <View
+      key={post.id}
+      post={post}
+      style={[
+        styles.postCard,
+        post.isEvent && styles.eventPostCard // <-- Conditional style
+      ]}
+    >
+      {post.isEvent && (
+        <Text style={styles.eventBadge}>Event</Text> // <-- Event badge
+      )}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
             <TouchableOpacity
@@ -857,7 +867,7 @@ export default function Home() {
 
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10 }}>
+          {/* <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 10 }}>
             <TouchableOpacity
               style={[
                 styles.filterButton,
@@ -878,14 +888,14 @@ export default function Home() {
               <Ionicons
                 name={filterEventOnly ? 'checkmark-circle' : 'ellipse-outline'}
                 size={18}
-                color={filterEventOnly ? '#34a853' : '#777'}
+                color={filterEventOnly ? '#E50914' : '#777'}
                 style={{ marginRight: 5 }}
               />
-              <Text style={{ color: filterEventOnly ? '#34a853' : '#777' }}>
+              <Text style={{ color: filterEventOnly ? '#E50914' : '#777' }}>
                 {filterEventOnly ? 'Showing Event Posts' : 'Show Event Posts Only'}
               </Text>
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {visiblePosts.map((post) => renderPost(post))}
         </ScrollView>
@@ -1044,10 +1054,10 @@ export default function Home() {
                         <Ionicons
                           name={isEventPost ? "checkmark-circle" : "ellipse-outline"}
                           size={20}
-                          color={isEventPost ? "#34a853" : "#777"}
+                          color={isEventPost ? "#E50914" : "#777"}
                           style={{ marginRight: 8 }}
                         />
-                        <Text style={{ color: isEventPost ? "#34a853" : "#777", fontSize: 16 }}>
+                        <Text style={{ color: isEventPost ? "#E50914" : "#777", fontSize: 16 }}>
                           Event Post
                         </Text>
                       </TouchableOpacity>
@@ -1133,11 +1143,11 @@ export default function Home() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -1156,6 +1166,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    marginBottom: 12,
   },
   profileImage: {
     width: 35,
@@ -1177,7 +1188,7 @@ const styles = StyleSheet.create({
   postInputContainer: {
     flex: 1,
     justifyContent: 'center',
-
+    
   },
 
   postContentContainer: {
@@ -1337,6 +1348,24 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  eventPostCard: {
+    borderColor: '#E50914',
+    
+    // Add more event-specific styles here
+  },
+  eventBadge: {
+    position: 'absolute',
+    top: 25,
+    right: 50,
+    backgroundColor: '#E50914',
+    color: '#fff',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    fontWeight: 'bold',
+    fontSize: 12,
+    zIndex: 10,
   },
   postCard: {
     backgroundColor: '#fff',
@@ -1648,7 +1677,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   eventPostButtonActive: {
-    borderColor: '#34a853',
+    borderColor: '#E50914',
     backgroundColor: '#e8f5e9',
   },
   filterButton: {
@@ -1661,7 +1690,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   filterButtonActive: {
-    borderColor: '#34a853',
-    backgroundColor: '#e8f5e9',
+    borderColor: '#E50914',
+  
   },
 });
