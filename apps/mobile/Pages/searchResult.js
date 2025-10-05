@@ -2,42 +2,40 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Image, Modal, TextInput
+  ActivityIndicator, Image, Modal, TextInput, Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { collection, query, where, getDocs, getDoc, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { auth, firestore } from '../Firebase'; // Adjust the import based on your Firebase setup
-
+import { collection, query, where, getDocs, getDoc, doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, addDoc } from 'firebase/firestore';
+import { auth, firestore } from '../Firebase';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
-
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
-
 import { Ionicons, FontAwesome, MaterialIcons, Entypo } from '@expo/vector-icons';
 
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function SearchResult({ route }) {
   const { searchText } = route.params || {};
   const navigation = useNavigation();
 
   const [posts, setPosts] = useState([]);
-
   const [userProfileImage, setUserProfileImage] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [postText, setPostText] = useState('');
   const [selectedImages, setSelectedImages] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
- const [loading, setLoading] = useState(false);
-
+  const [loading, setLoading] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imagesForModal, setImagesForModal] = useState([]);
   const PAGE_SIZE = 5;
   const [visiblePosts, setVisiblePosts] = useState([]);
   const [page, setPage] = useState(1);
-
   const [newsfeedPosts, setNewsfeedPosts] = useState([]);
   const [userName, setusername] = useState('');
-  const userComment = 'This is a sample comment.'; 
+  const userComment = 'This is a sample comment.';
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [scrollY, setScrollY] = useState(0);
   const [liked, setLiked] = useState(false);
@@ -50,283 +48,53 @@ export default function SearchResult({ route }) {
   const [postComments, setPostComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
   const [comments, setComments] = useState([]);
+  const [selectedPost, setSelectedPost] = useState(null);
   const ss = "dd";
 
   useEffect(() => {
-  const searchPosts = async () => {
-    if (!searchText) {
-      fetchNewsfeed();
-      return;
-    }
-
-    try {
-      const postsRef = collection(firestore, "newsfeed");
-      const q = query(
-        postsRef,
-        where("text", ">=", searchText),
-        where("text", "<=", searchText + "\uf8ff")
-      );
-      const snapshot = await getDocs(q);
-
-      const results = await Promise.all(
-        snapshot.docs.map(async (docSnap) => {
-          const d = docSnap.data();
-          const rawDate = d.date || d.timestamp;
-          const dateObj = rawDate?.toDate
-            ? rawDate.toDate()
-            : new Date(rawDate || Date.now());
-
-          const images = (d.images || []).map((img) =>
-            img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
-          );
-
-          const commentsSnapshot = await getDocs(
-            collection(firestore, 'newsfeed', docSnap.id, 'comments')
-          );
-          const commentCount = commentsSnapshot.size;
-
-          let profileImage = 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
-          let userName = d.userName || 'Anonymous';
-          let role = '';
-
-          if (d.userId) {
-            try {
-              const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
-              if (userDoc.exists()) {
-                const userData = userDoc.data();
-                userName = userData.firstName && userData.lastName
-                  ? `${userData.firstName} ${userData.lastName}`
-                  : userData.firstName || 'Anonymous';
-
-                profileImage = userData.profileImage || profileImage;
-                role = userData.role || '';
-              }
-            } catch (err) {
-              console.warn(`Failed to get user data for ${d.userId}`, err);
-            }
-          }
-
-          return {
-            id: docSnap.id,
-            text: d.text || '',
-            date: dateObj,
-            images,
-            userId: d.userId,
-            user: {
-              name: userName,
-              profileImage,
-              role,
-            },
-            likedBy: d.likedBy || [],
-            commentCount,
-            pinned: d.pinned === true,
-          };
-        })
-      );
-
-      const sortedPosts = results.sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1;
-        if (!a.pinned && b.pinned) return 1;
-        return b.date - a.date;
-      });
-
-      setNewsfeedPosts(sortedPosts);
-    } catch (error) {
-      console.error("Error searching posts:", error);
-    }
-  };
-
-  searchPosts();
-}, [searchText]);
-
-useEffect(() => {
-  const searchPosts = async () => {
-    if (!searchText) {
-      fetchNewsfeed();
-      return;
-    }
-
-    try {
-      const postsRef = collection(firestore, "newsfeed");
-      const q = query(
-        postsRef,
-        where("text", ">=", searchText),
-        where("text", "<=", searchText + "\uf8ff")
-      );
-      const snapshot = await getDocs(q);
-
-      const results = await Promise.all(
-        snapshot.docs.map(async (docSnap) => {
-          const d = docSnap.data();
-          const rawDate = d.date || d.timestamp;
-          const dateObj = rawDate?.toDate
-            ? rawDate.toDate()
-            : new Date(rawDate || Date.now());
-
-          const images = (d.images || []).map((img) =>
-            img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
-          );
-
-          const commentsSnapshot = await getDocs(
-            collection(firestore, 'newsfeed', docSnap.id, 'comments')
-          );
-          const commentCount = commentsSnapshot.size;
-
-          let profileImage = 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
-          let userName = d.userName || 'Anonymous';
-          let role = '';
-
-          if (d.userId) {
-            try {
-              const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
-              if (userDoc.exists()) {
-                const userData = userDoc.data();
-                userName = userData.firstName && userData.lastName
-                  ? `${userData.firstName} ${userData.lastName}`
-                  : userData.firstName || 'Anonymous';
-
-                profileImage = userData.profileImage || profileImage;
-                role = userData.role || '';
-              }
-            } catch (err) {
-              console.warn(`Failed to get user data for ${d.userId}`, err);
-            }
-          }
-
-          return {
-            id: docSnap.id,
-            text: d.text || '',
-            date: dateObj,
-            images,
-            userId: d.userId,
-            user: {
-              name: userName,
-              profileImage,
-              role,
-            },
-            likedBy: d.likedBy || [],
-            commentCount,
-            pinned: d.pinned === true,
-          };
-        })
-      );
-      const sortedPosts = results.sort((a, b) => {
-        if (a.pinned && !b.pinned) return -1;
-        if (!a.pinned && b.pinned) return 1;
-        return b.date - a.date;
-      });
-
-      setNewsfeedPosts(sortedPosts);
-    } catch (error) {
-      console.error("Error searching posts:", error);
-    }
-  };
-
-  searchPosts();
-}, [searchText]);
-
-  const toggleSearch = () => {
-    setIsSearchVisible(!isSearchVisible);
-  };
-
-  const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
-
-  useEffect(() => {
-    if (commentModalVisible && selectedPostId) {
-      fetchComments(selectedPostId);
-    }
-
-    const user = auth.currentUser;
-    if (user?.email) {
-    setCurrentUserEmail(user.email);
-    }
-
-    const getUserDataAndSearchPosts = async () => {
-      if (!user || !user.email) return;
-    
-      try {
-        const userRef = doc(firestore, "Users", user.email);
-        const userDoc = await getDoc(userRef);
-    
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setusername(`${userData.firstName} ${userData.lastName}`);
-    
-          if (userData?.profileImage) {
-            const isBase64 = !userData.profileImage.startsWith('http');
-            const imageSource = isBase64
-              ? `${userData.profileImage}`
-              : userData.profileImage;
-            setUserProfileImage(imageSource);
-          }
-    
-          setRole(userData.role);
-        } else {
-          console.log("User not found in Firestore");
-        }
-        if (searchText) {
-          const postsRef = collection(firestore, "newsfeed");
-          const q = query(
-            postsRef,
-            where("text", ">=", searchText),
-            where("text", "<=", searchText + "\uf8ff")
-          );
-          const snapshot = await getDocs(q);
-    
-          const results = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-    
-          setPosts(results);
-        }
-    
-      } catch (error) {
-        console.error("Error fetching user or posts:", error);
-      } finally {
-        setLoading(false);
+    const searchPosts = async () => {
+      if (!searchText) {
+        fetchNewsfeed();
+        return;
       }
-    };
-    getUserDataAndSearchPosts();
 
-    const fetchNewsfeed = async () => {
       try {
-        const snapshot = await getDocs(collection(firestore, 'newsfeed'));
-    
-        const fetched = await Promise.all(
+        const postsRef = collection(firestore, "newsfeed");
+        const q = query(
+          postsRef,
+          where("text", ">=", searchText),
+          where("text", "<=", searchText + "\uf8ff")
+        );
+        const snapshot = await getDocs(q);
+
+        const results = await Promise.all(
           snapshot.docs.map(async (docSnap) => {
             const d = docSnap.data();
-    
             const rawDate = d.date || d.timestamp;
             const dateObj = rawDate?.toDate
               ? rawDate.toDate()
               : new Date(rawDate || Date.now());
-    
+
             const images = (d.images || []).map((img) =>
               img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
             );
-    
+
             const commentsSnapshot = await getDocs(
               collection(firestore, 'newsfeed', docSnap.id, 'comments')
             );
             const commentCount = commentsSnapshot.size;
-    
-            let profileImage =
-              'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+            let profileImage = 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
             let userName = d.userName || 'Anonymous';
             let role = '';
-    
             if (d.userId) {
               try {
                 const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
                 if (userDoc.exists()) {
                   const userData = userDoc.data();
-    
-                  userName =
-                    userData.firstName && userData.lastName
-                      ? `${userData.firstName} ${userData.lastName}`
-                      : userData.firstName || 'Anonymous';
-    
+                  userName = userData.firstName && userData.lastName
+                    ? `${userData.firstName} ${userData.lastName}`
+                    : userData.firstName || 'Anonymous';
+
                   profileImage = userData.profileImage || profileImage;
                   role = userData.role || '';
                 }
@@ -334,7 +102,7 @@ useEffect(() => {
                 console.warn(`Failed to get user data for ${d.userId}`, err);
               }
             }
-    
+
             return {
               id: docSnap.id,
               text: d.text || '',
@@ -348,50 +116,265 @@ useEffect(() => {
               },
               likedBy: d.likedBy || [],
               commentCount,
-              pinned: d.pinned === true, 
+              pinned: d.pinned === true,
+              sharedPostId: d.sharedPostId || null,
+            };
+          })
+        );
+
+        const sortedPosts = results.sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1;
+          return b.date - a.date;
+        });
+        setNewsfeedPosts(sortedPosts);
+      } catch (error) {
+        console.error("Error searching posts:", error);
+      }
+    };
+
+    searchPosts();
+  }, [searchText]);
+  useEffect(() => {
+    const searchPosts = async () => {
+      if (!searchText) {
+        fetchNewsfeed();
+        return;
+      }
+
+      try {
+        const postsRef = collection(firestore, "newsfeed");
+        const q = query(
+          postsRef,
+          where("text", ">=", searchText),
+          where("text", "<=", searchText + "\uf8ff")
+        );
+        const snapshot = await getDocs(q);
+
+        const results = await Promise.all(
+          snapshot.docs.map(async (docSnap) => {
+            const d = docSnap.data();
+            const rawDate = d.date || d.timestamp;
+            const dateObj = rawDate?.toDate
+              ? rawDate.toDate()
+              : new Date(rawDate || Date.now());
+
+            const images = (d.images || []).map((img) =>
+              img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
+            );
+
+            const commentsSnapshot = await getDocs(
+              collection(firestore, 'newsfeed', docSnap.id, 'comments')
+            );
+            const commentCount = commentsSnapshot.size;
+            let profileImage = 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+            let userName = d.userName || 'Anonymous';
+            let role = '';
+            if (d.userId) {
+              try {
+                const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  userName = userData.firstName && userData.lastName
+                    ? `${userData.firstName} ${userData.lastName}`
+                    : userData.firstName || 'Anonymous';
+
+                  profileImage = userData.profileImage || profileImage;
+                  role = userData.role || '';
+                }
+              } catch (err) {
+                console.warn(`Failed to get user data for ${d.userId}`, err);
+              }
+            }
+
+            return {
+              id: docSnap.id,
+              text: d.text || '',
+              date: dateObj,
+              images,
+              userId: d.userId,
+              user: {
+                name: userName,
+                profileImage,
+                role,
+              },
+              likedBy: d.likedBy || [],
+              commentCount,
+              pinned: d.pinned === true,
+              sharedPostId: d.sharedPostId || null,
+            };
+          })
+        );
+        const sortedPosts = results.sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1;
+          return b.date - a.date;
+        });
+        setNewsfeedPosts(sortedPosts);
+      } catch (error) {
+        console.error("Error searching posts:", error);
+      }
+    };
+
+    searchPosts();
+  }, [searchText]);
+  const toggleSearch = () => {
+    setIsSearchVisible(!isSearchVisible);
+  };
+  const [filteredPosts, setFilteredPosts] = useState(newsfeedPosts);
+  useEffect(() => {
+    if (commentModalVisible && selectedPostId) {
+      fetchComments(selectedPostId);
+    }
+
+    const user = auth.currentUser;
+    if (user?.email) {
+      setCurrentUserEmail(user.email);
+    }
+
+    const getUserDataAndSearchPosts = async () => {
+      if (!user || !user.email) return;
+
+      try {
+        const userRef = doc(firestore, "Users", user.email);
+        const userDoc = await getDoc(userRef);
+
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setusername(`${userData.firstName} ${userData.lastName}`);
+
+          if (userData?.profileImage) {
+            const isBase64 = !userData.profileImage.startsWith('http');
+            const imageSource = isBase64
+              ? `${userData.profileImage}`
+              : userData.profileImage;
+            setUserProfileImage(imageSource);
+          }
+
+          setRole(userData.role);
+        } else {
+          console.log("User not found in Firestore");
+        }
+        if (searchText) {
+          const postsRef = collection(firestore, "newsfeed");
+          const q = query(
+            postsRef,
+            where("text", ">=", searchText),
+            where("text", "<=", searchText + "\uf8ff")
+          );
+          const snapshot = await getDocs(q);
+
+          const results = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setPosts(results);
+        }
+
+      } catch (error) {
+        console.error("Error fetching user or posts:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    getUserDataAndSearchPosts();
+    const fetchNewsfeed = async () => {
+      try {
+        const snapshot = await getDocs(collection(firestore, 'newsfeed'));
+        const fetched = await Promise.all(
+          snapshot.docs.map(async (docSnap) => {
+            const d = docSnap.data();
+
+            const rawDate = d.date || d.timestamp;
+            const dateObj = rawDate?.toDate
+              ? rawDate.toDate()
+              : new Date(rawDate || Date.now());
+
+            const images = (d.images || []).map((img) =>
+              img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
+            );
+
+            const commentsSnapshot = await getDocs(
+              collection(firestore, 'newsfeed', docSnap.id, 'comments')
+            );
+            const commentCount = commentsSnapshot.size;
+
+            let profileImage = 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+            let userName = d.userName || 'Anonymous';
+            let role = '';
+
+            if (d.userId) {
+              try {
+                const userDoc = await getDoc(doc(firestore, 'Users', d.userId));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  userName =
+                    userData.firstName && userData.lastName
+                      ? `${userData.firstName} ${userData.lastName}`
+                      : userData.firstName || 'Anonymous';
+
+                  profileImage = userData.profileImage || profileImage;
+                  role = userData.role || '';
+                }
+              } catch (err) {
+                console.warn(`Failed to get user data for ${d.userId}`, err);
+              }
+            }
+
+            return {
+              id: docSnap.id,
+              text: d.text || '',
+              date: dateObj,
+              images,
+              userId: d.userId,
+              user: {
+                name: userName,
+                profileImage,
+                role,
+              },
+              likedBy: d.likedBy || [],
+              commentCount,
+              pinned: d.pinned === true,
+              sharedPostId: d.sharedPostId || null,
             };
           })
         );
         const filteredPosts = fetched.filter(post => {
           const lowerSearch = searchText.toLowerCase();
-          
-  const loadMorePosts = () => {
-    const nextPage = page + 1;
-    const start = (nextPage - 1) * PAGE_SIZE;
-    const end = nextPage * PAGE_SIZE;
 
-    if (start < newsfeedPosts.length) {
-      setVisiblePosts(prev => [
-        ...prev,
-        ...newsfeedPosts.slice(start, end),
-      ]);
-      setPage(nextPage);
-    }
-  };
+          const loadMorePosts = () => {
+            const nextPage = page + 1;
+            const start = (nextPage - 1) * PAGE_SIZE;
+            const end = nextPage * PAGE_SIZE;
 
-  return (
+            if (start < newsfeedPosts.length) {
+              setVisiblePosts(prev => [
+                ...prev,
+                ...newsfeedPosts.slice(start, end),
+              ]);
+              setPage(nextPage);
+            }
+          };
+
+          return (
             (post.text && post.text.toLowerCase().includes(lowerSearch)) ||
             (post.user.name && post.user.name.toLowerCase().includes(lowerSearch))
           );
         });
-    
         const sortedPosts = filteredPosts.sort((a, b) => {
           if (a.pinned && !b.pinned) return -1;
           if (!a.pinned && b.pinned) return 1;
           return b.date - a.date;
         });
-    
         setNewsfeedPosts(sortedPosts);
       } catch (e) {
         console.error('Error fetching newsfeed:', e);
       }
     };
-    
+
     fetchNewsfeed();
-    }, [commentModalVisible, selectedPostId, searchText]); 
-
-
-
+  }, [commentModalVisible, selectedPostId, searchText]);
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -408,8 +391,6 @@ useEffect(() => {
       setSelectedImages([...selectedImages, ...uris]);
     }
   };
-  
-
   const [isDiscardConfirmVisible, setIsDiscardConfirmVisible] = useState(false);
 
   const discardPost = () => {
@@ -426,7 +407,6 @@ useEffect(() => {
   };
 
   const translateY = useSharedValue(0);
-
   const closeModal = () => {
     if (postText.trim().length > 0 || selectedImages.length > 0) {
       setIsDiscardConfirmVisible(true);
@@ -435,11 +415,9 @@ useEffect(() => {
       translateY.value = 0;
     }
   };
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
-
   const handleGesture = (event) => {
     if (event.nativeEvent.translationY > 100) {
       runOnJS(closeModal)();
@@ -447,71 +425,61 @@ useEffect(() => {
       translateY.value = withSpring(0);
     }
   };
-
   const fetchComments = async (postId) => {
-  try {
-    const commentsSnapshot = await getDocs(
-      collection(firestore, 'newsfeed', postId, 'comments')
-    );
+    try {
+      const commentsSnapshot = await getDocs(
+        collection(firestore, 'newsfeed', postId, 'comments')
+      );
+      const commentsData = await Promise.all(
+        commentsSnapshot.docs.map(async (docSnapshot) => {
+          const comment = docSnapshot.data();
+          const userEmail = comment.email;
 
-    const commentsData = await Promise.all(
-      commentsSnapshot.docs.map(async (docSnapshot) => {
-        const comment = docSnapshot.data();
-        const userEmail = comment.email;
+          let profileImage = null;
 
-        let profileImage = null;
+          if (userEmail) {
+            try {
+              const userDocRef = doc(firestore, 'Users', userEmail);
+              const userDoc = await getDoc(userDocRef);
 
-        if (userEmail) {
-          try {
-            const userDocRef = doc(firestore, 'Users', userEmail);
-            const userDoc = await getDoc(userDocRef);
-
-            if (userDoc.exists()) {
-              profileImage = userDoc.data().profileImage || null;
+              if (userDoc.exists()) {
+                profileImage = userDoc.data().profileImage || null;
+              }
+            } catch (error) {
+              console.warn(`Error fetching user data for ${userEmail}:`, error);
             }
-          } catch (error) {
-            console.warn(`Error fetching user data for ${userEmail}:`, error);
           }
-        }
 
-        return {
-          id: docSnapshot.id,
-          ...comment,
-          profileImage,
-        };
-      })
-    );
 
-    setComments(commentsData);
-    setPostComments(commentsData);
-
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-  }
-};
-  
-  
-  
-  
-
+          return {
+            id: docSnapshot.id,
+            ...comment,
+            profileImage,
+          };
+        })
+      );
+      setComments(commentsData);
+      setPostComments(commentsData);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
   const handleAddComment = async () => {
     if (commentText.trim() === '') return;
-  
     try {
       const commentData = {
         text: commentText,
-        userName: userName, 
+        userName: userName,
         profileImage: userProfileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
         timestamp: serverTimestamp(),
         email: currentUserEmail,
       };
-  
       await addDoc(collection(firestore, 'newsfeed', selectedPostId, 'comments'), commentData);
       setCommentText('');
 
       const postRef = doc(firestore, 'newsfeed', selectedPostId);
       const postSnap = await getDoc(postRef);
-  
+
       if (postSnap.exists()) {
         const postData = postSnap.data();
         const postOwner = postData.userId;
@@ -523,26 +491,22 @@ useEffect(() => {
           });
         }
       }
-      fetchComments(selectedPostId); 
+      fetchComments(selectedPostId);
     } catch (error) {
       console.error('Error adding comment:', error);
     }
   };
-  
+
 
   const commentModalOpacity = useSharedValue(1);
-
   const commentModalAnimatedBackground = useAnimatedStyle(() => ({
     backgroundColor: `rgba(0,0,0,${commentModalOpacity.value})`
   }));
 
   const commentBackdropOpacity = useSharedValue(1);
-
- 
   const commentBackdropAnimatedStyle = useAnimatedStyle(() => ({
     opacity: commentBackdropOpacity.value,
   }));
-
   const handleCommentGesture = (event) => {
     if (event.nativeEvent.translationY > 100) {
       runOnJS(() => {
@@ -555,7 +519,6 @@ useEffect(() => {
       commentTranslateY.value = withSpring(0);
     }
   };
-
   const handleCommentBackdropPress = () => {
     setCommentModalVisible(false);
     commentTranslateY.value = 0;
@@ -563,13 +526,11 @@ useEffect(() => {
     setSelectedPostId(null);
     setPostComments([]);
   };
-
   const commentTranslateY = useSharedValue(0);
 
   const commentAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: commentTranslateY.value }],
   }));
-  
   const [likedPosts, setLikedPosts] = useState({});
 
   const toggleLike = async (postId, likedBy) => {
@@ -586,28 +547,26 @@ useEffect(() => {
         prev.map(p =>
           p.id === postId
             ? {
-                ...p,
-                likedBy: hasLiked
-                  ? p.likedBy.filter(email => email !== currentUserEmail)
-                  : [...p.likedBy, currentUserEmail],
-              }
+              ...p,
+              likedBy: hasLiked
+                ? p.likedBy.filter(email => email !== currentUserEmail)
+                : [...p.likedBy, currentUserEmail],
+            }
             : p
         )
       );
-
       setFilteredPosts(prev =>
         prev.map(p =>
           p.id === postId
             ? {
-                ...p,
-                likedBy: hasLiked
-                  ? p.likedBy.filter(email => email !== currentUserEmail)
-                  : [...p.likedBy, currentUserEmail],
-              }
+              ...p,
+              likedBy: hasLiked
+                ? p.likedBy.filter(email => email !== currentUserEmail)
+                : [...p.likedBy, currentUserEmail],
+            }
             : p
         )
       );
-
       if (!hasLiked) {
         const postSnap = await getDoc(postRef);
         const postData = postSnap.data();
@@ -626,7 +585,7 @@ useEffect(() => {
     }
   };
 
-  
+
   const handleSearch = (query) => {
     setSearchQuery(query);
     if (query === '') {
@@ -639,17 +598,39 @@ useEffect(() => {
       setFilteredPosts(filtered);
     }
   };
-  
+
+  const savePost = async (user, text, images, sharedPostId = null) => {
+    try {
+      const newsfeedRef = collection(firestore, 'newsfeed');
+      const newPostRef = await addDoc(newsfeedRef, {
+        userId: user.id,
+        userName: user.name,
+        text: text,
+        images: images,
+        date: serverTimestamp(),
+        likedBy: [],
+        pinned: false,
+        sharedPostId: sharedPostId,
+      });
+      return newPostRef.id;
+    } catch (error) {
+      console.error("Error saving post:", error);
+      return null;
+    }
+  };
+  const sendNotification = async (notificationData) => {
+    console.log("Sending notification:", notificationData);
+  };
   const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
     const user = auth.currentUser;
-  
+
     if (!user) {
       console.log("No user is logged in");
       return;
     }
     const userEmail = user.email;
-  
+
     if (!userEmail) {
       console.log("No email found for the user");
       return;
@@ -657,17 +638,16 @@ useEffect(() => {
     const userDocRef = doc(firestore, "Users", userEmail);
     try {
       const userDoc = await getDoc(userDocRef);
-  
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const { firstName, lastName, profileImage, role} = userData;
+        const { firstName, lastName, profileImage, role } = userData;
         const userProfileImage = profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
         const postDate = new Date();
         if (!(postDate instanceof Date) || isNaN(postDate)) {
           console.error("Invalid Date object.");
           return;
         }
-  
+
         const newPost = {
           user: {
             id: userEmail,
@@ -677,7 +657,7 @@ useEffect(() => {
           },
           text: postText,
           images: selectedImages,
-          date: postDate, 
+          date: postDate,
           comments: [],
           likedBy: [],
         };
@@ -685,9 +665,8 @@ useEffect(() => {
         const postId = await savePost(newPost.user, postText, selectedImages);
         setNewsfeedPosts([{ ...newPost, id: postId }, ...newsfeedPosts]);
         discardPost(
-          
+
         );
-        
       } else {
         console.log("No such user found in Firestore");
       }
@@ -696,81 +675,231 @@ useEffect(() => {
     }
   };
 
+  const openShareModal = (post) => {
+    setSelectedPost(post);
+    setShareCaption('');
+    setShareModalVisible(true);
+  };
+
+  const handleShareSubmit = async () => {
+    if (!selectedPost) return;
+
+    const user = auth.currentUser;
+    if (!user || !user.email) return;
+    const userEmail = user.email;
+    const userDocRef = doc(firestore, "Users", userEmail);
+
+    try {
+      setLoading(true);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const { firstName, lastName } = userData;
+        const userName = `${firstName} ${lastName}`;
+        const userProfileImage = userData.profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+
+        const newSharedPostData = {
+          userId: userEmail,
+          userName: userName,
+          text: shareCaption,
+          date: serverTimestamp(),
+          likedBy: [],
+          pinned: false,
+          sharedPostId: selectedPost.id,
+        };
+
+        const newsfeedRef = collection(firestore, 'newsfeed');
+        const newPostRef = await addDoc(newsfeedRef, newSharedPostData);
+
+        const newPost = {
+            id: newPostRef.id,
+            text: shareCaption,
+            date: new Date(),
+            images: [],
+            userId: userEmail,
+            user: {
+                name: userName,
+                profileImage: userProfileImage,
+                role: userData.role,
+            },
+            likedBy: [],
+            commentCount: 0,
+            pinned: false,
+            sharedPostId: selectedPost.id,
+            sharedPost: selectedPost
+        };
+
+        setNewsfeedPosts(prev => [newPost, ...prev]);
+
+        setShareModalVisible(false);
+        setShareCaption('');
+        setSelectedPost(null);
+      }
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const imageUriFromStored = (uri) => {
+    return uri;
+  };
+
+  const ImagePagination = ({ images, currentIndex }) => {
+    if (images.length <= 1) return null;
+    return (
+      <View style={styles.paginationContainer}>
+        {images.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              index === currentIndex ? styles.activeDot : null,
+            ]}
+          />
+        ))}
+      </View>
+    );
+  };
+
+  const openImage = (images, uri) => {
+    setImagesForModal(images);
+    const index = images.indexOf(uri);
+    setCurrentImageIndex(index > -1 ? index : 0);
+    setImageModalVisible(true);
+  };
+
   const renderPost = (post) => {
     const formattedDate = post.date.toLocaleString();
     const hasText = post.text.trim().length > 0;
     const hasImages = post.images.length > 0;
     const isLiked = (post.likedBy || []).includes(currentUserEmail);
+    const isSingleImage = post.images.length === 1;
 
-
-    
     return (
-        <View key={post.id} style={styles.postCard}>
+      <View key={post.id} style={styles.postCard}>
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
-          <TouchableOpacity
-            onPress={() => {
-              if (currentUserEmail !== post.userId) {
-                navigation.navigate('UserOpen', {
-                  postId: post.id,
-                  postEmail: post.userId,
-                });
-              } else {
-                navigation.navigate('UserOwnProfilePage');
-              }
-  }}
+            <TouchableOpacity
+              onPress={() => {
+                if (currentUserEmail !== post.userId) {
+                  navigation.navigate('UserOpen', {
+
+                    postId: post.id,
+                    postEmail: post.userId,
+                  });
+                } else {
+                  navigation.navigate('UserOwnProfilePage');
+                }
+              }}
+
             >
               {post.user.profileImage ? (
                 <Image
                   source={{ uri: post.user.profileImage }}
                   style={styles.profileImagePost}
                   resizeMode="cover"
+
                 />
               ) : (
                 <FontAwesome name="user-circle-o" size={35} color="#999" />
               )}
             </TouchableOpacity>
-  
+
             <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+
               <Text style={styles.postUserName}>{post.user.name}</Text>
               {post.user.role === ss && (
                 <Image
                   source={require('../assets/switch2.png')}
                   style={{ width: 16, height: 16, marginLeft: 5 }}
+
                 />
               )}
             </View>
           </View>
-  
+
           {post.pinned && (
             <Image
-                source={require('../assets/pin.png')}
-                style={styles.pinIcon}
+              source={require('../assets/pin.png')}
+              style={styles.pinIcon}
+
             />
-            )}
-  
+          )}
+
           <TouchableOpacity>
             <Entypo name="dots-three-horizontal" size={20} color="#333" />
           </TouchableOpacity>
         </View>
         <View style={styles.postBody}>
-          {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
-          {hasImages && (
-            <View style={styles.postImagesContainer}>
-              {post.images.map((uri, idx) => (
-                <Image
-                  key={idx}
-                  source={{ uri }}
-                  style={styles.postImage}
-                />
-              ))}
+          {post.sharedPostId ? (
+            <View style={styles.sharedPostWrapper}>
+              {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
+
+              <View style={styles.sharedPostPreview}>
+                <View style={styles.sharedPostHeader}>
+                  {selectedPost ? (
+                    <Image source={{ uri: selectedPost.user.profileImage }} style={styles.shareProfilePicSmall} />
+                  ) : (
+                    <FontAwesome name="user-circle-o" size={25} color="#999" style={styles.shareProfilePicSmall} />
+                  )}
+                  <Text style={styles.sharedPostUsername}>{selectedPost?.user.name || 'Original Post User'}</Text>
+                </View>
+                <Text numberOfLines={3} style={styles.sharedPostText}>{selectedPost?.text || 'Original post content.'}</Text>
+                {selectedPost?.images.length > 0 && (
+                  <Image
+                    source={{ uri: selectedPost.images[0] }}
+                    style={styles.sharedPostImage}
+                    resizeMode="cover"
+                  />
+                )}
+              </View>
             </View>
+          ) : (
+            <>
+              {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
+
+              {hasImages && (
+                <View style={styles.postImagesContainer}>
+                  {post.images.slice(0, 4).map((uri, idx) => (
+                    <TouchableOpacity
+                      key={`${post.id}-img-${idx}`}
+                      onPress={() => openImage(post.images, uri)}
+                      style={
+                        isSingleImage
+                          ? styles.postImageWrapperSingle
+                          : styles.postImageWrapperMultiple
+                      }
+                    >
+                      <Image
+                        source={{ uri: imageUriFromStored(uri) }}
+                        style={
+                          isSingleImage
+                            ? styles.postImageSingle
+                            : styles.postImageThumbnail
+                        }
+                      />
+                      {post.images.length > 4 && idx === 3 && (
+                        <View style={styles.moreImagesOverlay}>
+                          <Text style={styles.moreImagesText}>
+                            +{post.images.length - 3}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
           )}
         </View>
-  
+
         <View style={styles.postActions}>
           <TouchableOpacity
             style={styles.actionButton}
+
             onPress={() => toggleLike(post.id, post.likedBy)}
           >
             <Ionicons
@@ -782,7 +911,7 @@ useEffect(() => {
               {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
             </Text>
           </TouchableOpacity>
-  
+
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
@@ -796,12 +925,12 @@ useEffect(() => {
               {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
             </Text>
           </TouchableOpacity>
-  
-          <TouchableOpacity style={styles.actionButton} onPress={() => setShareModalVisible(true)}>
+
+          <TouchableOpacity style={styles.actionButton} onPress={() => openShareModal(post)}>
             <Ionicons name="share-social-outline" size={20} color="#555" />
             <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
-      </View>
+        </View>
 
         <Modal
           visible={commentModalVisible}
@@ -820,96 +949,117 @@ useEffect(() => {
               >
                 <Animated.View style={[styles.commentModalContent, commentAnimatedStyle]}>
                   <KeyboardAvoidingView
-                        style={{ flex: 1 }}
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 390 : 0}
-                      >
-                      <ScrollView
-                        contentContainerStyle={{ flexGrow: 1 }}
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                      >
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 390 : 0}
+                  >
+                    <ScrollView
+                      contentContainerStyle={{ flexGrow: 1 }}
+                      keyboardShouldPersistTaps="handled"
+                      showsVerticalScrollIndicator={false}
+                    >
 
-                        
-            <Text style={styles.commentsTitle}>Comments</Text>
-            <ScrollView>
-              {postComments.map((comment) => (
-                <View key={comment.id} style={styles.commentCard}>
-                  {comment.profileImage ? (
-                      <Image
-                        source={{ uri: comment.profileImage }}
-                        style={styles.profileImagePost}
-                      />
-                    ) : (
-                      <FontAwesome name="user-circle-o" size={38} color="#999" />
-                  )}
-                    <View>
-                    <Text style={styles.commentUserName}>
-                      {comment.userName || 'Anonymous'}
-                    </Text>
-                      <Text style={styles.userComment}>{comment.text}</Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
 
-              <View style={styles.commentInputRow}>
-              {userProfileImage ? (
-                <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
-              ) : (
-                <FontAwesome name="user-circle-o" size={35} color="#999" />
-              )}
-                <TextInput
-                  style={styles.commentInput}
-                  placeholder="Add a comment..."
-                  value={commentText}
-                  onChangeText={setCommentText}
-                />
-                <TouchableOpacity onPress={handleAddComment}>
-                  <Ionicons name="send" size={24} color="#ff0000" />
-                </TouchableOpacity>
+                      <Text style={styles.commentsTitle}>Comments</Text>
+                      <ScrollView>
 
-              </View>
-            
-            </ScrollView>
-            </KeyboardAvoidingView>
+                        {postComments.map((comment) => (
+                          <View key={comment.id} style={styles.commentCard}>
+                            {comment.profileImage ? (
+                              <Image
+                                source={{ uri: comment.profileImage }}
+
+                                style={styles.profileImagePost}
+                              />
+                            ) : (
+                              <FontAwesome name="user-circle-o" size={38} color="#999" />
+
+                            )}
+                            <View>
+                              <Text style={styles.commentUserName}>
+                                {comment.userName || 'Anonymous'}
+                              </Text>
+                              <Text style={styles.userComment}>{comment.text}</Text>
+                            </View>
+                          </View>
+                        ))}
+
+                      </ScrollView>
+
+                      <View style={styles.commentInputRow}>
+                        {userProfileImage ? (
+                          <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
+                        ) : (
+                          <FontAwesome name="user-circle-o" size={35} color="#999" />
+                        )}
+                        <TextInput
+
+                          style={styles.commentInput}
+                          placeholder="Add a comment..."
+                          value={commentText}
+                          onChangeText={setCommentText}
+                        />
+                        <TouchableOpacity onPress={handleAddComment}>
+                          <Ionicons name="send" size={24} color="#ff0000" />
+                        </TouchableOpacity>
+
+                      </View>
+
+                    </ScrollView>
+                  </KeyboardAvoidingView>
+                </Animated.View>
+              </PanGestureHandler>
             </Animated.View>
-            </PanGestureHandler>
-            
-          </Animated.View>
-          
-        </TouchableWithoutFeedback>
+          </TouchableWithoutFeedback>
+        </Modal>
 
-              
-    </Modal>
-
-        <Modal
-          visible={shareModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShareModalVisible(false)}
-        >
+        <Modal visible={shareModalVisible} animationType="slide" transparent={true} onRequestClose={() => setShareModalVisible(false)}>
           <View style={styles.modalContainer}>
             <View style={styles.shareModalContent}>
               <View style={styles.shareHeader}>
-                <Image source={{ uri: 'user_profile_url' }} style={styles.shareProfilePic} />
-                <Text style={styles.shareUsername}>Username</Text>
+                {userProfileImage ? (
+                  <Image source={{ uri: userProfileImage }} style={styles.shareProfilePic} />
+                ) : (
+                  <FontAwesome name="user-circle-o" size={40} color="#999" style={styles.shareProfilePic} />
+                )}
+                <Text style={styles.shareUsername}>{userName}</Text>
+                <TouchableOpacity style={styles.closeModalButton} onPress={() => setShareModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#333" />
+                </TouchableOpacity>
               </View>
               <TextInput
                 style={styles.shareCaptionInput}
-                placeholder="Write a caption..."
+                placeholder="Say something about this post..."
                 multiline
                 value={shareCaption}
                 onChangeText={setShareCaption}
               />
-              <TouchableOpacity style={styles.shareButton} onPress={() => {}}>
+              {selectedPost && (
+                <View style={styles.sharedPostPreview}>
+                  <View style={styles.sharedPostHeader}>
+                    {selectedPost.user.profileImage ? (
+                      <Image source={{ uri: selectedPost.user.profileImage }} style={styles.shareProfilePicSmall} />
+                    ) : (
+                      <FontAwesome name="user-circle-o" size={25} color="#999" style={styles.shareProfilePicSmall} />
+                    )}
+                    <Text style={styles.sharedPostUsername}>{selectedPost.user.name}</Text>
+                  </View>
+                  <Text numberOfLines={3} style={styles.sharedPostText}>{selectedPost.text || "Original post content"}</Text>
+                  {selectedPost.images && selectedPost.images.length > 0 && (
+                    <Image
+                      source={{ uri: selectedPost.images[0] }}
+                      style={styles.sharedPostImage}
+                      resizeMode="cover"
+                    />
+                  )}
+                </View>
+              )}
+              <TouchableOpacity style={styles.shareButton} onPress={handleShareSubmit}>
                 <Text style={styles.shareButtonText}>Share Now</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
-
-
       </View>
     );
   };
@@ -917,37 +1067,22 @@ useEffect(() => {
   return (
     <SafeAreaView style={styles.safeArea}>
       {loading && (
-                      <View style={styles.loadingContainer}>
-                        <View style={styles.loadingBox}>
-                          <ActivityIndicator size="large" color="#FE070C" />
-                          {}
-                        </View>
-                      </View>
-                    )}
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#FE070C" />
+          </View>
+        </View>
+      )}
       <View style={styles.container}>
-      <Header
-        posts={filteredPosts}
-        setFilteredPosts={setFilteredPosts}
-        scrollY={scrollY}
-      />
-
-        <ScrollView
-          onScroll={(event) => {
-          setScrollY(event.nativeEvent.contentOffset.y);
-          }}
-          scrollEventThrottle={16}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
+        <Header posts={filteredPosts} setFilteredPosts={setFilteredPosts} scrollY={scrollY} />
+        <ScrollView onScroll={(event) => { setScrollY(event.nativeEvent.contentOffset.y); }} scrollEventThrottle={16} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.postContainer}>
             {userProfileImage ? (
               <Image source={{ uri: userProfileImage }} style={styles.profileImage} />
             ) : (
               <FontAwesome name="user-circle-o" size={50} color="#999" style={styles.profileIcon} />
             )}
-            <TouchableOpacity
-              style={styles.postInputContainer}
-              onPress={() => setIsModalVisible(true)}
-            >
+            <TouchableOpacity style={styles.postInputContainer} onPress={() => setIsModalVisible(true)}>
               <Text style={styles.placeholderText}>What's on your mind?</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setIsModalVisible(true)}>
@@ -956,27 +1091,14 @@ useEffect(() => {
           </View>
           {newsfeedPosts.map((post) => renderPost(post))}
         </ScrollView>
-
         <BottomNavBar />
-
         {isModalVisible && (
           <View style={StyleSheet.absoluteFill}>
             <TouchableOpacity style={styles.modalBackground} activeOpacity={1} onPress={closeModal} />
-
-            <PanGestureHandler onEnded={handleGesture} onGestureEvent={(event) => {
-              translateY.value = event.nativeEvent.translationY;
-            }}>
+            <PanGestureHandler onEnded={handleGesture} onGestureEvent={(event) => { translateY.value = event.nativeEvent.translationY; }}>
               <Animated.View style={[styles.modalContent, animatedStyle]}>
-                <KeyboardAvoidingView
-                  style={{ flex: 1 }}
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-                >
-                  <ScrollView
-                    contentContainerStyle={{ flexGrow: 1 }}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                  >
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}>
+                  <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                     <View style={styles.modalHeader}>
                       <TouchableOpacity onPress={closeModal}>
                         <Ionicons name="close" size={24} color="#333" />
@@ -986,7 +1108,6 @@ useEffect(() => {
                         <Text style={styles.postText}>Post</Text>
                       </TouchableOpacity>
                     </View>
-
                     <View style={styles.profileRow}>
                       {userProfileImage ? (
                         <Image source={{ uri: userProfileImage }} style={styles.profileImagePost} />
@@ -995,40 +1116,18 @@ useEffect(() => {
                       )}
                       <Text style={styles.userName}>{userName}</Text>
                     </View>
-
                     <View style={styles.postContentContainer}>
-                      <TextInput
-                        placeholder="What's on your mind?"
-                        placeholderTextColor="#777"
-                        multiline
-                        value={postText}
-                        onChangeText={setPostText}
-                        style={styles.placeholderInput}
-                      />
-
+                      <TextInput placeholder="What's on your mind?"
+                        placeholderTextColor="#777" multiline value={postText} onChangeText={setPostText} style={styles.placeholderInput} />
                       {selectedImages.length > 0 && (
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
                           {selectedImages.map((uri, index) => (
                             <View key={index} style={{ position: 'relative', marginRight: 10, marginBottom: 10 }}>
-                              <Image
-                                source={{ uri }}
-                                style={{ width: 80, height: 80, borderRadius: 10 }}
-                              />
-                              <TouchableOpacity
-                                onPress={() => {
-                                  const updatedImages = selectedImages.filter((_, i) => i !== index);
-                                  setSelectedImages(updatedImages);
-                                }}
-                                style={{
-                                  position: 'absolute',
-                                  top: -5,
-                                  right: -5,
-                                  backgroundColor: '#fff',
-                                  borderRadius: 10,
-                                  padding: 2,
-                                  elevation: 3,
-                                }}
-                              >
+                              <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 10 }} />
+                              <TouchableOpacity onPress={() => {
+                                const updatedImages = selectedImages.filter((_, i) => i !== index);
+                                setSelectedImages(updatedImages);
+                              }} style={{ position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10, padding: 2, elevation: 3, }}>
                                 <Ionicons name="close" size={16} color="#333" />
                               </TouchableOpacity>
                             </View>
@@ -1036,52 +1135,42 @@ useEffect(() => {
                         </View>
                       )}
                     </View>
-                  <View style={styles.optionsGrid}>
+                    <View style={styles.optionsGrid}>
                       <TouchableOpacity style={styles.optionButton} onPress={pickImage}>
                         <MaterialIcons name="photo-library" size={24} color="#2e89ff" />
                         <Text style={styles.optionText}>Photo/Video</Text>
                       </TouchableOpacity>
-
-
                       <TouchableOpacity style={styles.optionButton}>
-                          <MaterialIcons name="event" size={24} color="#f28b20" />
-                          <Text style={styles.optionText}>Create Event</Text>
+                        <MaterialIcons name="event" size={24} color="#f28b20" />
+                        <Text style={styles.optionText}>Create Event</Text>
                       </TouchableOpacity>
-
                       <TouchableOpacity style={styles.optionButton}>
-                          <Ionicons name="gift-outline" size={24} color="#e1306c" />
-                          <Text style={styles.optionText}>Occasion</Text>
+                        <Ionicons name="gift-outline" size={24} color="#e1306c" />
+                        <Text style={styles.optionText}>Occasion</Text>
                       </TouchableOpacity>
-
                       <TouchableOpacity style={styles.optionButton}>
-                          <Ionicons name="document-text-outline" size={24} color="#34a853" />
-                          <Text style={styles.optionText}>Document</Text>
+                        <Ionicons name="document-text-outline" size={24} color="#34a853" />
+                        <Text style={styles.optionText}>Document</Text>
                       </TouchableOpacity>
-
                       <TouchableOpacity style={styles.optionButton}>
-                          <MaterialIcons name="poll" size={24} color="#fb8c00" />
-                          <Text style={styles.optionText}>Create Poll</Text>
+                        <MaterialIcons name="poll" size={24} color="#fb8c00" />
+                        <Text style={styles.optionText}>Create Poll</Text>
                       </TouchableOpacity>
-                      
                       <TouchableOpacity style={styles.optionButton}>
-                          <MaterialIcons name="add-link" size={24} color="#6c63ff" />
-                          <Text style={styles.optionText}>Add Link</Text>
+                        <MaterialIcons name="add-link" size={24} color="#6c63ff" />
+                        <Text style={styles.optionText}>Add Link</Text>
                       </TouchableOpacity>
-                  </View>
+                    </View>
                   </ScrollView>
                 </KeyboardAvoidingView>
               </Animated.View>
             </PanGestureHandler>
-
-            <Modal
-              visible={isDiscardConfirmVisible}
-              transparent
-              animationType="fade"
-            >
+            <Modal visible={isDiscardConfirmVisible} transparent animationType="fade">
               <View style={styles.discardModalOverlay}>
                 <View style={styles.discardModalBox}>
                   <Text style={styles.discardTitle}>Discard Post?</Text>
-                  <Text style={styles.discardMessage}>You have unsaved changes. Are you sure you want to discard?</Text>
+                  <Text style={styles.discardMessage}>You have unsaved changes.
+                    Are you sure you want to discard?</Text>
                   <View style={styles.discardButtons}>
                     <TouchableOpacity onPress={discardPost} style={styles.discardButton}>
                       <Text style={{ color: '#fff' }}>Discard</Text>
@@ -1095,6 +1184,51 @@ useEffect(() => {
             </Modal>
           </View>
         )}
+        <Modal visible={imageModalVisible} animationType="fade" transparent={true} onRequestClose={() => setImageModalVisible(false)}>
+          <View style={styles.imageViewerContainer}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setImageModalVisible(false)}>
+              <Ionicons name="close-circle" size={30} color="#fff" />
+            </TouchableOpacity>
+
+            {imagesForModal.length > 0 && (
+              imagesForModal.length > 1 ? (
+                <>
+                  <ScrollView
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={e => {
+                      const contentOffsetX = e.nativeEvent.contentOffset.x;
+                      const newIndex = Math.round(contentOffsetX / screenWidth);
+                      if (newIndex !== currentImageIndex) {
+                        setCurrentImageIndex(newIndex);
+                      }
+                    }}
+                    scrollEventThrottle={16}
+                    contentOffset={{ x: currentImageIndex * screenWidth, y: 0 }}
+                    style={styles.imageGallery}
+                  >
+                    {imagesForModal.map((uri, index) => (
+                      <Image
+                        key={index}
+                        source={{ uri: uri }}
+                        style={styles.galleryImage}
+                        resizeMode="contain"
+                      />
+                    ))}
+                  </ScrollView>
+                  <ImagePagination images={imagesForModal} currentIndex={currentImageIndex} />
+                </>
+              ) : (
+                <Image
+                  source={{ uri: imagesForModal[currentImageIndex] }}
+                  style={styles.fullScreenImage}
+                  resizeMode="contain"
+                />
+              )
+            )}
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -1126,28 +1260,25 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   profileImage: {
-    width: 30,       
+    width: 30,
     height: 30,
     borderRadius: 25,
     marginRight: 10,
   },
   profileImagePost: {
-    width: 35,       
+    width: 35,
     height: 35,
     borderRadius: 25,
     marginRight: 0,
   },
-  
   profileIcon: {
-    fontSize: 30,    
+    fontSize: 30,
     marginRight: 10,
   },
   postInputContainer: {
     flex: 1,
     justifyContent: 'center',
-    
   },
-
   postContentContainer: {
     borderColor: '#ccc',
     borderWidth: 1,
@@ -1155,7 +1286,6 @@ const styles = StyleSheet.create({
     padding: 10,
     minHeight: '60%',
     marginBottom: 20,
-    
   },
   textOnly: {
     fontSize: 16,
@@ -1175,7 +1305,7 @@ const styles = StyleSheet.create({
   },
   singleImage: {
     width: '100%',
-    height: 250,
+    height: 380,
     resizeMode: 'cover',
   },
   multipleImage: {
@@ -1185,7 +1315,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     marginBottom: 10,
   },
-  
   placeholderText: {
     color: '#777',
     fontSize: 16,
@@ -1235,7 +1364,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  
   textInput: {
     flex: 1,
     borderColor: '#ccc',
@@ -1246,9 +1374,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     minHeight: 390,
     fontSize: 16,
-    
   },
-  
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1262,14 +1388,12 @@ const styles = StyleSheet.create({
     width: '30%',
     marginBottom: 20,
   },
-  
   optionText: {
     marginTop: 5,
     textAlign: 'center',
     fontSize: 12,
     color: '#333',
   },
-  
   discardModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -1317,7 +1441,6 @@ const styles = StyleSheet.create({
   postCard: {
     backgroundColor: '#fff',
     borderRadius: 15,
-    
     marginBottom: 15,
     padding: 15,
     shadowColor: '#000',
@@ -1337,7 +1460,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   postUserName: {
-    
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -1350,151 +1472,160 @@ const styles = StyleSheet.create({
   },
   postTextContent: {
     fontSize: 16,
-    color: '#333',
     marginBottom: 10,
   },
   postImagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 5,
+    justifyContent: 'space-between',
+    marginTop: 10,
   },
-  postImage: {
-    width: 100,
-    height: 100,
+  postImageWrapperSingle: {
+    width: '100%',
+    height: 380,
     borderRadius: 10,
-    marginRight: 5,
-    marginBottom: 5,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  postImageSingle: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  postImageWrapperMultiple: {
+    width: '49%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 10,
+    position: 'relative',
+  },
+  postImageThumbnail: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  moreImagesOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreImagesText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   postActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#eee',
     paddingTop: 10,
+    marginTop: 5,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   actionText: {
-    color: '#555',
+    marginLeft: 5,
     fontSize: 14,
+    color: '#555',
   },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  commentsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
     marginTop: 10,
+    textAlign: 'center',
   },
-  
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  
-  commentModalContent: {
-    height: '60%',
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    
-  },
-  
   commentCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
     marginBottom: 15,
+    alignItems: 'flex-start',
+    paddingHorizontal: 10,
   },
-  
-  commentsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 13,
-    paddingBottom: 10,
-    borderBottomColor: '#555',
-    borderBottomWidth: 1,
-  },
-  
   commentUserName: {
-    marginLeft: 10,
-    fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   userComment: {
     fontSize: 14,
-    color: '#000',
-    marginLeft: 10,
-    marginTop: 2,
-    fontWeight: '400',
+    color: '#333',
+    maxWidth: screenWidth - 100,
   },
-  
   commentInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
     borderTopWidth: 1,
-    borderColor: "#eee",
-    backgroundColor: "#fff",
-    marginBottom: 10,
+    borderTopColor: '#eee',
+    marginTop: 10,
   },
-  
   commentInput: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#ccc',
     borderRadius: 20,
     paddingHorizontal: 15,
     paddingVertical: 8,
     marginHorizontal: 10,
+    backgroundColor: '#f9f9f9',
   },
-  
-  shareModalContent: {
-    height: '50%',
+  commentModalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 15,
+    padding: 10,
+    height: '60%',
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
   },
-  
+  shareModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    height: '50%',
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+  },
   shareHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 15,
   },
-  
   shareProfilePic: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 10,
   },
-  
   shareUsername: {
     fontWeight: 'bold',
     fontSize: 16,
   },
-  
   shareCaptionInput: {
-    flex: 1,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#ccc',
     borderRadius: 10,
     padding: 10,
-    marginBottom: 20,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 15,
+    fontSize: 16,
   },
-  
   shareButton: {
     backgroundColor: '#007bff',
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',
   },
-  
   shareButtonText: {
     color: '#fff',
     fontWeight: 'bold',
@@ -1533,5 +1664,93 @@ const styles = StyleSheet.create({
     height: 33,
     zIndex: 10,
   },
-  
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  imageGallery: {
+    flex: 1,
+    width: screenWidth,
+  },
+  galleryImage: {
+    width: screenWidth,
+    height: '100%',
+  },
+  paginationContainer: {
+    position: 'absolute',
+    bottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  dot: {
+    height: 8,
+    width: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginHorizontal: 4,
+  },
+  activeDot: {
+    backgroundColor: '#fff',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  closeModalButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    padding: 5,
+    zIndex: 10,
+  },
+  sharedPostPreview: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#E50914',
+    paddingLeft: 10,
+    padding: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  sharedPostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  shareProfilePicSmall: {
+    width: 25,
+    height: 25,
+    borderRadius: 12.5,
+    marginRight: 5,
+  },
+  sharedPostUsername: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#333',
+  },
+  sharedPostText: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
+  },
+  sharedPostImage: {
+    width: '100%',
+    height: 100,
+    borderRadius: 5,
+    marginTop: 5,
+  },
 });
