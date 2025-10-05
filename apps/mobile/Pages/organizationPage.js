@@ -5,7 +5,7 @@ import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import OrganizationCard from '../components/organizationCard';
-import { getOrganizations } from '../Backend/organizationHandler';
+import { getApprovedOrganizations } from '../Backend/organizationHandler';
 import { useEffect } from 'react';
 
 
@@ -13,7 +13,7 @@ export default function OrganizationPage() {
     useEffect(() => {
         const fetchOrganizations = async () => {
             try {
-                const orgs = await getOrganizations();
+                const orgs = await getApprovedOrganizations();
                 setOrganizations(orgs);
             } catch (error) {
                 console.error('Error fetching organizations:', error);
