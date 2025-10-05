@@ -830,7 +830,7 @@ export default function Home() {
 
         {isRecommended && (
           <View style={styles.recommendationBadge}>
-            <Ionicons name="sparkles" size={14} color="#FFD700" />
+            <Ionicons name="sparkles" size={14} color="#E50914" />
             <Text style={styles.recommendationText}>Recommended</Text>
           </View>
         )}
@@ -884,34 +884,73 @@ export default function Home() {
             />
           )}
 
-          <TouchableOpacity>
+          {/* <TouchableOpacity>
             <Entypo name="dots-three-horizontal" size={20} color="#333" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* BODY */}
         <View style={styles.postBody}>
-          {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
+        {hasText && (
+          <Text style={styles.postTextContent}>{post.text}</Text>
+        )}
 
-          {isShared && post.sharedPostData && (
-            <View style={styles.sharedPostWrapper}>
+        {isShared && post.sharedPostData && (
+          <View style={styles.sharedPostWrapper}>
+            {/* Shared header with icon
+            <View style={styles.sharedHeader}>
+              <View style={styles.sharedIconContainer}>
+                <FontAwesome name="share" size={12} color="#E50914" />
+              </View>
               <Text style={styles.sharedBadge}>
-                Shared from {post.sharedPostData.user?.name
-                  || post.sharedPostData.userName
-                  || post.sharedPostData.user_id
-                  || post.sharedPostData.userId
-                  || 'Unknown'}
+                Shared from{' '}
+                <Text style={styles.sharedUsername}>
+                  {post.sharedPostData.user?.name ||
+                    post.sharedPostData.userName ||
+                    post.sharedPostData.user_id ||
+                    post.sharedPostData.userId ||
+                    'Unknown User'}
+                </Text>
               </Text>
+            </View> */}
 
-              <View style={styles.originalPostBox}>
-                {post.sharedPostData.text ? (
-                  <Text style={styles.originalPostText}>
-                    {post.sharedPostData.text}
-                  </Text>
-                ) : null}
+            {/* Original post card */}
+            <View style={styles.originalPostCard}>
+              {/* Original author header */}
+              <View style={styles.originalAuthorHeader}>
+              {post.sharedPostData.user?.profileImage ? (
+                <Image
+                  source={{ uri: post.sharedPostData.user.profileImage }}
+                  style={styles.originalAuthorAvatar}
+                />
+              ) : (
+                <View style={styles.originalAuthorAvatarPlaceholder}>
+                  <FontAwesome name="user" size={14} color="#999" />
+                </View>
+              )}
+              <View style={styles.originalAuthorInfo}>
+                <Text style={styles.originalAuthorName}>
+                  {post.sharedPostData.user?.name ||
+                    post.sharedPostData.userName ||
+                    'Unknown User'}
+                </Text>
+                <Text style={styles.originalPostTime}>
+                  {post.sharedPostData.timestamp || 'Original post'}
+                </Text>
+              </View>
+            </View>
 
-                {Array.isArray(post.sharedPostData.images) &&
-                  post.sharedPostData.images.length > 0 && (
+              {/* Original post content */}
+              {post.sharedPostData.text ? (
+                <Text style={styles.originalPostText} numberOfLines={4}>
+                  {post.sharedPostData.text}
+                </Text>
+              ) : null}
+
+              {/* Original post image */}
+              {Array.isArray(post.sharedPostData.images) &&
+                post.sharedPostData.images.length > 0 && (
+                  <View style={styles.originalImageWrapper}>
                     <Image
                       source={{
                         uri: imageUriFromStored(post.sharedPostData.images[0]),
@@ -919,22 +958,37 @@ export default function Home() {
                       style={styles.originalPostImage}
                       resizeMode="cover"
                     />
-                  )}
-              </View>
+                    {post.sharedPostData.images.length > 1 && (
+                      <View style={styles.imageCountBadge}>
+                        <FontAwesome name="image" size={10} color="#fff" />
+                        <Text style={styles.imageCountText}>
+                          {post.sharedPostData.images.length}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
             </View>
-          )}
+          </View>
+        )}
 
-          {hasImages && (
-            <View style={styles.postImagesContainer}>
-              {post.images.slice(0, 3).map((uri, idx) => (
+        {hasImages && (
+          <View style={styles.postImagesContainer}>
+            {post.images.slice(0, 4).map((uri, idx) => {
+              const isLastImage = idx === 3 || idx === post.images.length - 1;
+              const remainingCount = post.images.length - 4;
+              
+              return (
                 <TouchableOpacity
                   key={`${post.id}-img-${idx}`}
                   onPress={() => openImage(post.images, uri)}
-                  style={
+                  style={[
                     isSingleImage
                       ? styles.postImageWrapperSingle
-                      : styles.postImageWrapperMultiple
-                  }
+                      : styles.postImageWrapperMultiple,
+                    post.images.length === 2 && styles.postImageWrapperDouble,
+                  ]}
+                  activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: imageUriFromStored(uri) }}
@@ -944,18 +998,19 @@ export default function Home() {
                         : styles.postImageThumbnail
                     }
                   />
-                  {post.images.length > 3 && idx === 2 && (
+                  {/* More images overlay */}
+                  {post.images.length > 4 && idx === 3 && (
                     <View style={styles.moreImagesOverlay}>
-                      <Text style={styles.moreImagesText}>
-                        +{post.images.length - 2}
-                      </Text>
+                      <FontAwesome name="image" size={32} color="#fff" />
+                      <Text style={styles.moreImagesText}>+{remainingCount}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
 
         {/* ACTIONS */}
         <View style={styles.postActions}>
@@ -1113,104 +1168,118 @@ export default function Home() {
         </Modal>
 
         <Modal
-          visible={shareModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShareModalVisible(false)}
-        >
-          <TouchableWithoutFeedback onPress={() => setShareModalVisible(false)}>
-            <View style={styles.modalContainer} />
-          </TouchableWithoutFeedback>
+  visible={shareModalVisible}
+  animationType="slide"
+  transparent={true}
+  onRequestClose={() => setShareModalVisible(false)}
+>
+  <TouchableWithoutFeedback onPress={() => setShareModalVisible(false)}>
+    <View style={styles.modalOverlay} />
+  </TouchableWithoutFeedback>
 
-          <View style={styles.shareModalContent}>
-            {/* Header with close button */}
-            <View style={styles.shareModalHeader}>
-              <Text style={styles.shareModalTitle}>Share Post</Text>
-              <TouchableOpacity
-                onPress={() => setShareModalVisible(false)}
-                style={styles.closebtn}
-              >
-                <FontAwesome name="times" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
+  
 
-            {/* Divider */}
-            <View style={styles.divider} />
+  <View style={styles.shareModalContent}>
+    {/* Drag indicator */}
+    <View style={styles.dragIndicator} />
+    
+    {/* Header with close button */}
+    <View style={styles.shareModalHeader}>
+      <Text style={styles.shareModalTitle}>Share Post</Text>
+      <TouchableOpacity
+        onPress={() => setShareModalVisible(false)}
+        style={styles.closeButton}
+        activeOpacity={0.7}
+      >
+        <FontAwesome name="times" size={22} color="#666" />
+      </TouchableOpacity>
+    </View>
 
-            {/* User info section */}
-            <View style={styles.shareHeader}>
-              {currentUserInfo.profileImage ? (
-                <Image
-                  source={{ uri: currentUserInfo.profileImage }}
-                  style={styles.shareProfilePic}
-                />
-              ) : (
-                <View style={styles.placeholderProfilePic}>
-                  <FontAwesome name="user" size={24} color="#fff" />
-                </View>
-              )}
-              <View style={styles.userInfoContainer}>
-                <Text style={styles.shareUsername}>
-                  {currentUserInfo.firstName} {currentUserInfo.lastName}
-                </Text>
-                <Text style={styles.shareSubtext}>Sharing to your timeline</Text>
-              </View>
-            </View>
+    {/* User info section */}
+    <View style={styles.shareHeader}>
+      {currentUserInfo.profileImage ? (
+        <Image
+          source={{ uri: currentUserInfo.profileImage }}
+          style={styles.shareProfilePic}
+        />
+      ) : (
+        <View style={styles.placeholderProfilePic}>
+          <FontAwesome name="user" size={20} color="#fff" />
+        </View>
+      )}
+      <View style={styles.userInfoContainer}>
+        <Text style={styles.shareUsername}>
+          {currentUserInfo.firstName} {currentUserInfo.lastName}
+        </Text>
+        <View style={styles.shareSubtextContainer}>
+          <FontAwesome name="globe" size={12} color="#666" style={styles.globeIcon} />
+          <Text style={styles.shareSubtext}>Sharing publicly</Text>
+        </View>
+      </View>
+    </View>
 
-            {/* Caption input with character count */}
-            <View style={styles.captionContainer}>
-              <TextInput
-                style={styles.shareCaptionInput}
-                placeholder="What's on your mind?"
-                placeholderTextColor="#999"
-                multiline
-                maxLength={500}
-                value={shareCaption}
-                onChangeText={setShareCaption}
-                textAlignVertical="top"
-              />
-              <Text style={styles.characterCount}>
-                {shareCaption.length}/500
-              </Text>
-            </View>
+    {/* Caption input with character count */}
+    <View style={styles.captionContainer}>
+      <TextInput
+        style={styles.shareCaptionInput}
+        placeholder="Say something about this..."
+        placeholderTextColor="#999"
+        multiline
+        maxLength={500}
+        value={shareCaption}
+        onChangeText={setShareCaption}
+        textAlignVertical="top"
+      />
+      <View style={styles.inputFooter}>
+        
+        <Text style={[
+          styles.characterCount,
+          shareCaption.length > 450 && styles.characterCountWarning
+        ]}>
+          {shareCaption.length}/500
+        </Text>
+      </View>
+    </View>
 
-            {/* Action buttons */}
-            <View style={styles.shareActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setShareModalVisible(false);
-                  setShareCaption(''); // Clear caption on cancel
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+    {/* Action buttons */}
+    <View style={styles.shareActions}>
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={() => {
+          setShareModalVisible(false);
+          setShareCaption('');
+        }}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.shareButton,
-                  !shareCaption.trim() && styles.shareButtonDisabled
-                ]}
-                onPress={() => {
-                  if (shareCaption.trim()) {
-                    handleSharePost();
-                    setShareModalVisible(false);
-                    setShareCaption(''); // Clear after sharing
-                  }
-                }}
-                disabled={!shareCaption.trim()}
-              >
-                <FontAwesome
-                  name="send"
-                  size={16}
-                  color="#fff"
-                  style={styles.shareIcon}
-                />
-                <Text style={styles.shareButtonText}>Share Now</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+      <TouchableOpacity
+        style={[
+          styles.shareButton,
+          !shareCaption.trim() && styles.shareButtonDisabled
+        ]}
+        onPress={() => {
+          if (shareCaption.trim()) {
+            handleSharePost();
+            setShareModalVisible(false);
+            setShareCaption('');
+          }
+        }}
+        disabled={!shareCaption.trim()}
+        activeOpacity={0.8}
+      >
+        <FontAwesome
+          name="paper-plane"
+          size={16}
+          color="#fff"
+          style={styles.shareIcon}
+        />
+        <Text style={styles.shareButtonText}>Share</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
 
       </View>
     );
@@ -1301,7 +1370,7 @@ export default function Home() {
 
           {recommendedPosts.length > 0 && (
             <View style={styles.recommendationHeader}>
-              <Ionicons name="bulb-outline" size={20} color="#1E90FF" />
+              <Ionicons name="bulb-outline" size={20} color="#E50914" />
               <Text style={styles.recommendationHeaderText}>Personalized Recommendations</Text>
             </View>
           )}
@@ -1816,60 +1885,62 @@ const styles = StyleSheet.create({
   },
   postTextContent: {
     fontSize: 15,
-    color: '#333',
+    color: '#1a1a1a',
     lineHeight: 22,
     marginBottom: 12,
+    letterSpacing: -0.1,
   },
 
   postImagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginVertical: 8,
-    marginHorizontal: -2,
-    borderRadius: 8,
+    marginTop: 12,
+    marginHorizontal: -3,
+    borderRadius: 12,
     overflow: 'hidden',
   },
-
   postImageWrapperSingle: {
     width: '100%',
-    marginBottom: 5,
+    marginBottom: 0,
   },
-
+  postImageWrapperDouble: {
+    width: '50%',
+    padding: 3,
+  },
   postImageWrapperMultiple: {
-    width: '33.33%',
-    padding: 2,
+    width: '50%',
+    padding: 3,
   },
-
   postImageSingle: {
     width: '100%',
-    height: 400,
-    borderRadius: 8,
-    resizeMode: 'cover',
+    height: 380,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
   },
-
   postImageThumbnail: {
     width: '100%',
-    height: 200,
-    borderRadius: 6,
-    resizeMode: 'cover',
+    height: 180,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
   },
 
   moreImagesOverlay: {
     position: 'absolute',
-    top: 2,
-    left: 2,
-    right: 2,
-    bottom: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    top: 3,
+    left: 3,
+    right: 3,
+    bottom: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 6,
+    borderRadius: 10,
   },
-
   moreImagesText: {
     color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '700',
+    marginTop: 6,
+    letterSpacing: -0.5,
   },
 
   postActions: {
@@ -1911,38 +1982,119 @@ const styles = StyleSheet.create({
 
   },
   sharedPostWrapper: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 10,
-    marginTop: 10,
-  },
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+   
+    marginTop: 2,
 
+  },
+  sharedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sharedIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ffe8e8ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
   sharedBadge: {
     fontSize: 13,
-    color: '#555',
-    marginBottom: 6,
-    fontStyle: 'italic',
+    color: '#666',
+    flex: 1,
   },
-
-  originalPostBox: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 8,
+  sharedUsername: {
+    fontWeight: '600',
+    color: '#E50914',
+  },
+  originalPostCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#e8eaed',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-
+  originalAuthorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  originalAuthorAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  originalAuthorAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  originalAuthorInfo: {
+    flex: 1,
+  },
+  originalAuthorName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  originalPostTime: {
+    fontSize: 12,
+    color: '#999',
+  },
   originalPostText: {
     fontSize: 14,
     color: '#333',
-    marginBottom: 3,
+    lineHeight: 20,
+    marginBottom: 10,
   },
-
+  originalImageWrapper: {
+    position: 'relative',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
   originalPostImage: {
     width: '100%',
-    height: 200,
-    borderRadius: 8,
+    height: 280,
+    backgroundColor: '#f0f0f0',
   },
+  imageCountBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  imageCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+ 
   commentCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1994,63 +2146,70 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
 
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
   shareModalContent: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
-    maxHeight: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 30,
+    maxHeight: '85%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 10,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 15,
   },
   shareModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   shareModalTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: '#1a1a1a',
+    letterSpacing: -0.3,
   },
-  closebtn: {
-    padding: 5,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    marginBottom: 15,
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shareHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 15,
-    marginLeft: 5,
+    marginBottom: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fafafa',
+    marginHorizontal: 16,
+    borderRadius: 12,
   },
   shareProfilePic: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     marginRight: 12,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
-    marginLeft: 15,
+    borderColor: '#fff',
   },
   placeholderProfilePic: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -2062,8 +2221,16 @@ const styles = StyleSheet.create({
   shareUsername: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
+    color: '#1a1a1a',
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  shareSubtextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  globeIcon: {
+    marginRight: 6,
   },
   shareSubtext: {
     fontSize: 13,
@@ -2074,32 +2241,47 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   shareCaptionInput: {
-    fontSize: 15,
-    color: '#333',
-    minHeight: 100,
-    maxHeight: 200,
-    padding: 15,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginBottom: 8,
+    fontSize: 16,
+    color: '#1a1a1a',
+    minHeight: 120,
+    maxHeight: 220,
+    padding: 16,
+    backgroundColor: '#fafafa',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#e8e8e8',
+    lineHeight: 22,
+  },
+  inputFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'end',
+    marginTop: 10,
+    paddingHorizontal: 4,
+  },
+  emojiButton: {
+    padding: 4,
   },
   characterCount: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#999',
+    fontWeight: '500',
     textAlign: 'right',
+    justifyContent: 'flex-end',
+  },
+  characterCountWarning: {
+    color: '#ff9500',
   },
   shareActions: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 10,
+    gap: 12,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2107,74 +2289,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#666',
+    letterSpacing: -0.2,
   },
   shareButton: {
-    flex: 1,
+    flex: 1.2,
     flexDirection: 'row',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   shareButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#d0d0d0',
     shadowOpacity: 0,
   },
   shareButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.2,
   },
   shareIcon: {
     marginRight: 8,
-  },
-  shareHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-
-  shareProfilePic: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-    marginLeft: 20,
-  },
-
-  shareUsername: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-
-  shareCaptionInput: {
-    flex: 1,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 20,
-  },
-
-  shareButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-
-  shareButtonText: {
-    color: '#fff',
-    fontWeight:
-      'bold',
-    fontSize: 16,
   },
   loadingContainer: {
     position: 'absolute',
@@ -2267,36 +2409,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    backgroundColor: '#F0F8FF',
+    backgroundColor: '#FFE5E9',
     borderRadius: 8,
     marginVertical: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1E90FF',
+    borderColor: '#E50914',
+    borderWidth: 1,
   },
   recommendationHeaderText: {
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '600',
-    color: '#1E90FF',
+    color: '#E50914',
   },
   recommendationBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 20,
+    right: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFACD',
+    backgroundColor: '#FFE5E9',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 3,
     zIndex: 10,
     borderWidth: 1,
-    borderColor: '#FFD700',
+    borderColor: '#E50914',
   },
   recommendationText: {
     marginLeft: 4,
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#CC9900',
+    color: '#E50914',
   },
 });
