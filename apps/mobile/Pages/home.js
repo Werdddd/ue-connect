@@ -164,126 +164,148 @@ export default function Home() {
         setLoading(false);
         return;
       }
+
       try {
+        // ✅ Fetch Users collection
         const usersSnapshot = await getDocs(collection(firestore, 'Users'));
         const fetchedUsers = usersSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
         setAllUsers(fetchedUsers);
-        const snapshot = await getDocs(query(collection(firestore, 'newsfeed'), orderBy('timestamp', 'desc')));
+
+        // ✅ Fetch posts
+        const snapshot = await getDocs(
+          query(collection(firestore, 'newsfeed'), orderBy('timestamp', 'desc'))
+        );
+
         const fetchedPosts = await Promise.all(
           snapshot.docs.map(async (docSnap) => {
             const d = docSnap.data();
-            const rawDate = d.date || d.timestamp;
-            const dateObj = rawDate?.toDate
-              ? rawDate.toDate()
-              : new Date(rawDate || Date.now());
-            const images = (d.images || []).map((img) =>
-              img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
 
-            );
-
-            const commentsSnapshot = await
-              getDocs(
-                collection(firestore, 'newsfeed', docSnap.id, 'comments')
-              );
-            const commentCount = commentsSnapshot.size;
-            let profileImage =
-              'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
-            let userName = d.userName || 'Anonymous';
-
-            let role = '';
-            if (d.userId) {
-              try {
-                const userData = fetchedUsers.find(u => u.id === d.userId);
-                if (userData) {
-                  userName =
-                    userData.firstName && userData.lastName
-                      ?
-                      `${userData.firstName} ${userData.lastName}`
-                      : userData.firstName ||
-                      'Anonymous';
-
-                  profileImage = userData.profileImage || profileImage;
-                  role = userData.role || '';
-                }
-              } catch (err) {
-                console.warn(`Failed to get user data for ${d.userId}`, err);
-              }
+            // ✅ Handle timestamps safely
+            let dateObj = new Date();
+            const rawDate = d.timestamp || d.date;
+            if (rawDate?.toDate) {
+              dateObj = rawDate.toDate();
+            } else if (typeof rawDate === 'number' || typeof rawDate === 'string') {
+              dateObj = new Date(rawDate);
             }
 
+            // ✅ Normalize user
+            const userId = d.user?.id || d.userId || 'unknown';
+            const userName =
+              d.user?.name ||
+              d.userName ||
+              (() => {
+                const found = fetchedUsers.find((u) => u.id === userId);
+                if (!found) return 'Anonymous';
+                return `${found.firstName || ''} ${found.lastName || ''}`.trim() || 'Anonymous';
+              })();
+
+            const profileImage =
+              d.user?.profileImage ||
+              (() => {
+                const found = fetchedUsers.find((u) => u.id === userId);
+                return found?.profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg';
+              })();
+
+            const role = d.user?.role || fetchedUsers.find(u => u.id === userId)?.role || '';
+
+            // ✅ Normalize shared post data
+            let sharedPostData = null;
+            if (d.isShared && d.sharedPostData) {
+              const sp = d.sharedPostData;
+              const sharedUserId = sp.user?.id || sp.userId || sp.userEmail || 'unknown';
+              const sharedUserData = fetchedUsers.find(u => u.id === sharedUserId);
+
+              sharedPostData = {
+                id: sp.id || null,
+                text: sp.text || '',
+                images: sp.images || [],
+                user: {
+                  id: sharedUserId,
+                  name:
+                    sp.user?.name ||
+                    sp.userName ||
+                    (sharedUserData
+                      ? `${sharedUserData.firstName || ''} ${sharedUserData.lastName || ''}`.trim()
+                      : 'Unknown'),
+                  profileImage:
+                    sp.user?.profileImage ||
+                    sharedUserData?.profileImage ||
+                    'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
+                },
+              };
+            }
+
+            // ✅ Convert images properly
+            const images = (d.images || []).map((img) =>
+              img.startsWith('http') ? img : `data:image/jpeg;base64,${img}`
+            );
+
+            // ✅ Fetch comment count
+            const commentsSnapshot = await getDocs(
+              collection(firestore, 'newsfeed', docSnap.id, 'comments')
+            );
+            const commentCount = commentsSnapshot.size;
+
+            // ✅ Return normalized post
             return {
               id: docSnap.id,
-              text: d.text ||
-                '',
+              text: d.text || '',
               date: dateObj,
               images,
-              userId: d.userId, // This is the email
+              userId,
               user: {
+                id: userId,
                 name: userName,
-
                 profileImage,
-
                 role,
               },
-              likedBy: d.likedBy ||
-                [], // This is an array of emails
+              likedBy: d.likedBy || [],
               commentCount,
-              pinned: d.pinned === true,
-              isEvent: d.isEvent === true,
+              pinned: !!d.pinned,
+              isEvent: !!d.isEvent,
+              isShared: !!d.isShared,
+              sharedPostData,
             };
           })
         );
 
+        // ✅ Add event posts (optional)
         const events = await fetchEvents();
-        const eventPosts = events.map(event => {
-          // Prefer Firestore createdAt timestamp
-          let eventDate = null;
-          if (event.createdAt && typeof event.createdAt.toDate === 'function') {
-            eventDate = event.createdAt.toDate();
-          } else if (event.date) {
-            eventDate = new Date(event.date);
-          }
+        const eventPosts = events.map((event) => ({
+          id: event.id,
+          text: event.description || event.title || '',
+          date:
+            event.createdAt?.toDate?.() || (event.date ? new Date(event.date) : new Date()),
+          images: event.images || [],
+          userId: event.organizerId || '',
+          user: {
+            name: event.organizerName || 'Event',
+            profileImage: event.organizerImage || 'default_event_image_url',
+            role: 'event',
+          },
+          likedBy: [],
+          commentCount: 0,
+          pinned: false,
+          isEvent: true,
+          eventData: event,
+        }));
 
-          return {
-            id: event.id,
-            text: event.description || event.title || '',
-            date: eventDate, // Use normalized date
-            images: event.images || [],
-            userId: event.organizerId || '',
-            user: {
-              name: event.organizerName || 'Event',
-              profileImage: event.organizerImage || 'default_event_image_url',
-              role: 'event',
-
-            },
-            likedBy: [],
-            commentCount: 0,
-            pinned: false,
-            isEvent: true,
-            eventData: event,
-          };
-        });
+        // ✅ Merge and sort all posts
         const allPosts = [...fetchedPosts, ...eventPosts];
+        const sortedPosts = allPosts.sort(
+          (a, b) => (b.date?.getTime?.() || 0) - (a.date?.getTime?.() || 0)
+        );
 
         if (fetchedUsers.length > 0) {
-          runRecommendationEngine(email, allPosts, fetchedUsers);
+          runRecommendationEngine(email, sortedPosts, fetchedUsers);
         }
-
-        const sortedPosts = allPosts.sort((a, b) => {
-          const aTime = a.date instanceof Date && !isNaN(a.date) ? a.date.getTime() : null;
-          const bTime = b.date instanceof Date && !isNaN(b.date) ? b.date.getTime() : null;
-
-          if (aTime && bTime) return bTime - aTime;
-          if (aTime && !bTime) return -1;
-          if (!aTime && bTime) return 1;
-          return 0;
-        });
 
         setNewsfeedPosts(sortedPosts);
         setFilteredPosts(sortedPosts);
-
       } catch (e) {
         console.error('Error fetching newsfeed or users:', e);
       } finally {
@@ -583,51 +605,111 @@ export default function Home() {
       setFilteredPosts(filtered);
     }
   };
+  const dataUriFromBase64 = (b64) => (b64 ? `${b64}` : null);
 
   const handleSharePost = async () => {
-    if (!selectedPostId) return; // the post the user wants to share
+    if (!selectedPostId) return;
     const user = auth.currentUser;
     if (!user) return;
-
     const userEmail = user.email;
     if (!userEmail) return;
 
-    const userDocRef = doc(firestore, "Users", userEmail);
-    const userDoc = await getDoc(userDocRef);
+    // fetch user profile
+    const userDocSnap = await getDoc(doc(firestore, 'Users', userEmail));
+    if (!userDocSnap.exists()) return;
+    const u = userDocSnap.data();
+    const firstName = u.firstName || '';
+    const lastName = u.lastName || '';
+    const profileImageBase64 = u.profileImage || null;
+    const profileImageUri = dataUriFromBase64(profileImageBase64);
 
-    if (!userDoc.exists()) return;
+    // try to get original post from local state first
+    let originalPost = newsfeedPosts?.find(p => p.id === selectedPostId);
 
-    const userData = userDoc.data();
-    const { firstName, lastName, profileImage, role } = userData;
+    // fallback: fetch original post from Firestore
+    if (!originalPost) {
+      const origSnap = await getDoc(doc(firestore, 'newsfeed', selectedPostId));
+      if (origSnap.exists()) {
+        originalPost = { id: origSnap.id, ...origSnap.data() };
+      } else {
+        console.warn('Original post not found:', selectedPostId);
+        return;
+      }
+    }
 
-    const newSharedPost = {
-      user: {
-        id: userEmail,
-        name: `${firstName} ${lastName}`,
-        profileImage: profileImage || 'https://mactaggartfp.com/manage/wp-content/uploads/default-profile.jpg',
-        role,
-      },
-      text: shareCaption || '',                    // the text the user adds in share modal
-      images: [],                                  // shared posts usually don’t add new images
-      date: new Date(),
-      isEvent: false,
-      comments: [],
-      likedBy: [],
-      sharedPostId: selectedPostId,               // reference to original post
-      sharedPostData: newsfeedPosts.find(p => p.id === selectedPostId), // optional for fast rendering
+    // Prepare user object to pass into savePost (savePost will write userId/userName)
+    const userObj = {
+      id: userEmail,
+      name: `${firstName} ${lastName}`.trim() || userEmail,
+      profileImage: profileImageUri, // data URI or null
     };
 
-    // Save to Firestore
-    const postId = await savePost(newSharedPost.user, newSharedPost.text, newSharedPost.images, false, {
-      sharedPostId: newSharedPost.sharedPostId,
-      sharedPostData: newSharedPost.sharedPostData
-    });
+    // Prepare sharedData in the shape savePost expects (use your newsfeed field names)
+    const sharedData = {
+      id: originalPost.id,
+      text: originalPost.text,
+      images: originalPost.images || [],
+      date: originalPost.date || null,
+      user: {
+        id:
+          originalPost.user?.id ||
+          originalPost.userId ||
+          "unknown",
+        name:
+          originalPost.user?.name ||
+          originalPost.userName ||
+          `${originalPost.user?.firstName || ""} ${originalPost.user?.lastName || ""}`.trim() ||
+          "Unknown",
+        profileImage:
+          originalPost.user?.profileImage ||
+          originalPost.profileImage ||
+          null,
+      },
+    };
 
-    setNewsfeedPosts(prev => [{ ...newSharedPost, id: postId }, ...prev]);
-    setVisiblePosts(prev => [{ ...newSharedPost, id: postId }, ...prev]);
+    // Save the shared post to Firestore
+    const postId = await savePost(userObj, shareCaption, [], false, sharedData);
+
+    // Build a local post object matching your newsfeed schema so the UI updates immediately
+    const localSharedPost = {
+      id: postId,
+      userId: userObj.id,
+      userName: userObj.name,
+      profileImage: userObj.profileImage,
+      text: shareCaption || '',
+      images: [],
+      timestamp: new Date(), // local placeholder; Firestore has serverTimestamp
+      likedBy: [],
+      pinned: false,
+      isShared: true,
+      sharedPostData: {
+        id: originalPost.id,
+        text: originalPost.text,
+        images: originalPost.images,
+        user: {
+          id: originalPost.user?.email || originalPost.userId,
+          name:
+            originalPost.user?.name ||
+            originalPost.userName ||
+            `${originalPost.user?.firstName || ''} ${originalPost.user?.lastName || ''}`.trim() ||
+            'Unknown',
+          profileImage:
+            originalPost.user?.profileImage ||
+            originalPost.profileImage ||
+            null,
+        }
+      }
+    };
+
+    // Prepend to your state so it shows instantly
+    setNewsfeedPosts(prev => [localSharedPost, ...prev]);
+    setVisiblePosts(prev => [localSharedPost, ...prev]);
+
+    // close modal + clear caption
     setShareModalVisible(false);
     setShareCaption('');
   };
+
 
   const handlePost = async () => {
     if (postText.trim() === '' && selectedImages.length === 0) return;
@@ -690,8 +772,28 @@ export default function Home() {
   };
 
   const renderPost = (post) => {
-
     const isRecommended = recommendedPosts.some(recPost => recPost.id === post.id);
+
+    const postUserId = post.user?.id || 'unknown';
+    const postUserName = post.user?.name || post.userName || 'Unknown User';
+    const postProfileImage = post.user?.profileImage || post.profileImage || null;
+    const postUserRole = post.user?.role || null;
+
+    const postDate = post.date ? new Date(post.date) : new Date();
+    const formattedDate = postDate.toLocaleString();
+
+    const hasText = (post.text || '').trim().length > 0;
+    const hasImages = Array.isArray(post.images) && post.images.length > 0;
+    const isLiked = (post.likedBy || []).includes(currentUserEmail);
+    const isSingleImage = hasImages && post.images.length === 1;
+    const isShared = !!post.isShared && !!post.sharedPostData;
+
+    const imageUriFromStored = (img) => {
+      if (!img) return null;
+      return (typeof img === 'string' && (img.startsWith('http') || img.startsWith('data:')))
+        ? img
+        : `${img}`;
+    };
 
     if (post.eventData) {
       return (
@@ -702,24 +804,15 @@ export default function Home() {
       );
     }
 
-    const formattedDate = post.date.toLocaleString();
-    const hasText = post.text.trim().length > 0;
-    const hasImages = post.images.length > 0;
-    const isLiked = (post.likedBy || []).includes(currentUserEmail);
-    const isSingleImage = post.images.length === 1;
-
     return (
       <View
         key={post.id}
-        post={post}
         style={[
           styles.postCard,
-          post.isEvent && styles.eventPostCard
+          post.isEvent && styles.eventPostCard,
         ]}
       >
-        {post.isEvent && (
-          <Text style={styles.eventBadge}>Event</Text>
-        )}
+        {post.isEvent && <Text style={styles.eventBadge}>Event</Text>}
 
         {isRecommended && (
           <View style={styles.recommendationBadge}>
@@ -728,26 +821,21 @@ export default function Home() {
           </View>
         )}
 
+        {/* HEADER */}
         <View style={styles.postHeader}>
           <View style={styles.postUserInfo}>
             <TouchableOpacity
               onPress={() => {
-                if (currentUserEmail !== post.userId) {
-                  navigation.navigate('UserOpen', {
-
-                    postId: post.id,
-                    postEmail: post.userId,
-                  });
+                if (currentUserEmail !== postUserId) {
+                  navigation.navigate('UserOpen', { postId: post.id, postEmail: postUserId });
                 } else {
                   navigation.navigate('UserOwnProfilePage');
-
                 }
               }}
             >
-              {post.user.profileImage ? (
+              {postProfileImage ? (
                 <Image
-                  source={{ uri: post.user.profileImage }}
-
+                  source={{ uri: imageUriFromStored(postProfileImage) }}
                   style={styles.profileImagePost}
                   resizeMode="cover"
                 />
@@ -758,24 +846,23 @@ export default function Home() {
 
             <View style={{ flexDirection: 'column', marginLeft: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.postUserName}>{post.user.name}</Text>
+                <View style={{ flexDirection: 'column' }}>
+                  <Text style={styles.postUserName}>{postUserName}</Text>
+                  <Text style={styles.postDate}>{formattedDate}</Text>
+                </View>
 
-                {(post.user.role === ss ||
-                  post.user.role === ss2 ||
-                  post.user.role === ss3) && (
+                {(postUserRole === ss ||
+                  postUserRole === ss2 ||
+                  postUserRole === ss3) && (
                     <Image
                       source={require('../assets/switch2.png')}
                       style={{ width: 16, height: 16, marginLeft: 5 }}
                     />
-
                   )}
               </View>
-              <Text style={styles.postDate}>
-                {new Date(post.date).toLocaleString()}
-              </Text>
-
             </View>
           </View>
+
           {post.pinned && (
             <Image
               source={require('../assets/pin.png')}
@@ -788,29 +875,60 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
+        {/* BODY */}
         <View style={styles.postBody}>
           {hasText && <Text style={styles.postTextContent}>{post.text}</Text>}
 
-          {/* {isShared && (
+          {isShared && post.sharedPostData && (
             <View style={styles.sharedPostWrapper}>
               <Text style={styles.sharedBadge}>
-                Shared from {post.sharedPostData.userName}
+                Shared from {post.sharedPostData.user?.name
+                  || post.sharedPostData.userName
+                  || post.sharedPostData.user_id
+                  || post.sharedPostData.userId
+                  || 'Unknown'}
               </Text>
-              {renderPost(post.sharedPostData)}
+
+              <View style={styles.originalPostBox}>
+                {post.sharedPostData.text ? (
+                  <Text style={styles.originalPostText}>
+                    {post.sharedPostData.text}
+                  </Text>
+                ) : null}
+
+                {Array.isArray(post.sharedPostData.images) &&
+                  post.sharedPostData.images.length > 0 && (
+                    <Image
+                      source={{
+                        uri: imageUriFromStored(post.sharedPostData.images[0]),
+                      }}
+                      style={styles.originalPostImage}
+                      resizeMode="cover"
+                    />
+                  )}
+              </View>
             </View>
-          )} */}
-          
+          )}
+
           {hasImages && (
             <View style={styles.postImagesContainer}>
               {post.images.slice(0, 3).map((uri, idx) => (
                 <TouchableOpacity
                   key={`${post.id}-img-${idx}`}
                   onPress={() => openImage(post.images, uri)}
-                  style={isSingleImage ? styles.postImageWrapperSingle : styles.postImageWrapperMultiple}
+                  style={
+                    isSingleImage
+                      ? styles.postImageWrapperSingle
+                      : styles.postImageWrapperMultiple
+                  }
                 >
                   <Image
-                    source={{ uri }}
-                    style={isSingleImage ? styles.postImageSingle : styles.postImageThumbnail}
+                    source={{ uri: imageUriFromStored(uri) }}
+                    style={
+                      isSingleImage
+                        ? styles.postImageSingle
+                        : styles.postImageThumbnail
+                    }
                   />
                   {post.images.length > 3 && idx === 2 && (
                     <View style={styles.moreImagesOverlay}>
@@ -821,27 +939,23 @@ export default function Home() {
                   )}
                 </TouchableOpacity>
               ))}
-
             </View>
           )}
-
         </View>
 
+        {/* ACTIONS */}
         <View style={styles.postActions}>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => toggleLike(post.id, post.likedBy)}
           >
             <Ionicons
-
               name={isLiked ? 'heart' : 'heart-outline'}
               size={20}
-              color={isLiked ?
-                'red' : '#555'}
+              color={isLiked ? 'red' : '#555'}
             />
             <Text style={styles.actionText}>
-              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ?
-                's' : ''}
+              {(post.likedBy || []).length} Like{(post.likedBy || []).length !== 1 ? 's' : ''}
             </Text>
           </TouchableOpacity>
 
@@ -855,8 +969,7 @@ export default function Home() {
           >
             <Ionicons name="chatbubble-outline" size={20} color="#555" />
             <Text style={styles.actionText}>
-              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ?
-                's' : ''}
+              {(post.commentCount || 0)} Comment{(post.commentCount || 0) !== 1 ? 's' : ''}
             </Text>
           </TouchableOpacity>
 
@@ -871,6 +984,7 @@ export default function Home() {
             <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
         </View>
+
 
         <Modal
 
@@ -1084,10 +1198,10 @@ export default function Home() {
           </View>
         </Modal>
 
-
       </View>
     );
   };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1782,11 +1896,43 @@ const styles = StyleSheet.create({
     padding: 20,
 
   },
+  sharedPostWrapper: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 10,
+  },
 
+  sharedBadge: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 6,
+    fontStyle: 'italic',
+  },
+
+  originalPostBox: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+
+  originalPostText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 3,
+  },
+
+  originalPostImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+  },
   commentCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 15,
+    marginBottom: 7,
   },
 
   commentsTitle: {
