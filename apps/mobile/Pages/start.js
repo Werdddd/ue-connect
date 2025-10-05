@@ -11,8 +11,8 @@ export default function Start() {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Welcome to UE Connect</Text>
+      <Image source={require('../assets/ueconnectlogo.png')} style={styles.logo} />
+      
       <TouchableOpacity
         style={styles.button}
         onPress={handleStart}
@@ -32,9 +32,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
+    width: 350,
+    height: 350,
+    marginBottom: 250,
   },
   title: {
     fontSize: 24,
@@ -47,6 +47,12 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 8,
+    width: '60%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
   },
   buttonText: {
     color: '#fff',
