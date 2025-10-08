@@ -176,11 +176,11 @@ const PostCard = ({
           )}
           {hasImages && (
             <View style={styles.postImagesContainer}>
-              {images.slice(0, 3).map((uri, idx) => { // MODIFICATION 1: Limit to a maximum of 3 images
+              {images.slice(0, 4).map((uri, idx) => { // MODIFICATION 1: Limit to a maximum of 3 images
 
-                const isThirdImage = idx === 2;
-                const hasMoreImages = images.length > 3 && isThirdImage; // Check if it's the 3rd image AND there are more than 3 total
-                const imagesRemaining = images.length - 2; // Calculate the remaining images
+                const isThirdImage = idx === 3;
+                const hasMoreImages = images.length > 4 && isThirdImage; // Check if it's the 3rd image AND there are more than 3 total
+                const imagesRemaining = images.length - 3; // Calculate the remaining images
 
                 return (
                   <TouchableOpacity
