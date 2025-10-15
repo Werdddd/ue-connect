@@ -23,18 +23,18 @@ export default function Event() {
     const loadEvents = async () => {
         try {
             const data = await fetchEvents();
-    
+
             const visibleEvents = data.filter(event => {
                 const status = event.status?.toLowerCase();
                 return status === 'approved' || status === 'finished';
             });
-    
+
             setEvents(visibleEvents);
         } catch (error) {
             console.error('Failed to load events:', error);
         }
     };
-    
+
     const getOrganizationTitle = () => {
         switch (selectedDepartment) {
             case 'All':
@@ -56,7 +56,7 @@ export default function Event() {
 
     const filteredEvents = selectedDepartment === 'All'
         ? events
-        : events.filter(event => event.org === selectedDepartment);
+        : events.filter(event => event.department === selectedDepartment);
 
     return (
         <SafeAreaView style={styles.safeArea}>
