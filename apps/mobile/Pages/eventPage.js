@@ -13,6 +13,7 @@ import { fetchEvents, addEvent } from '../Backend/eventPage';
 
 export default function Event() {
     const [selectedOrg, setSelectedOrg] = useState('All');
+    const [selectedDepartment, setSelectedDepartment] = useState('All');
     const [scrollY, setScrollY] = useState(0);
     const [events, setEvents] = useState([]);
     useEffect(() => {
@@ -35,20 +36,27 @@ export default function Event() {
     };
     
     const getOrganizationTitle = () => {
-        switch (selectedOrg) {
-            case 'All': return 'All Events';
-            case 'CSC': return 'Central Student Council';
-            case 'COE': return 'College of Engineering';
-            case 'CFAD': return 'College of Fine Arts and Science';
-            case 'CBA': return 'College of Business Administration';
-            case 'CAS': return 'College of Arts and Science';
-            default: return '';
+        switch (selectedDepartment) {
+            case 'All':
+                return 'All Events';
+            case 'CSC':
+                return 'Central Student Council';
+            case 'COE':
+                return 'College of Engineering';
+            case 'CAS':
+                return 'College of Arts and Sciences';
+            case 'CFAD':
+                return 'College of Fine Arts and Design';
+            case 'CBA':
+                return 'College Business Administration';
+            default:
+                return '';
         }
     };
 
-    const filteredEvents = selectedOrg === 'All'
+    const filteredEvents = selectedDepartment === 'All'
         ? events
-        : events.filter(event => event.org === selectedOrg);
+        : events.filter(event => event.org === selectedDepartment);
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -64,13 +72,12 @@ export default function Event() {
                     scrollEventThrottle={16}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}>
-                    <OrganizationBar onSelectOrganization={setSelectedOrg} />
+                    <OrganizationBar onSelectDepartment={setSelectedDepartment} />
 
                     <View style={styles.titleContainer}>
                         <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
                         <View style={styles.underline} />
                     </View>
-
 
                     {filteredEvents.map((event) => (
                         <EventCard

@@ -61,11 +61,6 @@ export default function OrganizationBar({ onSelectDepartment }) {
                     <Image source={require('../assets/cbaLogo.png')} style={styles.orglogo} />
                 </TouchableOpacity>
 
-
-
-
-
-
                 {/* Add Org logos here, Orgname must be unique para di mag error*/}
                 {/* After mag add dito, go to organizationPage, then add org sa function, follow format*/}
             </ScrollView>
