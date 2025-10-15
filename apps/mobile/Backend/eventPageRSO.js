@@ -44,32 +44,55 @@ export async function addEvent(newEvent) {
       throw new Error("User must be logged in to create events.");
     }
 
-    // Fallback: if org name isn’t in profile, use email or "Unknown Org"
     const creatorName = currentUser.displayName || currentUser.email || "Unknown Org";
+
+    const orgSnapshot = await getDocs(collection(firestore, "organizations"));
+    let matchedOrg = null;
+
+    for (const docSnap of orgSnapshot.docs) {
+      const orgData = docSnap.data();
+      if (
+        orgData.email &&
+        orgData.email.toLowerCase() === currentUser.email.toLowerCase()
+      ) {
+        matchedOrg = {
+          orgName: orgData.orgName || "Unknown Organization",
+          department: orgData.department || "N/A",
+          orgId: docSnap.id,
+        };
+        break;
+      }
+    }
 
     const eventWithStatus = {
       ...newEvent,
-      status: newEvent.status || 'Applied',
+      status: newEvent.status || "Applied",
       isCollab: newEvent.isCollab || false,
       collabOrgs: newEvent.collabOrgs || [],
-      createdBy: currentUser.uid,       // ✅ save UID
-      createdByName: creatorName,       // ✅ save display name / org name
+      createdBy: currentUser.uid,
+      createdByName: creatorName,
       createdAt: serverTimestamp(),
+
+      // ✅ Include organization details
+      organization: matchedOrg?.orgName || "Unknown Organization",
+      department: matchedOrg?.department || "N/A",
+      orgId: matchedOrg?.orgId || null,
     };
 
-    // custom ID like OrgEvent1, OrgEvent2...
-    const eventsSnapshot = await getDocs(collection(firestore, 'events'));
+    // Custom ID like OrgEvent1, OrgEvent2...
+    const eventsSnapshot = await getDocs(collection(firestore, "events"));
     const newEventID = `OrgEvent${eventsSnapshot.size + 1}`;
 
-    const docRef = doc(firestore, 'events', newEventID);
+    const docRef = doc(firestore, "events", newEventID);
     await setDoc(docRef, eventWithStatus);
 
     return newEventID;
   } catch (error) {
-    console.error('Failed to add event:', error);
+    console.error("Failed to add event:", error);
     throw error;
   }
 }
+
 
 
   // GREEDY ALGORITHM FOR SUGGESTED DATE AND TIME

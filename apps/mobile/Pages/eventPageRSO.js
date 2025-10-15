@@ -7,11 +7,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
-import OrganizationBar from '../components/organizationBar';
 import EventCardRSO from '../components/eventCardRSO';
-import { fetchEvents, fetchOrganizations, addEvent } from '../Backend/eventPageRSO'; 
+import { fetchEvents, fetchOrganizations, addEvent } from '../Backend/eventPageRSO';
 import { getSuggestedDateTime } from '../Backend/eventPageRSO';
-// import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -32,7 +30,7 @@ export default function EventPageRSO() {
     const [newTime, setNewTime] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [newParticipants, setNewParticipants] = useState('');
-    const [organization, setOrganization] = useState('');  
+
     const [status, setStatus] = useState('');
     const [selectedBanner, setSelectedBanner] = useState(null);
     const [selectedProposal, setSelectedProposal] = useState(null);
@@ -47,7 +45,7 @@ export default function EventPageRSO() {
     const [selectedOrgs, setSelectedOrgs] = useState([]);
     const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
 
-     const auth = getAuth();  
+    const auth = getAuth();
     const currentUser = auth.currentUser; // logged-in user
     const userId = currentUser?.uid;
 
@@ -57,7 +55,7 @@ export default function EventPageRSO() {
 
     const loadEvents = async () => {
         try {
-            const data = await fetchEvents(); 
+            const data = await fetchEvents();
 
             // ✅ Show only events created by the logged-in user
             const userEvents = data.filter(event => event.createdBy === userId);
@@ -106,15 +104,10 @@ export default function EventPageRSO() {
                 const compressed = await ImageManipulator.manipulateAsync(
                     uri,
                     [{ resize: { width: 800 } }],
-                    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+                    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
                 );
 
-                // Convert to base64
-                const base64 = await FileSystem.readAsStringAsync(compressed.uri, {
-                    encoding: FileSystem.EncodingType.Base64,
-                });
-
-                const dataUri = `data:image/jpeg;base64,${base64}`;
+                const dataUri = `data:image/jpeg;base64,${compressed.base64}`;
                 setSelectedBanner(dataUri);
 
             } catch (error) {
@@ -125,22 +118,22 @@ export default function EventPageRSO() {
 
     const handleSelectProposal = () => {
         if (selectedProposal) {
-          setProposalLink(selectedProposal.uri); // edit existing
+            setProposalLink(selectedProposal.uri); // edit existing
         } else {
-          setProposalLink(''); // new proposal
+            setProposalLink(''); // new proposal
         }
         setIsProposalModalVisible(true);
-      };
-      
-    
+    };
+
+
     //   const handleProposalLinkInput = (text) => {
     //     setProposalLink(text); // Update the proposal link
     //   };
-    
-      const handleSaveProposalLink = () => {
+
+    const handleSaveProposalLink = () => {
         setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' }); // Save the proposal link
         setIsProposalModalVisible(false); // Close modal after saving
-      };
+    };
 
 
     const handleProposalLinkInput = (link) => {
@@ -149,214 +142,213 @@ export default function EventPageRSO() {
             uri: link,
         });
     };
-    
+
 
     useEffect(() => {
-  if (isModalVisible) {
-    (async () => {
-      const orgs = await fetchOrganizations();
-      setOrganizations(orgs);
-    })();
-  }
-}, [isModalVisible]);
+        if (isModalVisible) {
+            (async () => {
+                const orgs = await fetchOrganizations();
+                setOrganizations(orgs);
+            })();
+        }
+    }, [isModalVisible]);
 
     const handleAddEvent = async () => {
-    if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants ) {
-        alert('Please fill out all fields!');
-        return;
-    }
+        if (!newTitle || !newDescription || !newDate || !newTime || !newLocation || !newParticipants) {
+            alert('Please fill out all fields!');
+            return;
+        }
 
-    const participants = parseInt(newParticipants, 10);
-    if (isNaN(participants)) {
-        alert('Please enter a valid number for participants!');
-        return;
-    }
+        const participants = parseInt(newParticipants, 10);
+        if (isNaN(participants)) {
+            alert('Please enter a valid number for participants!');
+            return;
+        }
 
-    // ✅ Enhanced function to parse time strings
-    const parseTimeRange = (dateStr, timeStr) => {
-        try {
-            const [startStr, endStr] = timeStr.split('-').map(s => s?.trim());
-            
-            const parseTime = (timeString) => {
-                // Clean the time string
-                const cleanTime = timeString.trim();
-                
-                // Extract hours, minutes, and AM/PM
-                const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i;
-                const match = cleanTime.match(timeRegex);
-                
-                if (!match) {
-                    throw new Error('Invalid time format');
-                }
-                
-                let hours = parseInt(match[1], 10);
-                const minutes = match[2] ? parseInt(match[2], 10) : 0;
-                const meridiem = match[3] ? match[3].toUpperCase() : null;
-                
-                // Convert to 24-hour format
-                if (meridiem === 'PM' && hours !== 12) {
-                    hours += 12;
-                } else if (meridiem === 'AM' && hours === 12) {
-                    hours = 0;
-                }
-                
-                // Parse the date string to extract month, day, year
-                const dateRegex = /(\w+)\s+(\d{1,2}),?\s+(\d{4})/;
-                const dateMatch = dateStr.match(dateRegex);
-                
-                if (!dateMatch) {
-                    throw new Error('Invalid date format');
-                }
-                
-                const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
-                                   'july', 'august', 'september', 'october', 'november', 'december'];
-                const monthIndex = monthNames.findIndex(m => 
-                    m.startsWith(dateMatch[1].toLowerCase().substring(0, 3))
-                );
-                
-                if (monthIndex === -1) {
-                    throw new Error('Invalid month');
-                }
-                
-                const day = parseInt(dateMatch[2], 10);
-                const year = parseInt(dateMatch[3], 10);
-                
-                // Create date object using individual components (more reliable)
-                const date = new Date(year, monthIndex, day, hours, minutes, 0, 0);
-                
-                if (isNaN(date.getTime())) {
-                    throw new Error('Invalid date object created');
-                }
-                
-                return date.getTime();
-            };
+        // ✅ Enhanced function to parse time strings
+        const parseTimeRange = (dateStr, timeStr) => {
+            try {
+                const [startStr, endStr] = timeStr.split('-').map(s => s?.trim());
 
-            if (endStr) {
-                return {
-                    start: parseTime(startStr),
-                    end: parseTime(endStr),
+                const parseTime = (timeString) => {
+                    // Clean the time string
+                    const cleanTime = timeString.trim();
+
+                    // Extract hours, minutes, and AM/PM
+                    const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i;
+                    const match = cleanTime.match(timeRegex);
+
+                    if (!match) {
+                        throw new Error('Invalid time format');
+                    }
+
+                    let hours = parseInt(match[1], 10);
+                    const minutes = match[2] ? parseInt(match[2], 10) : 0;
+                    const meridiem = match[3] ? match[3].toUpperCase() : null;
+
+                    // Convert to 24-hour format
+                    if (meridiem === 'PM' && hours !== 12) {
+                        hours += 12;
+                    } else if (meridiem === 'AM' && hours === 12) {
+                        hours = 0;
+                    }
+
+                    // Parse the date string to extract month, day, year
+                    const dateRegex = /(\w+)\s+(\d{1,2}),?\s+(\d{4})/;
+                    const dateMatch = dateStr.match(dateRegex);
+
+                    if (!dateMatch) {
+                        throw new Error('Invalid date format');
+                    }
+
+                    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                        'july', 'august', 'september', 'october', 'november', 'december'];
+                    const monthIndex = monthNames.findIndex(m =>
+                        m.startsWith(dateMatch[1].toLowerCase().substring(0, 3))
+                    );
+
+                    if (monthIndex === -1) {
+                        throw new Error('Invalid month');
+                    }
+
+                    const day = parseInt(dateMatch[2], 10);
+                    const year = parseInt(dateMatch[3], 10);
+
+                    // Create date object using individual components (more reliable)
+                    const date = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+
+                    if (isNaN(date.getTime())) {
+                        throw new Error('Invalid date object created');
+                    }
+
+                    return date.getTime();
                 };
-            } else {
-                const start = parseTime(startStr);
-                // Default: add 1 hour if no end time provided
-                return {
-                    start,
-                    end: start + 60 * 60 * 1000,
-                };
+
+                if (endStr) {
+                    return {
+                        start: parseTime(startStr),
+                        end: parseTime(endStr),
+                    };
+                } else {
+                    const start = parseTime(startStr);
+                    // Default: add 1 hour if no end time provided
+                    return {
+                        start,
+                        end: start + 60 * 60 * 1000,
+                    };
+                }
+            } catch (err) {
+                console.warn("⏰ Error parsing time:", err.message, "Date:", dateStr, "Time:", timeStr);
+                return null;
             }
-        } catch (err) {
-            console.warn("⏰ Error parsing time:", err.message, "Date:", dateStr, "Time:", timeStr);
-            return null;
-        }
-    };
+        };
 
-    // ✅ Normalize location for comparison (case-insensitive, trim spaces)
-    const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
-    const normalizedNewLocation = normalizeLocation(newLocation);
+        // ✅ Normalize location for comparison (case-insensitive, trim spaces)
+        const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
+        const normalizedNewLocation = normalizeLocation(newLocation);
 
-    // ✅ Check conflicts against events with Applied or Approved status
-    const conflictingEvents = events.filter(event => {
-        
-        // Only check Applied and Approved events
-        if (!(event.status === 'Applied' || event.status === 'Approved')) {
-            return false;
-        }
+        // ✅ Check conflicts against events with Applied or Approved status
+        const conflictingEvents = events.filter(event => {
 
-        // Check if same location (case-insensitive comparison)
-        const eventLoc = normalizeLocation(event.location);
-
-        if (eventLoc !== normalizedNewLocation) {
-            return false;
-        }
-
-        // Check if same date
-        if (event.date !== newDate) {
-
-            return false;
-        }
-
-        // Check time overlap
-        try {
-            const existing = parseTimeRange(event.date, event.time);
-            const incoming = parseTimeRange(newDate, newTime);
-
-            if (!existing || !incoming) {
+            // Only check Applied and Approved events
+            if (!(event.status === 'Applied' || event.status === 'Approved')) {
                 return false;
             }
 
-            // Overlap check: (A starts before B ends) AND (A ends after B starts)
-            const hasOverlap = incoming.start < existing.end && incoming.end > existing.start;
-            return hasOverlap;
-        } catch (err) {
-            console.warn("⚠️ Error checking conflict:", err);
-            return false;
+            // Check if same location (case-insensitive comparison)
+            const eventLoc = normalizeLocation(event.location);
+
+            if (eventLoc !== normalizedNewLocation) {
+                return false;
+            }
+
+            // Check if same date
+            if (event.date !== newDate) {
+
+                return false;
+            }
+
+            // Check time overlap
+            try {
+                const existing = parseTimeRange(event.date, event.time);
+                const incoming = parseTimeRange(newDate, newTime);
+
+                if (!existing || !incoming) {
+                    return false;
+                }
+
+                // Overlap check: (A starts before B ends) AND (A ends after B starts)
+                const hasOverlap = incoming.start < existing.end && incoming.end > existing.start;
+                return hasOverlap;
+            } catch (err) {
+                console.warn("⚠️ Error checking conflict:", err);
+                return false;
+            }
+        });
+
+        // ✅ Show detailed warning if conflicts found
+        if (conflictingEvents.length > 0) {
+            const conflictDetails = conflictingEvents.map(event =>
+                `  • "${event.title}" at ${event.time} (${event.status})`
+            ).join('\n');
+
+            alert(
+                `⚠️ LOCATION CONFLICT DETECTED\n\n` +
+                `The location "${newLocation}" is already booked on ${newDate}.\n\n` +
+                `Conflicting events:\n${conflictDetails}\n\n` +
+                `Please choose:\n` +
+                `  • A different time slot for ${newLocation}\n` +
+                `  • A different location\n` +
+                `  • A different date`
+            );
+            return;
         }
-    });
 
-    // ✅ Show detailed warning if conflicts found
-    if (conflictingEvents.length > 0) {
-        const conflictDetails = conflictingEvents.map(event => 
-            `  • "${event.title}" at ${event.time} (${event.status})`
-        ).join('\n');
-        
-        alert(
-            `⚠️ LOCATION CONFLICT DETECTED\n\n` +
-            `The location "${newLocation}" is already booked on ${newDate}.\n\n` +
-            `Conflicting events:\n${conflictDetails}\n\n` +
-            `Please choose:\n` +
-            `  • A different time slot for ${newLocation}\n` +
-            `  • A different location\n` +
-            `  • A different date`
-        );
-        return;
-    }
+        const eventStatus = status || 'Applied';
 
-    const eventStatus = status || 'Applied'; 
+        const newEvent = {
+            banner: selectedBanner,
+            title: newTitle,
+            description: newDescription,
+            date: newDate,
+            time: newTime,
+            location: newLocation,
+            participants: participants,
+            status: eventStatus,
+            proposalLink: selectedProposal?.uri || null,
+            proposalName: selectedProposal?.name || null,
+            isCollab,
+            collabOrgs: selectedOrgs,
+            createdBy: userId,
+        };
 
-    const newEvent = {
-        banner: selectedBanner,
-        title: newTitle,
-        description: newDescription,
-        date: newDate,
-        time: newTime,
-        location: newLocation,
-        participants: participants,
-        org: organization,  
-        status: eventStatus, 
-        proposalLink: selectedProposal?.uri || null,
-        proposalName: selectedProposal?.name || null,
-        isCollab,
-        collabOrgs: selectedOrgs,
-        createdBy: userId,
+        try {
+            await addEvent(newEvent);
+            await loadEvents();
+            setIsModalVisible(false);
+
+            setSelectedBanner(null);
+            setNewTitle('');
+            setNewDescription('');
+            setNewDate('');
+            setNewTime('');
+            setNewLocation('');
+            setNewParticipants('');
+            setStatus('');
+            setSelectedProposal(null);
+            setProposalLink('');
+
+            setIsSuccessModalVisible(true);
+
+            setIsCollab(false);
+            setSelectedOrgs([]);
+        } catch (error) {
+            console.error('Error adding event:', error);
+            alert('Failed to create event. Please try again.');
+        }
     };
 
-    try {
-        await addEvent(newEvent);
-        await loadEvents();
-        setIsModalVisible(false);
-
-        setSelectedBanner(null);
-        setNewTitle('');
-        setNewDescription('');
-        setNewDate('');
-        setNewTime('');
-        setNewLocation('');
-        setNewParticipants('');
-        setStatus('');
-        setSelectedProposal(null);
-        setProposalLink('');
-
-        setIsSuccessModalVisible(true);
-
-        setIsCollab(false);
-    setSelectedOrgs([]);
-    } catch (error) {
-        console.error('Error adding event:', error);
-        alert('Failed to create event. Please try again.');
-    }
-};
-
-const [locationConflictWarning, setLocationConflictWarning] = useState('');
+    const [locationConflictWarning, setLocationConflictWarning] = useState('');
 
     const getOrganizationTitle = () => {
         switch (selectedOrg) {
@@ -376,101 +368,103 @@ const [locationConflictWarning, setLocationConflictWarning] = useState('');
 
     const [suggestedDateTime, setSuggestedDateTime] = useState(null);
 
-        useEffect(() => {
-            const fetchSuggestion = async () => {
-              const suggestion = await getSuggestedDateTime();
-              setSuggestedDateTime(suggestion);
-            };
-          
-            fetchSuggestion();
-          }, []);
-          
-        useEffect(() => {
-            if (newDate && newTime && newLocation) {
-                const parseTimeRange = (dateStr, timeStr) => {
-                    try {
-                        const [startStr, endStr] = timeStr.split('-').map(s => s?.trim());
-                        
-                        const parseTime = (timeString) => {
-                            const cleanTime = timeString.trim();
-                            const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i;
-                            const match = cleanTime.match(timeRegex);
-                            
-                            if (!match) return null;
-                            
-                            let hours = parseInt(match[1], 10);
-                            const minutes = match[2] ? parseInt(match[2], 10) : 0;
-                            const meridiem = match[3] ? match[3].toUpperCase() : null;
-                            
-                            if (meridiem === 'PM' && hours !== 12) hours += 12;
-                            else if (meridiem === 'AM' && hours === 12) hours = 0;
-                            
-                            const dateRegex = /(\w+)\s+(\d{1,2}),?\s+(\d{4})/;
-                            const dateMatch = dateStr.match(dateRegex);
-                            if (!dateMatch) return null;
-                            
-                            const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
-                                            'july', 'august', 'september', 'october', 'november', 'december'];
-                            const monthIndex = monthNames.findIndex(m => 
-                                m.startsWith(dateMatch[1].toLowerCase().substring(0, 3))
-                            );
-                            if (monthIndex === -1) return null;
-                            
-                            const day = parseInt(dateMatch[2], 10);
-                            const year = parseInt(dateMatch[3], 10);
-                            const date = new Date(year, monthIndex, day, hours, minutes, 0, 0);
-                            
-                            return isNaN(date.getTime()) ? null : date.getTime();
-                        };
-                        
-                        if (endStr) {
-                            return { start: parseTime(startStr), end: parseTime(endStr) };
-                        } else {
-                            const start = parseTime(startStr);
-                            return start ? { start, end: start + 60 * 60 * 1000 } : null;
-                        }
-                    } catch {
-                        return null;
+    useEffect(() => {
+        const fetchSuggestion = async () => {
+            const suggestion = await getSuggestedDateTime();
+            setSuggestedDateTime(suggestion);
+        };
+
+        fetchSuggestion();
+    }, []);
+
+    useEffect(() => {
+        if (newDate && newTime && newLocation) {
+            const parseTimeRange = (dateStr, timeStr) => {
+                try {
+                    const [startStr, endStr] = timeStr.split('-').map(s => s?.trim());
+
+                    const parseTime = (timeString) => {
+                        const cleanTime = timeString.trim();
+                        const timeRegex = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/i;
+                        const match = cleanTime.match(timeRegex);
+
+                        if (!match) return null;
+
+                        let hours = parseInt(match[1], 10);
+                        const minutes = match[2] ? parseInt(match[2], 10) : 0;
+                        const meridiem = match[3] ? match[3].toUpperCase() : null;
+
+                        if (meridiem === 'PM' && hours !== 12) hours += 12;
+                        else if (meridiem === 'AM' && hours === 12) hours = 0;
+
+                        const dateRegex = /(\w+)\s+(\d{1,2}),?\s+(\d{4})/;
+                        const dateMatch = dateStr.match(dateRegex);
+                        if (!dateMatch) return null;
+
+                        const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+                            'july', 'august', 'september', 'october', 'november', 'december'];
+                        const monthIndex = monthNames.findIndex(m =>
+                            m.startsWith(dateMatch[1].toLowerCase().substring(0, 3))
+                        );
+                        if (monthIndex === -1) return null;
+
+                        const day = parseInt(dateMatch[2], 10);
+                        const year = parseInt(dateMatch[3], 10);
+                        const date = new Date(year, monthIndex, day, hours, minutes, 0, 0);
+
+                        return isNaN(date.getTime()) ? null : date.getTime();
+                    };
+
+                    if (endStr) {
+                        return { start: parseTime(startStr), end: parseTime(endStr) };
+                    } else {
+                        const start = parseTime(startStr);
+                        return start ? { start, end: start + 60 * 60 * 1000 } : null;
                     }
-                };
-
-                const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
-                const conflictingEvents = events.filter(event => {
-                    if (!(event.status === 'Applied' || event.status === 'Approved')) return false;
-                    if (normalizeLocation(event.location) !== normalizeLocation(newLocation)) return false;
-                    if (event.date !== newDate) return false;
-
-                    try {
-                        const existing = parseTimeRange(event.date, event.time);
-                        const incoming = parseTimeRange(newDate, newTime);
-                        if (!existing || !incoming) return false;
-                        return incoming.start < existing.end && incoming.end > existing.start;
-                    } catch {
-                        return false;
-                    }
-                });
-
-                if (conflictingEvents.length > 0) {
-                    const details = conflictingEvents.map(e => `${e.title} (${e.time})`).join(', ');
-                    setLocationConflictWarning(`⚠️ Conflict detected with: ${details}`);
-                } else {
-                    setLocationConflictWarning('');
+                } catch {
+                    return null;
                 }
+            };
+
+            const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
+            const conflictingEvents = events.filter(event => {
+                if (!(event.status === 'Applied' || event.status === 'Approved')) return false;
+                if (normalizeLocation(event.location) !== normalizeLocation(newLocation)) return false;
+                if (event.date !== newDate) return false;
+
+                try {
+                    const existing = parseTimeRange(event.date, event.time);
+                    const incoming = parseTimeRange(newDate, newTime);
+                    if (!existing || !incoming) return false;
+                    return incoming.start < existing.end && incoming.end > existing.start;
+                } catch {
+                    return false;
+                }
+            });
+
+            if (conflictingEvents.length > 0) {
+                const details = conflictingEvents.map(e => `${e.title} (${e.time})`).join(', ');
+                setLocationConflictWarning(`⚠️ Conflict detected with: ${details}`);
             } else {
                 setLocationConflictWarning('');
             }
-        }, [newDate, newTime, newLocation, events]);
+        } else {
+            setLocationConflictWarning('');
+        }
+    }, [newDate, newTime, newLocation, events]);
 
 
-// STEP 4 (OPTIONAL): Add this warning display in your modal
-// Place it right after the Event Location TextInput:
+    // STEP 4 (OPTIONAL): Add this warning display in your modal
+    // Place it right after the Event Location TextInput:
 
-{locationConflictWarning ? (
-    <View style={styles.warningContainer}>
-        <Text style={styles.warningText}>{locationConflictWarning}</Text>
-    </View>
-) : null}
-    
+    {
+        locationConflictWarning ? (
+            <View style={styles.warningContainer}>
+                <Text style={styles.warningText}>{locationConflictWarning}</Text>
+            </View>
+        ) : null
+    }
+
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -530,192 +524,192 @@ const [locationConflictWarning, setLocationConflictWarning] = useState('');
                     onRequestClose={() => setIsModalVisible(false)}
                 >
                     <View style={styles.modalContainer}>
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        style={styles.modalContentWrapper} // Added a wrapper style for layout adjustments
-                    >
-                         <ScrollView
-                            
-                            keyboardShouldPersistTaps="handled" // To ensure tapping outside input still dismisses keyboard
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                            style={styles.modalContentWrapper} // Added a wrapper style for layout adjustments
                         >
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Create Event</Text>
-                            <Text style={styles.label}>Event Title</Text>
-                            <TextInput
-                                placeholder="ENtramurals 2025"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newTitle}
-                                onChangeText={setNewTitle}
-                            />
-                            <Text style={styles.label}>Event Description</Text>
-                            <TextInput
-                                placeholder="An event of..."
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newDescription}
-                                onChangeText={setNewDescription}
-                            />
-                            
-                            <View style={styles.dateTimeRow}>
-                                {/* Date Input */}
-                                <View style={styles.dateTimeColumn}>
-                                    <Text style={styles.label}>Event Date</Text>
+                            <ScrollView
+
+                                keyboardShouldPersistTaps="handled" // To ensure tapping outside input still dismisses keyboard
+                            >
+                                <View style={styles.modalContent}>
+                                    <Text style={styles.modalTitle}>Create Event</Text>
+                                    <Text style={styles.label}>Event Title</Text>
                                     <TextInput
-                                    placeholder="April 25, 2025"
-                                    placeholderTextColor="#D3D3D3"
-                                    style={styles.input}
-                                    value={newDate}
-                                    onChangeText={setNewDate}
-                                    />
-                                </View>
-
-                                {/* Time Input */}
-                                <View style={styles.dateTimeColumn}>
-                                    <Text style={styles.label}>Event Time</Text>
-                                    <TextInput
-                                    placeholder="8:00 - 10:00 AM"
-                                    placeholderTextColor="#D3D3D3"
-                                    style={styles.input}
-                                    value={newTime}
-                                    onChangeText={setNewTime}
-                                    />
-                                </View>
-                                </View>
-
-                                {/* Suggestions Below Inputs */}
-                                {suggestedDateTime?.suggestedTimes?.length > 0 && (
-                                <View style={styles.suggestionContainer}>
-                                    <Text style={styles.suggestionLabel}>Suggestions:</Text>
-                                    <View style={styles.suggestionGrid}>
-                                    {suggestedDateTime.suggestedTimes.map((item, index) => {
-                                        const [date, time] = item.split(" • ");
-                                        return (
-                                        <TouchableOpacity
-                                            key={index}
-                                            style={styles.suggestionButton}
-                                            onPress={() => {
-                                            setNewDate(date.trim());
-                                            setNewTime(time.trim());
-                                            }}
-                                        >
-                                            <Text style={styles.suggestionText}>{date}</Text>
-                                            <Text style={styles.suggestionText}>{time}</Text>
-                                        </TouchableOpacity>
-                                        );
-                                    })}
-                                    </View>
-                                </View>
-                                )}
-
-
-
-
-
-                        <Text style={[styles.label, { marginTop: 10 }]}>Event Location</Text>
-
-                            <TextInput
-                                placeholder="MPH 2, Engineering Building"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                value={newLocation}
-                                onChangeText={setNewLocation}
-                            />
-                            {locationConflictWarning ? (
-    <View style={styles.warningContainer}>
-        <Text style={styles.warningText}>{locationConflictWarning}</Text>
-    </View>
-) : null}
-                            <Text style={styles.label}>Event Participants</Text>
-                            <TextInput
-                                placeholder="100"
-                                placeholderTextColor="#D3D3D3"
-                                style={styles.input}
-                                keyboardType="numeric"
-                                value={newParticipants}
-                                onChangeText={setNewParticipants}
-                            />
-                            
-                            <View style={styles.bannerFileRow}>
-                                <View style={styles.uploadSection}>
-                                    <Text style={styles.label}>Event Banner</Text>
-                                    <TouchableOpacity
-                                        style={styles.uploadButton}
-                                        onPress={handleSelectBanner}
-                                    >
-                                        <Text style={styles.buttonText}>
-                                            {selectedBanner ? 'Change Banner' : 'Upload Banner'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                    {selectedBanner && (
-                                        <Image
-                                            source={{ uri: selectedBanner }}
-                                            style={styles.bannerPreview}
-                                            resizeMode="cover"
-                                        />
-                                    )}
-                                </View>
-
-                               <View style={styles.uploadSection}>
-                                <Text style={styles.label}>Event Proposal</Text>
-                                
-                                <TouchableOpacity
-                                    style={styles.uploadButton}
-                                    onPress={handleSelectProposal}
-                                >
-                                    <Text style={styles.buttonText}>
-                                        {selectedProposal ? 'Change Proposal' : 'Upload Proposal'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Proposal Preview Card */}
-                                {selectedProposal && (
-                                    <View style={styles.proposalPreview}>
-                                        <View style={styles.proposalIconContainer}>
-                                            <Text style={styles.proposalIcon}>📄</Text>
-                                        </View>
-                                        <View style={styles.proposalDetails}>
-                                            <Text style={styles.proposalTitle} numberOfLines={1}>
-                                                {selectedProposal.name}
-                                            </Text>
-                                            <TouchableOpacity 
-                                                onPress={() => Linking.openURL(selectedProposal.uri)}
-                                                style={styles.proposalLinkButton}
-                                            >
-                                                <Text style={styles.proposalLinkText} numberOfLines={2}>
-                                                    {selectedProposal.uri}
-                                                </Text>
-                                            </TouchableOpacity>
-                                            <View style={styles.proposalBadge}>
-                                                <Text style={styles.proposalBadgeText}>Google Document Link</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                )}
-                            </View>
-                                {/* Modal for Proposal Link Input */}
-                                <Modal
-                                    animationType="slide"
-                                    transparent={true}
-                                    visible={isProposalModalVisible}
-                                    onRequestClose={() => setIsProposalModalVisible(false)} // Close the modal
-                                >
-                                    <View style={styles.modalContainer}>
-                                    <View style={styles.modalContent}>
-                                        <Text style={styles.modalTitle}>Enter Document Link</Text>
-
-                                        
-
-                                        <TextInput
-                                        placeholder="Enter Document link"
+                                        placeholder="ENtramurals 2025"
                                         placeholderTextColor="#D3D3D3"
                                         style={styles.input}
-                                        value={proposalLink}
-                                        onChangeText={setProposalLink}
-                                        />
+                                        value={newTitle}
+                                        onChangeText={setNewTitle}
+                                    />
+                                    <Text style={styles.label}>Event Description</Text>
+                                    <TextInput
+                                        placeholder="An event of..."
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={newDescription}
+                                        onChangeText={setNewDescription}
+                                    />
+
+                                    <View style={styles.dateTimeRow}>
+                                        {/* Date Input */}
+                                        <View style={styles.dateTimeColumn}>
+                                            <Text style={styles.label}>Event Date</Text>
+                                            <TextInput
+                                                placeholder="April 25, 2025"
+                                                placeholderTextColor="#D3D3D3"
+                                                style={styles.input}
+                                                value={newDate}
+                                                onChangeText={setNewDate}
+                                            />
+                                        </View>
+
+                                        {/* Time Input */}
+                                        <View style={styles.dateTimeColumn}>
+                                            <Text style={styles.label}>Event Time</Text>
+                                            <TextInput
+                                                placeholder="8:00 - 10:00 AM"
+                                                placeholderTextColor="#D3D3D3"
+                                                style={styles.input}
+                                                value={newTime}
+                                                onChangeText={setNewTime}
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Suggestions Below Inputs */}
+                                    {suggestedDateTime?.suggestedTimes?.length > 0 && (
+                                        <View style={styles.suggestionContainer}>
+                                            <Text style={styles.suggestionLabel}>Suggestions:</Text>
+                                            <View style={styles.suggestionGrid}>
+                                                {suggestedDateTime.suggestedTimes.map((item, index) => {
+                                                    const [date, time] = item.split(" • ");
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={index}
+                                                            style={styles.suggestionButton}
+                                                            onPress={() => {
+                                                                setNewDate(date.trim());
+                                                                setNewTime(time.trim());
+                                                            }}
+                                                        >
+                                                            <Text style={styles.suggestionText}>{date}</Text>
+                                                            <Text style={styles.suggestionText}>{time}</Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        </View>
+                                    )}
 
 
-                                        {/* {proposalLink && (
+
+
+
+                                    <Text style={[styles.label, { marginTop: 10 }]}>Event Location</Text>
+
+                                    <TextInput
+                                        placeholder="MPH 2, Engineering Building"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={newLocation}
+                                        onChangeText={setNewLocation}
+                                    />
+                                    {locationConflictWarning ? (
+                                        <View style={styles.warningContainer}>
+                                            <Text style={styles.warningText}>{locationConflictWarning}</Text>
+                                        </View>
+                                    ) : null}
+                                    <Text style={styles.label}>Event Participants</Text>
+                                    <TextInput
+                                        placeholder="100"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        keyboardType="numeric"
+                                        value={newParticipants}
+                                        onChangeText={setNewParticipants}
+                                    />
+
+                                    <View style={styles.bannerFileRow}>
+                                        <View style={styles.uploadSection}>
+                                            <Text style={styles.label}>Event Banner</Text>
+                                            <TouchableOpacity
+                                                style={styles.uploadButton}
+                                                onPress={handleSelectBanner}
+                                            >
+                                                <Text style={styles.buttonText}>
+                                                    {selectedBanner ? 'Change Banner' : 'Upload Banner'}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            {selectedBanner && (
+                                                <Image
+                                                    source={{ uri: selectedBanner }}
+                                                    style={styles.bannerPreview}
+                                                    resizeMode="cover"
+                                                />
+                                            )}
+                                        </View>
+
+                                        <View style={styles.uploadSection}>
+                                            <Text style={styles.label}>Event Proposal</Text>
+
+                                            <TouchableOpacity
+                                                style={styles.uploadButton}
+                                                onPress={handleSelectProposal}
+                                            >
+                                                <Text style={styles.buttonText}>
+                                                    {selectedProposal ? 'Change Proposal' : 'Upload Proposal'}
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            {/* Proposal Preview Card */}
+                                            {selectedProposal && (
+                                                <View style={styles.proposalPreview}>
+                                                    <View style={styles.proposalIconContainer}>
+                                                        <Text style={styles.proposalIcon}>📄</Text>
+                                                    </View>
+                                                    <View style={styles.proposalDetails}>
+                                                        <Text style={styles.proposalTitle} numberOfLines={1}>
+                                                            {selectedProposal.name}
+                                                        </Text>
+                                                        <TouchableOpacity
+                                                            onPress={() => Linking.openURL(selectedProposal.uri)}
+                                                            style={styles.proposalLinkButton}
+                                                        >
+                                                            <Text style={styles.proposalLinkText} numberOfLines={2}>
+                                                                {selectedProposal.uri}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                        <View style={styles.proposalBadge}>
+                                                            <Text style={styles.proposalBadgeText}>Google Document Link</Text>
+                                                        </View>
+                                                    </View>
+                                                </View>
+                                            )}
+                                        </View>
+                                        {/* Modal for Proposal Link Input */}
+                                        <Modal
+                                            animationType="slide"
+                                            transparent={true}
+                                            visible={isProposalModalVisible}
+                                            onRequestClose={() => setIsProposalModalVisible(false)} // Close the modal
+                                        >
+                                            <View style={styles.modalContainer}>
+                                                <View style={styles.modalContent}>
+                                                    <Text style={styles.modalTitle}>Enter Document Link</Text>
+
+
+
+                                                    <TextInput
+                                                        placeholder="Enter Document link"
+                                                        placeholderTextColor="#D3D3D3"
+                                                        style={styles.input}
+                                                        value={proposalLink}
+                                                        onChangeText={setProposalLink}
+                                                    />
+
+
+                                                    {/* {proposalLink && (
                                         <View style={styles.previewContainer}>
                                             <Text style={styles.previewTitle}>Preview Link:</Text>
                                             <TouchableOpacity onPress={() => Linking.openURL(proposalLink)}>
@@ -724,113 +718,113 @@ const [locationConflictWarning, setLocationConflictWarning] = useState('');
                                         </View>
                                         )} */}
 
-                                        <View style={styles.proposalModalButtons}>
+                                                    <View style={styles.proposalModalButtons}>
+                                                        <TouchableOpacity
+                                                            style={[styles.proposalmodalButton, styles.cancelButton]}
+                                                            onPress={() => {
+                                                                setIsProposalModalVisible(false);
+                                                                setProposalLink('null');
+                                                                // or '' depending on how preview is handled
+                                                            }}
+
+
+                                                        >
+                                                            <Text style={styles.buttonText}>Cancel</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[styles.proposalmodalButton, styles.saveButton]}
+                                                            onPress={handleSaveProposalLink}
+                                                        >
+                                                            <Text style={styles.buttonText}>Save</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+
+                                                </View>
+                                            </View>
+                                        </Modal>
+
+                                    </View>
+
+                                    <Text style={styles.label}>Collaboration Event?</Text>
+                                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
+                                        <Switch value={isCollab} onValueChange={setIsCollab} />
+                                        <Text style={{ marginLeft: 8 }}>{isCollab ? "Yes" : "No"}</Text>
+                                    </View>
+
+                                    {isCollab && (
+                                        <View style={{ marginBottom: 15 }}>
+                                            <Text style={styles.label}>Select Partner Organizations</Text>
+
+                                            {/* Dropdown Toggle */}
+                                            <TouchableOpacity
+                                                style={styles.dropdownToggle}
+                                                onPress={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
+                                            >
+                                                <Text style={styles.dropdownText}>
+                                                    {selectedOrgs.length > 0
+                                                        ? `${selectedOrgs.length} selected`
+                                                        : "Choose organizations"}
+                                                </Text>
+                                                <Text style={styles.dropdownArrow}>
+                                                    {isOrgDropdownOpen ? "▲" : "▼"}
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            {/* Dropdown List */}
+                                            {isOrgDropdownOpen && (
+                                                <View style={styles.dropdownList}>
+                                                    {organizations.map((org) => {
+                                                        const isChecked = selectedOrgs.includes(org.id);
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={org.id}
+                                                                style={styles.dropdownItem}
+                                                                onPress={() => {
+                                                                    if (isChecked) {
+                                                                        setSelectedOrgs(selectedOrgs.filter((o) => o !== org.id));
+                                                                    } else {
+                                                                        setSelectedOrgs([...selectedOrgs, org.id]);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <View style={styles.checkbox}>
+                                                                    {isChecked && <Text style={styles.checkmark}>✓</Text>}
+                                                                </View>
+                                                                <Text style={styles.orgText}>{org.orgName}</Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                </View>
+                                            )}
+                                        </View>
+                                    )}
+
+
+                                    <View style={styles.modalButtons}>
                                         <TouchableOpacity
-                                            style={[styles.proposalmodalButton, styles.cancelButton]}
+                                            style={styles.cancelButtons}
                                             onPress={() => {
-                                                setIsProposalModalVisible(false);
-                                                setProposalLink('null');
-                                                 // or '' depending on how preview is handled
-                                              }}
-                                              
-                                              
+                                                setIsModalVisible(false);
+                                                // Clear the date and time inputs as well
+                                                setNewDate('');
+                                                setNewTime('');
+                                                setSelectedBanner(null);
+                                                setSelectedProposal(null);  // ← Add this line to clear proposal
+                                                setProposalLink('');
+
+                                            }}
                                         >
                                             <Text style={styles.buttonText}>Cancel</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            style={[styles.proposalmodalButton, styles.saveButton]}
-                                            onPress={handleSaveProposalLink}
+                                            style={styles.addButton}
+                                            onPress={handleAddEvent}
                                         >
-                                            <Text style={styles.buttonText}>Save</Text>
+                                            <Text style={styles.buttonText}>Add</Text>
                                         </TouchableOpacity>
-                                        </View>
-
                                     </View>
-                                    </View>
-                                </Modal>
-
-                            </View>
-
-                            <Text style={styles.label}>Collaboration Event?</Text>
-                                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-                                <Switch value={isCollab} onValueChange={setIsCollab} />
-                                <Text style={{ marginLeft: 8 }}>{isCollab ? "Yes" : "No"}</Text>
                                 </View>
-
-                                {isCollab && (
-                                    <View style={{ marginBottom: 15 }}>
-                                        <Text style={styles.label}>Select Partner Organizations</Text>
-
-                                        {/* Dropdown Toggle */}
-                                        <TouchableOpacity
-                                        style={styles.dropdownToggle}
-                                        onPress={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
-                                        >
-                                        <Text style={styles.dropdownText}>
-                                            {selectedOrgs.length > 0
-                                            ? `${selectedOrgs.length} selected`
-                                            : "Choose organizations"}
-                                        </Text>
-                                        <Text style={styles.dropdownArrow}>
-                                            {isOrgDropdownOpen ? "▲" : "▼"}
-                                        </Text>
-                                        </TouchableOpacity>
-
-                                        {/* Dropdown List */}
-                                        {isOrgDropdownOpen && (
-                                        <View style={styles.dropdownList}>
-                                            {organizations.map((org) => {
-                                            const isChecked = selectedOrgs.includes(org.id);
-                                            return (
-                                                <TouchableOpacity
-                                                key={org.id}
-                                                style={styles.dropdownItem}
-                                                onPress={() => {
-                                                    if (isChecked) {
-                                                    setSelectedOrgs(selectedOrgs.filter((o) => o !== org.id));
-                                                    } else {
-                                                    setSelectedOrgs([...selectedOrgs, org.id]);
-                                                    }
-                                                }}
-                                                >
-                                                <View style={styles.checkbox}>
-                                                    {isChecked && <Text style={styles.checkmark}>✓</Text>}
-                                                </View>
-                                                <Text style={styles.orgText}>{org.orgName}</Text>
-                                                </TouchableOpacity>
-                                            );
-                                            })}
-                                        </View>
-                                        )}
-                                    </View>
-                                    )}
-
-
-                            <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={styles.cancelButtons}
-                                onPress={() => {
-                                    setIsModalVisible(false);
-                                    // Clear the date and time inputs as well
-                                    setNewDate('');
-                                    setNewTime('');
-                                    setSelectedBanner(null);
-        setSelectedProposal(null);  // ← Add this line to clear proposal
-        setProposalLink('');
-                                    
-                                }}
-                            >
-                                <Text style={styles.buttonText}>Cancel</Text>
-                            </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.addButton}
-                                    onPress={handleAddEvent}
-                                >
-                                    <Text style={styles.buttonText}>Add</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                        </ScrollView>
+                            </ScrollView>
                         </KeyboardAvoidingView>
                     </View>
                 </Modal>
@@ -909,7 +903,7 @@ const styles = StyleSheet.create({
     dateTimeRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        gap: 10, 
+        gap: 10,
     },
 
     dateTimeColumn: {
@@ -957,10 +951,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginTop: 15,
     },
-    
+
     addButton: {
         backgroundColor: '#4CAF50',
-      
+
         paddingVertical: 10,
         paddingHorizontal: 20,
         borderRadius: 5,
@@ -977,7 +971,7 @@ const styles = StyleSheet.create({
     uploadButton: {
         backgroundColor: '#E50914',
         paddingVertical: 10,
-       
+
         borderRadius: 5,
         width: '100%',
         marginTop: 5,
@@ -1000,100 +994,100 @@ const styles = StyleSheet.create({
     },
 
     proposalPreview: {
-    width: '100%',
-    height: 150,
-    marginTop: 10,
-    borderRadius: 8,
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    padding: 10,
-    
-    justifyContent: 'center',
-    alignItems: 'center',
-},
-proposalIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 25,
-    backgroundColor: '#4285f4',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-},
-proposalIcon: {
-    fontSize: 20,
-},
-proposalDetails: {
-    width: '100%',
-    alignItems: 'center',
-},
-proposalTitle: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
-    textAlign: 'center',
-},
-proposalLinkButton: {
-    marginVertical: 5,
-    paddingHorizontal: 10,
-},
-proposalLinkText: {
-    fontSize: 11,
-    color: '#4285f4',
-    textDecorationLine: 'underline',
-    textAlign: 'center',
-},
-proposalBadge: {
-    backgroundColor: '#e8f0fe',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 5,
-},
-proposalBadgeText: {
-    fontSize: 10,
-    color: '#1967d2',
-    fontWeight: '500',
-    textAlign: 'center',
-},
+        width: '100%',
+        height: 150,
+        marginTop: 10,
+        borderRadius: 8,
+        backgroundColor: '#f8f9fa',
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        padding: 10,
+
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    proposalIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 25,
+        backgroundColor: '#4285f4',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    proposalIcon: {
+        fontSize: 20,
+    },
+    proposalDetails: {
+        width: '100%',
+        alignItems: 'center',
+    },
+    proposalTitle: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 5,
+        textAlign: 'center',
+    },
+    proposalLinkButton: {
+        marginVertical: 5,
+        paddingHorizontal: 10,
+    },
+    proposalLinkText: {
+        fontSize: 11,
+        color: '#4285f4',
+        textDecorationLine: 'underline',
+        textAlign: 'center',
+    },
+    proposalBadge: {
+        backgroundColor: '#e8f0fe',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginTop: 5,
+    },
+    proposalBadgeText: {
+        fontSize: 10,
+        color: '#1967d2',
+        fontWeight: '500',
+        textAlign: 'center',
+    },
 
     suggestionContainer: {
         marginTop: 5,
-      },
-      
-      suggestionLabel: {
+    },
+
+    suggestionLabel: {
         fontWeight: '400',
         marginBottom: 6,
         fontStyle: 'italic',
         fontSize: 12,
         color: '#555',
-      },
-      
-      suggestionGrid: {
+    },
+
+    suggestionGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 10, // Use margin for RN versions that don't support gap
-      },
-      
-      suggestionButton: {
+    },
+
+    suggestionButton: {
         backgroundColor: '#f5f5f5',
         paddingVertical: 5,
         paddingHorizontal: 12,
         borderRadius: 8,
         borderWidth: 1,
         borderColor: '#ddd',
-        
+
         width: '48%', // Two per row
-      },
-      
-      suggestionText: {
+    },
+
+    suggestionText: {
         fontSize: 12,
         color: '#333',
         textAlign: 'center',
-      },
-      
+    },
+
 
     uploadSection: {
         flex: 1,
@@ -1116,15 +1110,15 @@ proposalBadgeText: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginTop: 20,
-      },
-      proposalmodalButton: {
+    },
+    proposalmodalButton: {
         flex: 1,
         paddingVertical: 10,
         marginHorizontal: 5,
         borderRadius: 5,
         alignItems: 'center',
-      },
-      cancelButton: {
+    },
+    cancelButton: {
         backgroundColor: '#E50914',
         paddingVertical: 10,
         paddingHorizontal: 20,
@@ -1132,8 +1126,8 @@ proposalBadgeText: {
         width: '45%',
         marginTop: 5,
         textAlign: 'center',
-      },
-      cancelButtons: {
+    },
+    cancelButtons: {
         backgroundColor: '#E50914',
         paddingVertical: 10,
         paddingHorizontal: 20,
@@ -1141,159 +1135,159 @@ proposalBadgeText: {
         width: '48%',
         marginTop: 5,
         textAlign: 'center',
-      },
-      saveButton: {
+    },
+    saveButton: {
         backgroundColor: '#4CAF50',
-      
+
         paddingVertical: 10,
         paddingHorizontal: 20,
         borderRadius: 5,
         width: '45%',
         marginTop: 5,
         textAlign: 'center',
-      },
-      buttonText: {
+    },
+    buttonText: {
         color: '#fff',
         fontWeight: 'bold',
         textAlign: 'center',
-      },
-      warningContainer: {
-    backgroundColor: '#fff3cd',
-    borderWidth: 1,
-    borderColor: '#ffc107',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 10,
-    marginBottom: 10,
-},
-warningText: {
-    color: '#856404',
-    fontSize: 13,
-    lineHeight: 18,
-},
+    },
+    warningContainer: {
+        backgroundColor: '#fff3cd',
+        borderWidth: 1,
+        borderColor: '#ffc107',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 10,
+        marginBottom: 10,
+    },
+    warningText: {
+        color: '#856404',
+        fontSize: 13,
+        lineHeight: 18,
+    },
 
-successModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-},
-successModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
-    width: '80%',
-    maxWidth: 320,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-},
-successIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#4CAF50',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-},
-successIcon: {
-    fontSize: 50,
-    color: '#fff',
-    fontWeight: 'bold',
-},
-successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-    textAlign: 'center',
-},
-successMessage: {
-    fontSize: 15,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 25,
-    lineHeight: 22,
-},
-successButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    minWidth: 120,
-},
-successButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-},
+    successModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    successModalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 30,
+        alignItems: 'center',
+        width: '80%',
+        maxWidth: 320,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    successIconContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#4CAF50',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    successIcon: {
+        fontSize: 50,
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    successTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    successMessage: {
+        fontSize: 15,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 25,
+        lineHeight: 22,
+    },
+    successButton: {
+        backgroundColor: '#4CAF50',
+        paddingVertical: 12,
+        paddingHorizontal: 40,
+        borderRadius: 25,
+        minWidth: 120,
+    },
+    successButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
 
-orgOption: {
-  padding: 10,
-  borderWidth: 1,
-  borderColor: "#ccc",
-  borderRadius: 8,
-  marginVertical: 5,
-},
-orgSelected: {
-  backgroundColor: "#007BFF20",
-  borderColor: "#007BFF",
-},
-dropdownToggle: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderWidth: 1,
-  borderColor: "#ccc",
-  borderRadius: 8,
-  padding: 10,
-  marginTop: 5,
-},
-dropdownText: {
-  fontSize: 16,
-  color: "#333",
-},
-dropdownArrow: {
-  fontSize: 14,
-  color: "#555",
-},
-dropdownList: {
-  marginTop: 5,
-  borderWidth: 1,
-  borderColor: "#ccc",
-  borderRadius: 8,
-  backgroundColor: "#fff",
-  maxHeight: 200,
-},
-dropdownItem: {
-  flexDirection: "row",
-  alignItems: "center",
-  padding: 10,
-  borderBottomWidth: 1,
-  borderBottomColor: "#eee",
-},
-checkbox: {
-  width: 20,
-  height: 20,
-  borderWidth: 1,
-  borderColor: "#555",
-  marginRight: 10,
-  alignItems: "center",
-  justifyContent: "center",
-},
-checkmark: {
-  fontSize: 14,
-  color: "#007BFF",
-},
-orgText: {
-  fontSize: 16,
-  color: "#333",
-},
+    orgOption: {
+        padding: 10,
+        borderWidth: 1,
+        borderColor: "#ccc",
+        borderRadius: 8,
+        marginVertical: 5,
+    },
+    orgSelected: {
+        backgroundColor: "#007BFF20",
+        borderColor: "#007BFF",
+    },
+    dropdownToggle: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#ccc",
+        borderRadius: 8,
+        padding: 10,
+        marginTop: 5,
+    },
+    dropdownText: {
+        fontSize: 16,
+        color: "#333",
+    },
+    dropdownArrow: {
+        fontSize: 14,
+        color: "#555",
+    },
+    dropdownList: {
+        marginTop: 5,
+        borderWidth: 1,
+        borderColor: "#ccc",
+        borderRadius: 8,
+        backgroundColor: "#fff",
+        maxHeight: 200,
+    },
+    dropdownItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: "#eee",
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderWidth: 1,
+        borderColor: "#555",
+        marginRight: 10,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    checkmark: {
+        fontSize: 14,
+        color: "#007BFF",
+    },
+    orgText: {
+        fontSize: 16,
+        color: "#333",
+    },
 
 
 });
