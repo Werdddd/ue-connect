@@ -7,6 +7,7 @@ import BottomNavBar from '../components/bottomNavBar';
 import Header from '../components/header';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { FieldPath } from 'firebase/firestore';
 
 export default function ChatPage() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
@@ -40,8 +41,8 @@ export default function ChatPage() {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           const connectionIds = userData.connections || [];
-          
-          const connectedUsers = Users.filter(user => 
+
+          const connectedUsers = Users.filter(user =>
             connectionIds.includes(user.id)
           );
           setConnections(connectedUsers);
@@ -90,9 +91,9 @@ export default function ChatPage() {
   const getChatBetweenUsers = async (u1Id, u2Id) => {
     try {
       const chatQuery = query(
-        collection(firestore, 'chats'), 
-        where(`Users.${u1Id}`, '==', true),
-        where(`Users.${u2Id}`, '==', true),
+        collection(firestore, 'chats'),
+        where(new FieldPath('Users', u1Id), '==', true),
+        where(new FieldPath('Users', u2Id), '==', true),
         limit(1)
       );
       const querySnapshot = await getDocs(chatQuery);
@@ -140,7 +141,7 @@ export default function ChatPage() {
         createdAt: serverTimestamp(),
       }
     });
-    
+
     return newChat;
   };
 
@@ -185,7 +186,7 @@ export default function ChatPage() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Header />
-        
+
         <View style={styles.headerSection}>
           <View style={styles.headerRow}>
             <View>
@@ -194,8 +195,8 @@ export default function ChatPage() {
                 {chats.length} {chats.length === 1 ? 'conversation' : 'conversations'}
               </Text>
             </View>
-            <TouchableOpacity 
-              style={styles.newChatButton} 
+            <TouchableOpacity
+              style={styles.newChatButton}
               onPress={toggleModal}
               activeOpacity={0.7}
             >
@@ -213,11 +214,11 @@ export default function ChatPage() {
             chats.map(chat => {
               const otherUser = getOtherUserInfo(chat);
               const isCurrentUserSender = chat.lastMessage?.senderId === currentUserId;
-              
+
               return (
-                <TouchableOpacity 
-                  key={chat.id} 
-                  style={styles.chatCard} 
+                <TouchableOpacity
+                  key={chat.id}
+                  style={styles.chatCard}
                   onPress={() => handleCardPress(chat.id)}
                   activeOpacity={0.7}
                 >
@@ -282,13 +283,13 @@ export default function ChatPage() {
         >
           <View style={styles.modalOverlay}>
             <KeyboardAvoidingView
-      style={{ justifyContent: 'flex-end', flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+              style={{ justifyContent: 'flex-end', flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
               <View style={[styles.modalContent, { maxHeight: '85%' }]}>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>New Message</Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={toggleModal}
                     style={styles.closeModalButton}
                   >
@@ -315,11 +316,11 @@ export default function ChatPage() {
                         )}
                       </View>
 
-                     <ScrollView 
-                style={{ maxHeight: 320 }} // <-- Ensure scroll area is visible
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              >
+                      <ScrollView
+                        style={{ maxHeight: 320 }} // <-- Ensure scroll area is visible
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                      >
                         {!searchQuery && connections.length > 0 && (
                           <>
                             <Text style={styles.sectionTitle}>Your Connections</Text>
@@ -356,7 +357,7 @@ export default function ChatPage() {
                                 <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
                               </TouchableOpacity>
                             ))}
-                            
+
                             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>All Users</Text>
                           </>
                         )}
@@ -415,7 +416,7 @@ export default function ChatPage() {
                             {Users.find(u => u.id === selectedUserId)?.firstName}{' '}
                             {Users.find(u => u.id === selectedUserId)?.lastName}
                           </Text>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => {
                               setSelectedUserId('');
                               setMessageText('');
@@ -454,11 +455,11 @@ export default function ChatPage() {
                         disabled={!messageText.trim()}
                         activeOpacity={0.7}
                       >
-                        <Ionicons 
-                          name="send" 
-                          size={20} 
-                          color="#fff" 
-                          style={{ marginRight: 8 }} 
+                        <Ionicons
+                          name="send"
+                          size={20}
+                          color="#fff"
+                          style={{ marginRight: 8 }}
                         />
                         <Text style={styles.sendButtonText}>Send Message</Text>
                       </TouchableOpacity>
