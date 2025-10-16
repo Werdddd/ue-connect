@@ -148,35 +148,41 @@ const EventManagement: React.FC = () => {
     (async () => {
       try {
         const rows = await fetchEvents(200);
-        const mapped: Row[] = rows.map((e) => {
+        const mapped = rows.map((e) => {
           const proposalStatus = toProposalStatus(e.status);
           const eventStatus    = toEventStatus(e.status);
 
-          const [timeStart, timeEnd] = (e.time || '').split('-').map((s: string) => s.trim());
+          const [timeStart, timeEnd] = (e.time || "")
+            .split("-")
+            .map((s: string) => s.trim());
 
           return {
             id: e.id,
             title: e.title,
-            organizingRSO: e.org || '—',
-            rsoId: '',
-            category: (e.description || '').trim() || 'General',
+
+            // 👇 use Users.firstName we resolved in fetchEvents()
+            organizingRSO: e.organizerName || "—",
+
+            rsoId: "",
+            category: (e.description || "").trim() || "General",
             dateTime: buildISO(e.date, timeStart),
             endDateTime: buildISO(e.date, timeEnd),
-            location: e.location || '—',
-            mode: 'In-Person',
+            location: e.location || "—",
+            mode: "In-Person",
             proposalStatus,
             eventStatus,
-            participantCount: e.participants ?? 0,
+            participantCount: (e as any).participants ?? 0,
             maxCapacity: 100,
-            description: e.description || '',
-            contactPerson: '—',
-            contactEmail: '',
-            registrationDeadline: '',
-            requirements: '',
+            description: e.description || "",
+            contactPerson: "—",
+            contactEmail: "",
+            registrationDeadline: "",
+            requirements: "",
             submittedDate: null,
             approvedDate: null,
           };
         });
+
 
         if (!cancelled) setEvents(mapped);
       } catch (err) {
