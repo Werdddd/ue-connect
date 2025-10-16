@@ -36,3 +36,5 @@ export async function getCompletedEventsCount(): Promise<number> {
   const snap = await getCountFromServer(q);
   return snap.data().count;
 }
+
+ 
