@@ -18,6 +18,7 @@ import { getTotalUsers, getUserGrowth, getTotalJoinedStudents } from "@/services
 import { getTotalOrganizations, getOrganizationsByType } from "@/services/organizations";
 import { getActiveEvents } from "@/services/events";
 import { getGrowthTrends } from "@/services/analytics";
+import { listenToAdminNotifications, timeAgo } from "@/services/adminNotificationsService";
 
 function generateRedShades(count: number) {
   return Array.from({ length: count }, (_, i) => {
@@ -45,7 +46,7 @@ const Dashboard = () => {
   const [password, setPassword] = useState('');
   const [course, setCourse] = useState('');
   const [year, setYear] = useState('');
-
+  const [activities, setActivities] = useState<any[]>([]);
 
   const handleAddUser = async (formData: Record<string, any>) => {
     try {
@@ -64,6 +65,7 @@ const Dashboard = () => {
       console.error(err);
     }
   };
+
   useEffect(() => {
     const fetchData = async () => {
       const total = await getTotalUsers();
@@ -99,13 +101,15 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = listenToAdminNotifications((newActivities) => {
+      // Sort newest first
+      const sorted = newActivities.sort((a, b) => b.time - a.time);
+      setActivities(sorted.slice(0, 5)); // only show recent 5 for UI performance
+    });
 
-  const recentActivities = [
-    { action: 'New organization registered', org: 'UE Debate Society', time: '2 hours ago' },
-    { action: 'Event approved', org: 'Engineering Club', time: '4 hours ago' },
-    { action: 'Officer position updated', org: 'Student Council', time: '6 hours ago' },
-    { action: 'Document uploaded', org: 'Arts Society', time: '1 day ago' }
-  ];
+    return () => unsubscribe();
+  }, []);
 
   type StatCardProps = {
     title: string;
@@ -252,7 +256,7 @@ const Dashboard = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
               </div>
               <div className="space-y-4">
-                {recentActivities.map((activity, index) => (
+                {activities.map((activity, index) => (
                   <div key={index} className="flex items-start p-3 bg-gray-50 rounded-lg">
                     <div className="w-2 h-2 bg-red-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                     <div>
