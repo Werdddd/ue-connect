@@ -70,7 +70,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
                 orgId: orgData.orgId,
                 organization: orgData.organization,
                 department: orgData.department,
-                status: 'Pending',
+                status: 'Approved',
             });
 
             alert('Event created successfully!');
