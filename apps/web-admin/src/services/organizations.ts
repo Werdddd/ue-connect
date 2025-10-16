@@ -55,7 +55,7 @@ export async function getOrganizationsByType(): Promise<
 
   snap.docs.forEach((doc) => {
     const data = doc.data() as any;
-    const type = data.orgType || "Unknown";
+    const type = data.department || "Unknown";
     typeCounts[type] = (typeCounts[type] || 0) + 1;
   });
 
