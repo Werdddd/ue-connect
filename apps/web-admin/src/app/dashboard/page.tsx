@@ -21,6 +21,7 @@ import { getGrowthTrends } from "@/services/analytics";
 import { listenToAdminNotifications, timeAgo } from "@/services/adminNotificationsService";
 import RegisterOrganizationModal from '../components/modals/RegisterOrganizationModal';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import CreateEventModal from "../components/modals/CreateEventModal";
 
 function generateRedShades(count: number) {
   return Array.from({ length: count }, (_, i) => {
@@ -50,10 +51,28 @@ const Dashboard = () => {
   const [year, setYear] = useState('');
   const [activities, setActivities] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
   const [user] = useAuthState(auth);
   const userEmail = user?.email ?? "";
 
+  const [orgData, setOrgData] = useState<{
+    orgId: string;
+    organization: string;
+    department: string;
+    email: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (userEmail) {
+      setOrgData({
+        orgId: "001",
+        organization: "Student's Affairs Office",
+        department: "All",
+        email: userEmail,
+      });
+    }
+  }, [userEmail]);
 
   const handleAddUser = async (formData: Record<string, any>) => {
     try {
@@ -304,7 +323,19 @@ const Dashboard = () => {
                   onClose={() => setIsModalOpen(false)}
                   userEmail={userEmail}
                 />
-                <button className="w-full p-3 text-left bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+
+                {orgData && (
+                  <CreateEventModal
+                    isOpen={isEventModalOpen}
+                    onClose={() => setIsEventModalOpen(false)}
+                    orgData={orgData}
+                  />
+                )}
+
+                <button
+                  onClick={() => setIsEventModalOpen(true)}
+                  className="w-full p-3 text-left bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                >
                   <div className="flex items-center">
                     <Calendar className="h-5 w-5 text-red-600 mr-3" />
                     <span className="font-medium text-red-900">Create Event</span>
