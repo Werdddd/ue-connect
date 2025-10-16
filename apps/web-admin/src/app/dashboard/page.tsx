@@ -13,12 +13,14 @@ import {
 import Sidebar from '../components/Sidebar';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { firestore } from '@/Firebase';
+import { firestore, auth } from '@/Firebase';
 import { getTotalUsers, getUserGrowth, getTotalJoinedStudents } from "@/services/users";
 import { getTotalOrganizations, getOrganizationsByType } from "@/services/organizations";
 import { getActiveEvents } from "@/services/events";
 import { getGrowthTrends } from "@/services/analytics";
 import { listenToAdminNotifications, timeAgo } from "@/services/adminNotificationsService";
+import RegisterOrganizationModal from '../components/modals/RegisterOrganizationModal';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 function generateRedShades(count: number) {
   return Array.from({ length: count }, (_, i) => {
@@ -47,6 +49,11 @@ const Dashboard = () => {
   const [course, setCourse] = useState('');
   const [year, setYear] = useState('');
   const [activities, setActivities] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [user] = useAuthState(auth);
+  const userEmail = user?.email ?? "";
+
 
   const handleAddUser = async (formData: Record<string, any>) => {
     try {
@@ -282,12 +289,21 @@ const Dashboard = () => {
                     <span className="font-medium text-red-900">Add New User</span>
                   </div>
                 </button>
-                <button className="w-full p-3 text-left bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="w-full p-3 text-left bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                >
                   <div className="flex items-center">
                     <Building2 className="h-5 w-5 text-red-600 mr-3" />
                     <span className="font-medium text-red-900">Register Organization</span>
                   </div>
                 </button>
+
+                <RegisterOrganizationModal
+                  open={isModalOpen}
+                  onClose={() => setIsModalOpen(false)}
+                  userEmail={userEmail}
+                />
                 <button className="w-full p-3 text-left bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                   <div className="flex items-center">
                     <Calendar className="h-5 w-5 text-red-600 mr-3" />
