@@ -19,7 +19,54 @@ import { signUpUser } from '../Backend/signup';
 import { Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
+import * as FileSystem from "expo-file-system/legacy";
+import { Asset } from "expo-asset";
+import Papa from "papaparse";
 
+// ✅ CSV Validation function (in the same file)
+async function validateStudentCSV(email, studentId) {
+  console.log("CSV TEST:");
+  try {
+    // Load the CSV from assets folder
+    const asset = Asset.fromModule(require("../assets/UE_Connect_Student_Database.csv"));
+
+    console.log("CSV asset:", asset);
+    await asset.downloadAsync(); // ensures it’s available locally
+
+    // Read the file content
+    const csvUri = asset.localUri || asset.uri;
+    const csvText = await FileSystem.readAsStringAsync(csvUri);
+
+    // Parse CSV
+    const results = Papa.parse(csvText, { header: true });
+    const csvData = results.data;
+
+    console.log("CSV length:", csvData.length);
+
+    // Find the student
+    const student = csvData.find(
+      (s) =>
+        s.Email?.trim().toLowerCase() === email.trim().toLowerCase() &&
+        s.School_ID?.trim() === studentId.trim()
+    );
+
+    if (!student) {
+      Alert.alert("Invalid Info", "No matching student found in the database.");
+      return false;
+    }
+
+    if (student.Active?.trim().toUpperCase() !== "TRUE") {
+      Alert.alert("Inactive Account", "Your account indicates that you are not an active/enrolled student.");
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("CSV validation error:", error);
+    Alert.alert("Error", "Failed to load student database.");
+    return false;
+  }
+}
 
 export default function SignUp() {
   const navigation = useNavigation();
@@ -39,8 +86,7 @@ export default function SignUp() {
   const nameRegex = /^[A-Za-z\s]+$/;
   const studentNumberRegex = /^[0-9]{11}$/;
   const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
-
-
+  
   const handleSignUp = async () => {
     if (!firstName.match(nameRegex)) {
       Alert.alert('Invalid Input', 'First name should contain only letters.');
@@ -81,6 +127,9 @@ export default function SignUp() {
       Alert.alert('Invalid Input', "Passwords don't match.");
       return;
     }
+
+    const valid = await validateStudentCSV(email, studentNumber);
+    if (!valid) return;
 
     setLoading(true);
     try {
