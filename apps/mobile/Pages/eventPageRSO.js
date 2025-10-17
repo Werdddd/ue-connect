@@ -15,7 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { getAuth } from "firebase/auth"; // if using Firebase Auth
-
+import EventCalendar from "../components/calendar";
 
 export default function EventPageRSO() {
     const navigation = useNavigation();
@@ -528,6 +528,10 @@ export default function EventPageRSO() {
                         />
                     ))}
 
+                    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+                        <EventCalendar />
+                    </View>
+
                 </ScrollView>
 
                 <BottomNavBar />
@@ -863,6 +867,7 @@ export default function EventPageRSO() {
                         </View>
                     </View>
                 </Modal>
+
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

@@ -10,6 +10,7 @@ import BottomNavBar from '../components/bottomNavBar';
 import OrganizationBar from '../components/organizationBar';
 import EventCard from '../components/eventCard';
 import { fetchEvents, addEvent } from '../Backend/eventPage';
+import EventCalendar from "../components/calendar";
 
 export default function Event() {
     const [selectedOrg, setSelectedOrg] = useState('All');
@@ -99,11 +100,16 @@ export default function Event() {
                         />
                     ))}
 
+                    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+                        <EventCalendar />
+                    </View>
+
                 </ScrollView>
 
                 <BottomNavBar />
             </KeyboardAvoidingView>
         </SafeAreaView>
+        
     );
 }
 

@@ -16,6 +16,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
+import EventCalendar from "../components/calendar";
 
 export default function EventPageSAO() {
     const navigation = useNavigation();
@@ -282,6 +283,10 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
                             onReject={() => openActionModal(event.id, 'Rejected')}
                         />
                     ))}
+
+                    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+                        <EventCalendar />
+                    </View>
 
 
                 </ScrollView>
