@@ -31,16 +31,58 @@ export type EventDetails = {
   statusRaw?: string;
 };
 
-export type ModalAction = 'Approved' | 'Rejected' | 'Cancelled';
-
-export function formatDateTime(iso?: string) {
+export const formatDateTime = (iso?: string) => {
   if (!iso) return { date: '', time: '' };
   const d = new Date(iso);
   if (isNaN(d.getTime())) return { date: '', time: '' };
   return {
-    date: d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
   };
+};
+
+
+export type ModalAction = 'Approved' | 'Rejected' | 'Cancelled';
+
+// EventDetailsModal.tsx (top of file, near other helpers)
+// 🔧 Helper to safely display Firestore Timestamps, Dates, or strings
+function formatMaybeTimestamp(value: unknown): string {
+  if (!value) return '—';
+
+  // Handle Firestore Timestamp-like objects
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'seconds' in (value as any) &&
+    'nanoseconds' in (value as any)
+  ) {
+    const v = value as { seconds: number; nanoseconds: number };
+    const ms = v.seconds * 1000 + Math.floor(v.nanoseconds / 1e6);
+    const d = new Date(ms);
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
+
+  // If already a JS Date
+  if (value instanceof Date) {
+    return value.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
+
+  // Fallback for string or number
+  return String(value);
 }
 
 type Props = {
@@ -100,7 +142,7 @@ const EventDetailsModal: React.FC<Props> = ({ open, event, onClose, onAction, bu
             <div><Label>Category</Label><Value>{event.category}</Value></div>
 
             <div><Label>Created by</Label><Value>{event.createdBy || event.createdByName}</Value></div>
-            <div><Label>Created at</Label><Value>{event.createdAt}</Value></div>
+            <div><Label>Created at</Label><Value>{formatMaybeTimestamp(event.createdAt)}</Value></div>
 
             <div><Label>Proposal Link</Label><Value>{event.proposalLink}</Value></div>
             <div><Label>Proposal File</Label><Value>{event.proposalFile}</Value></div>

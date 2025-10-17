@@ -28,6 +28,7 @@ import { fetchEvents } from '../../services/fetchEvents';
 import { firestore } from '../../Firebase';
 import { writeBatch, doc, getDoc } from 'firebase/firestore';
 
+
 import EventDetailsModal, {
   EventDetails,
   formatDateTime as fmtDT,
