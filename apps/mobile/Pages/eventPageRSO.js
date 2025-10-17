@@ -12,7 +12,7 @@ import { fetchEvents, fetchOrganizations, addEvent } from '../Backend/eventPageR
 import { getSuggestedDateTime } from '../Backend/eventPageRSO';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { getAuth } from "firebase/auth"; // if using Firebase Auth
 import EventCalendar from "../components/calendar";
@@ -65,22 +65,6 @@ export default function EventPageRSO() {
         }
     };
 
-    async function getBase64(uri) {
-        const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-        });
-        return base64;
-    }
-
-    async function compressImage(uri) {
-        const compressed = await ImageManipulator.manipulateAsync(
-            uri,
-            [{ resize: { width: 100 } }],
-            { compress: 0.3, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        return compressed.uri;
-    }
-
     const handleSelectBanner = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -116,33 +100,40 @@ export default function EventPageRSO() {
         }
     };
 
-    const handleSelectProposal = () => {
-        if (selectedProposal) {
-            setProposalLink(selectedProposal.uri); // edit existing
-        } else {
-            setProposalLink(''); // new proposal
+    const handleSelectProposal = async () => {
+        try {
+            // Let user pick a document (PDF)
+            const result = await DocumentPicker.getDocumentAsync({
+                type: 'application/pdf',
+                copyToCacheDirectory: true,
+            });
+
+            if (result.canceled || !result.assets?.length) return;
+
+            const fileUri = result.assets[0].uri;
+            const fileName = result.assets[0].name || 'proposal.pdf';
+
+            const base64 = await FileSystem.readAsStringAsync(fileUri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+
+            const dataUri = `data:application/pdf;base64,${base64}`;
+
+            setSelectedProposal({
+                name: fileName,
+                base64: dataUri,
+            });
+
+        } catch (error) {
+            console.error("Error uploading proposal:", error);
+            alert("Failed to upload proposal. Please try again.");
         }
-        setIsProposalModalVisible(true);
     };
-
-
-    //   const handleProposalLinkInput = (text) => {
-    //     setProposalLink(text); // Update the proposal link
-    //   };
 
     const handleSaveProposalLink = () => {
-        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' }); // Save the proposal link
-        setIsProposalModalVisible(false); // Close modal after saving
+        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' }); 
+        setIsProposalModalVisible(false); 
     };
-
-
-    const handleProposalLinkInput = (link) => {
-        setSelectedProposal({
-            name: "Google Drive Proposal Link",
-            uri: link,
-        });
-    };
-
 
     useEffect(() => {
         if (isModalVisible) {
@@ -315,8 +306,8 @@ export default function EventPageRSO() {
             location: newLocation,
             participants: participants,
             status: eventStatus,
-            proposalLink: selectedProposal?.uri || null,
             proposalName: selectedProposal?.name || null,
+            proposalBase64: selectedProposal?.base64 || null,
             isCollab,
             collabOrgs: selectedOrgs,
             createdBy: userId,
@@ -688,75 +679,14 @@ export default function EventPageRSO() {
                                                             {selectedProposal.name}
                                                         </Text>
                                                         <TouchableOpacity
-                                                            onPress={() => Linking.openURL(selectedProposal.uri)}
-                                                            style={styles.proposalLinkButton}
+                                                            onPress={() => Linking.openURL(selectedProposal.base64)}
                                                         >
-                                                            <Text style={styles.proposalLinkText} numberOfLines={2}>
-                                                                {selectedProposal.uri}
-                                                            </Text>
+                                                            <Text style={styles.proposalViewText}>View PDF</Text>
                                                         </TouchableOpacity>
-                                                        <View style={styles.proposalBadge}>
-                                                            <Text style={styles.proposalBadgeText}>Google Document Link</Text>
-                                                        </View>
                                                     </View>
                                                 </View>
                                             )}
                                         </View>
-                                        {/* Modal for Proposal Link Input */}
-                                        <Modal
-                                            animationType="slide"
-                                            transparent={true}
-                                            visible={isProposalModalVisible}
-                                            onRequestClose={() => setIsProposalModalVisible(false)} // Close the modal
-                                        >
-                                            <View style={styles.modalContainer}>
-                                                <View style={styles.modalContent}>
-                                                    <Text style={styles.modalTitle}>Enter Document Link</Text>
-
-
-
-                                                    <TextInput
-                                                        placeholder="Enter Document link"
-                                                        placeholderTextColor="#D3D3D3"
-                                                        style={styles.input}
-                                                        value={proposalLink}
-                                                        onChangeText={setProposalLink}
-                                                    />
-
-
-                                                    {/* {proposalLink && (
-                                        <View style={styles.previewContainer}>
-                                            <Text style={styles.previewTitle}>Preview Link:</Text>
-                                            <TouchableOpacity onPress={() => Linking.openURL(proposalLink)}>
-                                            <Text style={styles.previewLink}>{proposalLink}</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        )} */}
-
-                                                    <View style={styles.proposalModalButtons}>
-                                                        <TouchableOpacity
-                                                            style={[styles.proposalmodalButton, styles.cancelButton]}
-                                                            onPress={() => {
-                                                                setIsProposalModalVisible(false);
-                                                                setProposalLink('null');
-                                                                // or '' depending on how preview is handled
-                                                            }}
-
-
-                                                        >
-                                                            <Text style={styles.buttonText}>Cancel</Text>
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={[styles.proposalmodalButton, styles.saveButton]}
-                                                            onPress={handleSaveProposalLink}
-                                                        >
-                                                            <Text style={styles.buttonText}>Save</Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-
-                                                </View>
-                                            </View>
-                                        </Modal>
 
                                     </View>
 
@@ -820,11 +750,10 @@ export default function EventPageRSO() {
                                             style={styles.cancelButtons}
                                             onPress={() => {
                                                 setIsModalVisible(false);
-                                                // Clear the date and time inputs as well
                                                 setNewDate('');
                                                 setNewTime('');
                                                 setSelectedBanner(null);
-                                                setSelectedProposal(null);  // ← Add this line to clear proposal
+                                                setSelectedProposal(null);  
                                                 setProposalLink('');
 
                                             }}
