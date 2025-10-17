@@ -26,8 +26,7 @@ import {
 import { fetchEvents } from '../../services/fetchEvents';
 
 import { firestore } from '../../Firebase';
-import { writeBatch, doc, getDoc } from 'firebase/firestore';
-
+import { writeBatch, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 
 import EventDetailsModal, {
   EventDetails,
@@ -35,9 +34,10 @@ import EventDetailsModal, {
   ModalAction,
 } from '../components/modals/EventDetailsModal';
 
+import RemarkModal from '../components/modals/RemarkModal';
+
 /* ---------------- helpers ---------------- */
 
-// Count “approved” entries inside participantsList (object keyed by email)
 function countParticipants(participantsList?: Record<string, any>) {
   if (!participantsList || typeof participantsList !== 'object') return 0;
   return Object.values(participantsList).filter(
@@ -47,31 +47,21 @@ function countParticipants(participantsList?: Record<string, any>) {
 
 function toProposalStatus(s?: string) {
   switch (s) {
-    case 'Applied':
-      return 'Under Review';
-    case 'Approved':
-      return 'Approved';
-    case 'Rejected':
-      return 'Rejected';
-    case 'Finished':
-      return 'Approved';
-    default:
-      return 'Under Review';
+    case 'Applied': return 'Under Review';
+    case 'Approved': return 'Approved';
+    case 'Rejected': return 'Rejected';
+    case 'Finished': return 'Approved';
+    default: return 'Under Review';
   }
 }
 
 function toEventStatus(s?: string) {
   switch (s) {
-    case 'Applied':
-      return 'Planning';
-    case 'Approved':
-      return 'Ongoing';
-    case 'Finished':
-      return 'Completed';
-    case 'Rejected':
-      return 'Cancelled';
-    default:
-      return 'Planning';
+    case 'Applied': return 'Planning';
+    case 'Approved': return 'Ongoing';
+    case 'Finished': return 'Completed';
+    case 'Rejected': return 'Cancelled';
+    default: return 'Planning';
   }
 }
 
@@ -96,8 +86,8 @@ type Row = {
   mode?: string;
   proposalStatus: string;
   eventStatus: string;
-  participantCount: number; // current number of approved attendees
-  maxCapacity: number;      // capacity (from “participants” field in your docs)
+  participantCount: number;
+  maxCapacity: number;
   description?: string;
 
   banner?: string;
@@ -106,10 +96,10 @@ type Row = {
   isCollab?: boolean;
   orgId?: string;
   organization?: string;
-  proposalBase64?: string;
   proposalFile?: string;
   proposalLink?: string;
   proposalName?: string;
+  proposalBase64?: string;
   statusRaw?: string;
   timeRaw?: string;
   createdAt?: string;
@@ -138,9 +128,13 @@ const EventManagement: React.FC = () => {
   const [detailsEvent, setDetailsEvent] = useState<EventDetails | null>(null);
 
   const [bulkBusy, setBulkBusy] = useState(false);
-
-  // Busy state for modal footer buttons
   const [modalBusy, setModalBusy] = useState(false);
+
+  // NEW: remark modal state
+  const [remarkOpen, setRemarkOpen] = useState(false);
+  const [remarkAction, setRemarkAction] = useState<'Approved' | 'Rejected' | null>(null);
+  const [remarkFor, setRemarkFor] = useState<EventDetails | null>(null);
+  const [remarkBusy, setRemarkBusy] = useState(false);
 
   /* stat cards */
   useEffect(() => {
@@ -163,9 +157,7 @@ const EventManagement: React.FC = () => {
         console.error('Failed to load counts:', e);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   /* fetch events & resolve RSO name from Users/{email}.firstName */
@@ -194,18 +186,14 @@ const EventManagement: React.FC = () => {
                 const firstName = (data.firstName as string) || '';
                 if (firstName) nameMap.set(email, firstName);
               }
-            } catch {
-              /* ignore individual failures */
-            }
+            } catch {}
           })
         );
 
         const mapped: Row[] = rows.map((e: any) => {
           const proposalStatus = toProposalStatus(e.status);
           const eventStatus = toEventStatus(e.status);
-          const [timeStart, timeEnd] = (e.time || '')
-            .split('-')
-            .map((s: string) => s.trim());
+          const [timeStart, timeEnd] = (e.time || '').split('-').map((s: string) => s.trim());
 
           const email = (e.createdByName || e.createdBy || '').trim();
           const fromUsers = nameMap.get(email);
@@ -213,13 +201,9 @@ const EventManagement: React.FC = () => {
           const organizingRSO =
             fromUsers || (e.organization || '').toString() || fallbackEmailLocal || '—';
 
-          // *** HERE: compute current attendees and capacity ***
           const approvedCount = countParticipants(e.participantsList);
-          // “participants” in your doc appears to be the intended capacity
           const capacity =
-            typeof e.participants === 'number'
-              ? e.participants
-              : Number(e.participants) || 100;
+            typeof e.participants === 'number' ? e.participants : Number(e.participants) || 100;
 
           return {
             id: e.id,
@@ -233,30 +217,26 @@ const EventManagement: React.FC = () => {
             mode: 'In-Person',
             proposalStatus,
             eventStatus,
-
-            // Use participantsList first; if missing, fall back to e.participantsCount or 0
             participantCount:
               approvedCount > 0
                 ? approvedCount
                 : typeof e.participantsCount === 'number'
                 ? e.participantsCount
                 : 0,
-
-            // Show bar out of capacity (participants field)
             maxCapacity: capacity,
-
             description: e.description || '',
 
-            banner: e.banner,
+            banner: e.banner || '',              // <— banner from DB
+            proposalBase64: e.proposalBase64 || '',
+            proposalFile: e.proposalFile || '',
+            proposalLink: e.proposalLink || '',
+            proposalName: e.proposalName || '',
+
             date: e.date,
             department: e.department,
             isCollab: !!e.isCollab,
             orgId: e.orgId || e.orgid || e.orgID || '',
             organization: e.organization || '',
-            proposalBase64: e.proposalBase64 || '', 
-            proposalFile: e.proposalFile || '',
-            proposalLink: e.proposalLink || '',
-            proposalName: e.proposalName || '',
             statusRaw: e.status || '',
             timeRaw: e.time || '',
             createdAt: e.createdAt || '',
@@ -273,9 +253,7 @@ const EventManagement: React.FC = () => {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   /* filtering */
@@ -311,13 +289,15 @@ const EventManagement: React.FC = () => {
     }
   };
 
-  /* bulk actions (optional banner) */
+  /* bulk actions */
   const bulkSetStatus = async (newStatus: 'Approved' | 'Rejected') => {
     if (selectedEvents.length === 0 || bulkBusy) return;
     try {
       setBulkBusy(true);
       const batch = writeBatch(firestore);
-      selectedEvents.forEach((id) => batch.update(doc(firestore, 'events', id), { status: newStatus }));
+      selectedEvents.forEach((id) =>
+        batch.update(doc(firestore, 'events', id), { status: newStatus })
+      );
       await batch.commit();
 
       setEvents((prev) =>
@@ -332,7 +312,6 @@ const EventManagement: React.FC = () => {
             : row
         )
       );
-
       setSelectedEvents([]);
     } catch (err) {
       console.error('Bulk update failed:', err);
@@ -341,10 +320,9 @@ const EventManagement: React.FC = () => {
     }
   };
 
-  /* modal open/close */
+  /* event details modal */
   const openDetails = (ev: Row) => {
-    const details: EventDetails = { ...ev };
-    setDetailsEvent(details);
+    setDetailsEvent({ ...ev });
     setDetailsOpen(true);
   };
   const closeDetails = () => {
@@ -352,19 +330,18 @@ const EventManagement: React.FC = () => {
     setDetailsEvent(null);
   };
 
-  /* modal footer buttons -> Firestore + local state */
+  // Cancel (no remarks)
   const handleModalAction = async (action: ModalAction, ev: EventDetails) => {
+    if (action !== 'Cancelled') return;
     try {
       setModalBusy(true);
+      const firestoreStatus = 'Rejected'; // map "Cancelled" to DB 'Rejected' if that's your convention
+      await updateDoc(doc(firestore, 'events', ev.id), {
+        status: firestoreStatus,
+        adminAction: action,
+        adminActionAt: serverTimestamp(),
+      });
 
-      // If "Cancelled" uses the same Firestore value as reject, map it here:
-      const firestoreStatus = action === 'Approved' ? 'Approved' : 'Rejected';
-
-      const batch = writeBatch(firestore);
-      batch.update(doc(firestore, 'events', ev.id), { status: firestoreStatus });
-      await batch.commit();
-
-      // update the table
       setEvents((prev) =>
         prev.map((r) =>
           r.id !== ev.id
@@ -378,7 +355,6 @@ const EventManagement: React.FC = () => {
         )
       );
 
-      // update the open modal
       setDetailsEvent((cur) =>
         !cur
           ? cur
@@ -390,9 +366,68 @@ const EventManagement: React.FC = () => {
             }
       );
     } catch (err) {
-      console.error('Modal action failed:', err);
+      console.error('Cancel failed:', err);
     } finally {
       setModalBusy(false);
+    }
+  };
+
+  /* --------- REMARKS FLOW --------- */
+
+  // Open the remarks modal when Approve/Reject is clicked from EventDetailsModal
+  const handleOpenRemarks = (action: 'Approved' | 'Rejected', ev: EventDetails) => {
+    setRemarkAction(action);
+    setRemarkFor(ev);
+    setRemarkOpen(true);
+  };
+
+  // Save status + remarks to Firestore
+  const handleSubmitRemarks = async (text: string) => {
+    if (!remarkOpen || !remarkAction || !remarkFor) return;
+    try {
+      setRemarkBusy(true);
+      const statusToSet = remarkAction; // in DB you use the same strings
+
+      await updateDoc(doc(firestore, 'events', remarkFor.id), {
+        status: statusToSet,
+        adminAction: remarkAction,
+        adminRemarks: text || '',
+        adminActionAt: serverTimestamp(),
+      });
+
+      // Update table
+      setEvents((prev) =>
+        prev.map((r) =>
+          r.id !== remarkFor.id
+            ? r
+            : {
+                ...r,
+                statusRaw: statusToSet,
+                proposalStatus: toProposalStatus(statusToSet),
+                eventStatus: toEventStatus(statusToSet),
+              }
+        )
+      );
+
+      // Update open detail modal too (so badges change immediately)
+      setDetailsEvent((cur) =>
+        !cur
+          ? cur
+          : {
+              ...cur,
+              statusRaw: statusToSet,
+              proposalStatus: toProposalStatus(statusToSet),
+              eventStatus: toEventStatus(statusToSet),
+            }
+      );
+
+      setRemarkOpen(false);
+      setRemarkFor(null);
+      setRemarkAction(null);
+    } catch (err) {
+      console.error('Saving remarks failed:', err);
+    } finally {
+      setRemarkBusy(false);
     }
   };
 
@@ -475,7 +510,6 @@ const EventManagement: React.FC = () => {
     color: string;
     bgColor?: string;
   };
-
   const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, bgColor = 'bg-red-50' }) => (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
@@ -572,7 +606,7 @@ const EventManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* (Optional) bulk banner */}
+            {/* Optional bulk banner */}
             {selectedEvents.length > 0 && (
               <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
                 <div className="flex items-center justify-between">
@@ -765,13 +799,29 @@ const EventManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Details Modal */}
       <EventDetailsModal
         open={detailsOpen}
         event={detailsEvent}
         onClose={closeDetails}
+        onOpenRemarks={handleOpenRemarks}
         onAction={handleModalAction}
         busy={modalBusy}
+      />
+
+      {/* Remarks Modal */}
+      <RemarkModal
+        open={remarkOpen}
+        action={remarkAction || 'Approved'}
+        busy={remarkBusy}
+        onClose={() => {
+          if (!remarkBusy) {
+            setRemarkOpen(false);
+            setRemarkFor(null);
+            setRemarkAction(null);
+          }
+        }}
+        onSubmit={handleSubmitRemarks}
       />
     </div>
   );
