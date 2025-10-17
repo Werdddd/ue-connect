@@ -20,12 +20,9 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
     const [location, setLocation] = useState('');
     const [participants, setParticipants] = useState<number | ''>('');
     const [bannerBase64, setBannerBase64] = useState('');
-    const [proposalType, setProposalType] = useState<'link' | 'file'>('link');
-    const [proposalLink, setProposalLink] = useState('');
     const [proposalFileBase64, setProposalFileBase64] = useState('');
     const [isCollab, setIsCollab] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -42,7 +39,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
     };
 
     const handleCreateEvent = async () => {
-        if (!title || !description || !date || !startTime || !endTime || !location || !participants || !bannerBase64) {
+        if (!title || !description || !date || !startTime || !endTime || !location || !participants || !bannerBase64 || !proposalFileBase64) {
             alert('Please fill out all required fields.');
             return;
         }
@@ -50,11 +47,11 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
         setLoading(true);
 
         const formattedTime = `${startTime} - ${endTime}`;
-        const formattedDate = new Date(date).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        }); 
+        const formattedDate = new Date(date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
 
         try {
             await addDoc(collection(firestore, 'events'), {
@@ -65,9 +62,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
                 location,
                 participants: Number(participants),
                 banner: bannerBase64,
-                proposalLink: proposalType === 'link' ? proposalLink : '',
-                proposalName: proposalType === 'file' ? 'Uploaded PDF' : '',
-                proposalFile: proposalType === 'file' ? proposalFileBase64 : '',
+                proposalName: 'Uploaded PDF',
+                proposalFile: proposalFileBase64,
                 isCollab,
                 createdAt: serverTimestamp(),
                 createdBy: auth.currentUser?.uid || '',
@@ -87,7 +83,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
             setLoading(false);
         }
     };
-
 
     return (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -202,46 +197,20 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
                         )}
                     </div>
 
-                    {/* Proposal Section */}
+                    {/* Proposal PDF */}
                     <div>
-                        <label className="font-medium">Event Proposal</label>
-                        <div className="flex items-center gap-3 mt-2">
-                            <button
-                                type="button"
-                                className={`px-3 py-1 rounded-lg border ${proposalType === 'link' ? 'bg-blue-500 text-white' : 'bg-gray-100'
-                                    }`}
-                                onClick={() => setProposalType('link')}
-                            >
-                                Link
-                            </button>
-                            <button
-                                type="button"
-                                className={`px-3 py-1 rounded-lg border ${proposalType === 'file' ? 'bg-blue-500 text-white' : 'bg-gray-100'
-                                    }`}
-                                onClick={() => setProposalType('file')}
-                            >
-                                PDF
-                            </button>
-                        </div>
-
-                        {proposalType === 'link' ? (
-                            <input
-                                type="url"
-                                value={proposalLink}
-                                onChange={(e) => setProposalLink(e.target.value)}
-                                placeholder="https://..."
-                                className="w-full border rounded-lg p-2 mt-3"
-                            />
-                        ) : (
-                            <input
-                                type="file"
-                                accept="application/pdf"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleFileToBase64(file, setProposalFileBase64);
-                                }}
-                                className="w-full border rounded-lg p-2 mt-3"
-                            />
+                        <label className="font-medium">Event Proposal (PDF)</label>
+                        <input
+                            type="file"
+                            accept="application/pdf"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileToBase64(file, setProposalFileBase64);
+                            }}
+                            className="w-full border rounded-lg p-2 mt-1"
+                        />
+                        {proposalFileBase64 && (
+                            <p className="text-green-600 mt-1 text-sm">PDF uploaded successfully</p>
                         )}
                     </div>
 
