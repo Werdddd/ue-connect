@@ -36,6 +36,14 @@ import EventDetailsModal, {
 
 /* ---------------- helpers ---------------- */
 
+// Count “approved” entries inside participantsList (object keyed by email)
+function countParticipants(participantsList?: Record<string, any>) {
+  if (!participantsList || typeof participantsList !== 'object') return 0;
+  return Object.values(participantsList).filter(
+    (p: any) => p && typeof p === 'object' && (p.status || '').toLowerCase() === 'approved'
+  ).length;
+}
+
 function toProposalStatus(s?: string) {
   switch (s) {
     case 'Applied':
@@ -87,8 +95,8 @@ type Row = {
   mode?: string;
   proposalStatus: string;
   eventStatus: string;
-  participantCount: number;
-  maxCapacity: number;
+  participantCount: number; // current number of approved attendees
+  maxCapacity: number;      // capacity (from “participants” field in your docs)
   description?: string;
 
   banner?: string;
@@ -129,7 +137,7 @@ const EventManagement: React.FC = () => {
 
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  // NEW: busy state for modal footer buttons
+  // Busy state for modal footer buttons
   const [modalBusy, setModalBusy] = useState(false);
 
   /* stat cards */
@@ -193,13 +201,23 @@ const EventManagement: React.FC = () => {
         const mapped: Row[] = rows.map((e: any) => {
           const proposalStatus = toProposalStatus(e.status);
           const eventStatus = toEventStatus(e.status);
-          const [timeStart, timeEnd] = (e.time || '').split('-').map((s: string) => s.trim());
+          const [timeStart, timeEnd] = (e.time || '')
+            .split('-')
+            .map((s: string) => s.trim());
 
           const email = (e.createdByName || e.createdBy || '').trim();
           const fromUsers = nameMap.get(email);
           const fallbackEmailLocal = email.includes('@') ? email.split('@')[0] : email;
           const organizingRSO =
             fromUsers || (e.organization || '').toString() || fallbackEmailLocal || '—';
+
+          // *** HERE: compute current attendees and capacity ***
+          const approvedCount = countParticipants(e.participantsList);
+          // “participants” in your doc appears to be the intended capacity
+          const capacity =
+            typeof e.participants === 'number'
+              ? e.participants
+              : Number(e.participants) || 100;
 
           return {
             id: e.id,
@@ -213,8 +231,18 @@ const EventManagement: React.FC = () => {
             mode: 'In-Person',
             proposalStatus,
             eventStatus,
-            participantCount: e.participants ?? 0,
-            maxCapacity: 100,
+
+            // Use participantsList first; if missing, fall back to e.participantsCount or 0
+            participantCount:
+              approvedCount > 0
+                ? approvedCount
+                : typeof e.participantsCount === 'number'
+                ? e.participantsCount
+                : 0,
+
+            // Show bar out of capacity (participants field)
+            maxCapacity: capacity,
+
             description: e.description || '',
 
             banner: e.banner,
@@ -265,7 +293,7 @@ const EventManagement: React.FC = () => {
     });
   }, [events, searchTerm, filterCategory, filterStatus, filterProposalStatus]);
 
-  /* selection */
+  /* selection (banner still optional) */
   const handleEventSelect = (eventId: string) => {
     setSelectedEvents((prev) =>
       prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]

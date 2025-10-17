@@ -112,13 +112,6 @@ const EventDetailsModal: React.FC<Props> = ({ open, event, onClose, onAction, bu
 
         {/* footer with actions */}
         <div className="px-6 py-3 border-t border-gray-200 flex justify-between gap-2">
-          <button
-            onClick={onClose}
-            disabled={busy}
-            className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-60"
-          >
-            Close
-          </button>
           <div className="flex gap-2">
             <button
               disabled={busy}
@@ -142,6 +135,13 @@ const EventDetailsModal: React.FC<Props> = ({ open, event, onClose, onAction, bu
               {busy ? 'Cancelling…' : 'Cancel'}
             </button>
           </div>
+          <button
+            onClick={onClose}
+            disabled={busy}
+            className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-60"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

@@ -1,96 +1,74 @@
 // apps/web-admin/src/services/fetchEvents.ts
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  where,
-  documentId,
-} from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { firestore } from "../Firebase";
 
 export type EventDoc = {
   id: string;
-  title: string;
+  title?: string;
   description?: string;
+  organization?: string;
+  orgId?: string;
   location?: string;
-  status?: string;
-  date?: string;
-  time?: string;
+  date?: string;          // e.g. "May 6, 2025"
+  time?: string;          // e.g. "9:00 AM - 11:00 AM"
+  status?: string;        // Applied | Approved | Rejected | Finished
+  banner?: string;
 
-  // creator fields on the event
-  createdBy?: string;        // UID (often useless for our join)
-  createdByName?: string;    // EMAIL (this matches your Users doc ID)
+  // IMPORTANT: bring these through exactly as stored
+  participants?: number;                // capacity in your DB
+  participantsList?: Record<string, any>; // map of users -> { status: "Approved" | ... }
+  participantsCount?: number;           // if you also keep a precomputed integer
 
-  collabOrgs?: {
-    orgId?: string;
-    organization?: string;   // optional label stored on the event
-  };
+  // creator info (for RSO name)
+  createdBy?: string;
+  createdByName?: string;
 
-  // computed
-  organizerName?: string;    // <- what we'll show in the table
+  // other optional fields you showed
+  department?: string;
+  isCollab?: boolean;
+  proposalFile?: string;
+  proposalLink?: string;
+  proposalName?: string;
+  createdAt?: string;
+  orgid?: string;
+  orgID?: string;
 };
 
-const CHUNK = 10; // Firestore 'in' query limit
-
 export async function fetchEvents(max = 200): Promise<EventDoc[]> {
-  // 1) read events
-  const eventsRef = collection(firestore, "events");
-  const q = query(eventsRef, orderBy(documentId()), limit(max));
+  const ref = collection(firestore, "events");
+  // If "date" is a string in Firestore, orderBy still works, it will be lexicographic.
+  // You can remove orderBy if it causes an index error.
+  const q = query(ref, orderBy("date", "desc"), limit(max));
   const snap = await getDocs(q);
 
-  const events: EventDoc[] = snap.docs.map((d) => {
+  return snap.docs.map((d) => {
     const data = d.data() as any;
     return {
       id: d.id,
-      title: data.title ?? data.name ?? "Untitled",
-      description: data.description ?? "",
-      location: data.location ?? "",
-      status: data.status ?? "",
-      date: data.date ?? "",
-      time: data.time ?? "",
-      createdBy: data.createdBy ?? "",
-      createdByName: data.createdByName ?? "", // this is the email in your screenshots
-      collabOrgs: data.collabOrgs ?? undefined,
+      title: data.title,
+      description: data.description,
+      organization: data.organization,
+      orgId: data.orgId ?? data.orgid ?? data.orgID,
+      location: data.location,
+      date: data.date,
+      time: data.time,
+      status: data.status,
+      banner: data.banner,
+
+      // pass through unchanged so your page can count them
+      participants: data.participants,
+      participantsList: data.participantsList,
+      participantsCount: data.participantsCount,
+
+      createdBy: data.createdBy,
+      createdByName: data.createdByName,
+
+      department: data.department,
+      isCollab: data.isCollab,
+      proposalFile: data.proposalFile,
+      proposalLink: data.proposalLink,
+      proposalName: data.proposalName,
+      createdAt: data.createdAt,
     };
   });
-
-  // 2) collect unique emails (Users doc IDs)
-  const emails = Array.from(
-    new Set(
-      events
-        .map((e) => (e.createdByName || "").trim())
-        .filter(Boolean)
-    )
-  );
-
-  // 3) build email -> firstName map from Users
-  const emailToFirst = new Map<string, string>();
-  if (emails.length) {
-    const usersRef = collection(firestore, "Users");
-
-    for (let i = 0; i < emails.length; i += CHUNK) {
-      const chunk = emails.slice(i, i + CHUNK);
-      // your Users docId is the email -> we can query by documentId() 'in'
-      const uq = query(usersRef, where(documentId(), "in", chunk));
-      const usnap = await getDocs(uq);
-      usnap.forEach((udoc) => {
-        const u = udoc.data() as any;
-        emailToFirst.set(udoc.id, (u.firstName ?? "").trim());
-      });
-    }
-  }
-
-  // 4) resolve organizerName with nice fallbacks
-  events.forEach((e) => {
-    const fromUsers = e.createdByName ? emailToFirst.get(e.createdByName) : "";
-    e.organizerName =
-      fromUsers ||
-      e.collabOrgs?.organization || // if you saved a label on the event
-      e.createdByName ||            // last resort: show the email
-      "—";
-  });
-
-  return events;
 }
