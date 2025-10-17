@@ -1,80 +1,79 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Calendar,
   Search,
   Plus,
-  Edit3,
-  Trash2,
   Users,
   Clock,
-  Eye,
-  MoreVertical,
   CheckCircle,
   XCircle,
   AlertCircle,
   PlayCircle,
   Monitor,
   Building,
-  Mail,
-  Camera,
   MapPin,
 } from 'lucide-react';
-import Sidebar from '../components/Sidebar';
 
+import Sidebar from '../components/Sidebar';
 import {
   getEventsCount,
   getPendingEventsCount,
   getOnGoingEventsCount,
   getCompletedEventsCount,
 } from '../../services/events';
-
 import { fetchEvents } from '../../services/fetchEvents';
-import { writeBatch, doc } from 'firebase/firestore';
-import { firestore } from '../../Firebase';
 
-/* ---------- helpers: status mapping ---------- */
+import { firestore } from '../../Firebase';
+import { writeBatch, doc, getDoc } from 'firebase/firestore';
+
+import EventDetailsModal, {
+  EventDetails,
+  formatDateTime as fmtDT,
+  ModalAction,
+} from '../components/modals/EventDetailsModal';
+
+/* ---------------- helpers ---------------- */
 
 function toProposalStatus(s?: string) {
   switch (s) {
-    case 'Applied':   return 'Under Review';
-    case 'Approved':  return 'Approved';
-    case 'Rejected':  return 'Rejected';
-    case 'Finished':  return 'Approved';
-    case 'Cancelled': return 'Approved';
-    default:          return 'Under Review';
-  }
-}
-function toEventStatus(s?: string) {
-  switch (s) {
-    case 'Applied':   return 'Planning';
-    case 'Approved':  return 'Ongoing';
-    case 'Finished':  return 'Completed';
-    case 'Rejected':  return 'Cancelled';
-    case 'Cancelled': return 'Cancelled';
-    default:          return 'Planning';
+    case 'Applied':
+      return 'Under Review';
+    case 'Approved':
+      return 'Approved';
+    case 'Rejected':
+      return 'Rejected';
+    case 'Finished':
+      return 'Approved';
+    default:
+      return 'Under Review';
   }
 }
 
-const formatDateTime = (dateTime: string | undefined | null) => {
-  if (!dateTime) return { date: '', time: '' };
-  const d = new Date(dateTime);
-  if (isNaN(d.getTime())) return { date: '', time: '' };
-  return {
-    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    time: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-  };
-};
+function toEventStatus(s?: string) {
+  switch (s) {
+    case 'Applied':
+      return 'Planning';
+    case 'Approved':
+      return 'Ongoing';
+    case 'Finished':
+      return 'Completed';
+    case 'Rejected':
+      return 'Cancelled';
+    default:
+      return 'Planning';
+  }
+}
 
 const buildISO = (dateStr?: string, timeStr?: string) => {
   if (!dateStr) return '';
-  const full = timeStr ? `${dateStr} ${timeStr}` : dateStr;
-  const d = new Date(full);
-  return isNaN(d.getTime()) ? '' : d.toISOString();
+  const composed = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+  const d = new Date(composed);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 };
 
-/* ---------- types ---------- */
+/* ---------------- types ---------------- */
 
 type Row = {
   id: string;
@@ -83,23 +82,32 @@ type Row = {
   rsoId: string;
   category: string;
   dateTime: string;
-  endDateTime: string;
-  location: string;
-  mode: string;
+  endDateTime?: string;
+  location?: string;
+  mode?: string;
   proposalStatus: string;
   eventStatus: string;
   participantCount: number;
   maxCapacity: number;
-  description: string;
-  contactPerson: string;
-  contactEmail: string;
-  registrationDeadline: string;
-  requirements: string;
-  submittedDate: string | null;
-  approvedDate: string | null;
+  description?: string;
+
+  banner?: string;
+  date?: string;
+  department?: string;
+  isCollab?: boolean;
+  orgId?: string;
+  organization?: string;
+  proposalFile?: string;
+  proposalLink?: string;
+  proposalName?: string;
+  statusRaw?: string;
+  timeRaw?: string;
+  createdAt?: string;
+  createdBy?: string;
+  createdByName?: string;
 };
 
-/* ---------- component ---------- */
+/* --------------- page --------------- */
 
 const EventManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -116,9 +124,15 @@ const EventManagement: React.FC = () => {
   const [events, setEvents] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsEvent, setDetailsEvent] = useState<EventDetails | null>(null);
+
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  /* ---- stat cards ---- */
+  // NEW: busy state for modal footer buttons
+  const [modalBusy, setModalBusy] = useState(false);
+
+  /* stat cards */
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -139,50 +153,86 @@ const EventManagement: React.FC = () => {
         console.error('Failed to load counts:', e);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  /* ---- table data ---- */
+  /* fetch events & resolve RSO name from Users/{email}.firstName */
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        setLoading(true);
         const rows = await fetchEvents(200);
-        const mapped = rows.map((e) => {
-          const proposalStatus = toProposalStatus(e.status);
-          const eventStatus    = toEventStatus(e.status);
 
-          const [timeStart, timeEnd] = (e.time || "")
-            .split("-")
-            .map((s: string) => s.trim());
+        const emails = Array.from(
+          new Set(
+            rows
+              .map((e: any) => (e.createdByName || e.createdBy || '').trim())
+              .filter(Boolean)
+          )
+        );
+
+        const nameMap = new Map<string, string>();
+        await Promise.all(
+          emails.map(async (email) => {
+            try {
+              const snap = await getDoc(doc(firestore, 'Users', email));
+              if (snap.exists()) {
+                const data = snap.data() || {};
+                const firstName = (data.firstName as string) || '';
+                if (firstName) nameMap.set(email, firstName);
+              }
+            } catch {
+              /* ignore individual failures */
+            }
+          })
+        );
+
+        const mapped: Row[] = rows.map((e: any) => {
+          const proposalStatus = toProposalStatus(e.status);
+          const eventStatus = toEventStatus(e.status);
+          const [timeStart, timeEnd] = (e.time || '').split('-').map((s: string) => s.trim());
+
+          const email = (e.createdByName || e.createdBy || '').trim();
+          const fromUsers = nameMap.get(email);
+          const fallbackEmailLocal = email.includes('@') ? email.split('@')[0] : email;
+          const organizingRSO =
+            fromUsers || (e.organization || '').toString() || fallbackEmailLocal || '—';
 
           return {
             id: e.id,
             title: e.title,
-
-            // 👇 use Users.firstName we resolved in fetchEvents()
-            organizingRSO: e.organizerName || "—",
-
-            rsoId: "",
-            category: (e.description || "").trim() || "General",
+            organizingRSO,
+            rsoId: '',
+            category: (e.description || '').trim() || 'General',
             dateTime: buildISO(e.date, timeStart),
             endDateTime: buildISO(e.date, timeEnd),
-            location: e.location || "—",
-            mode: "In-Person",
+            location: e.location || '—',
+            mode: 'In-Person',
             proposalStatus,
             eventStatus,
-            participantCount: (e as any).participants ?? 0,
+            participantCount: e.participants ?? 0,
             maxCapacity: 100,
-            description: e.description || "",
-            contactPerson: "—",
-            contactEmail: "",
-            registrationDeadline: "",
-            requirements: "",
-            submittedDate: null,
-            approvedDate: null,
+            description: e.description || '',
+
+            banner: e.banner,
+            date: e.date,
+            department: e.department,
+            isCollab: !!e.isCollab,
+            orgId: e.orgId || e.orgid || e.orgID || '',
+            organization: e.organization || '',
+            proposalFile: e.proposalFile || '',
+            proposalLink: e.proposalLink || '',
+            proposalName: e.proposalName || '',
+            statusRaw: e.status || '',
+            timeRaw: e.time || '',
+            createdAt: e.createdAt || '',
+            createdBy: e.createdBy || '',
+            createdByName: e.createdByName || '',
           };
         });
-
 
         if (!cancelled) setEvents(mapped);
       } catch (err) {
@@ -192,31 +242,36 @@ const EventManagement: React.FC = () => {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  /* ---- filters ---- */
-  const baseEvents = events ?? [];
-  const filteredEvents = baseEvents.filter((event) => {
+  /* filtering */
+  const filteredEvents = useMemo(() => {
     const search = searchTerm.toLowerCase();
-    const matchesSearch =
-      event.title.toLowerCase().includes(search) ||
-      event.organizingRSO.toLowerCase().includes(search) ||
-      event.id.toLowerCase().includes(search);
+    return (events ?? []).filter((event) => {
+      const matchesSearch =
+        event.title.toLowerCase().includes(search) ||
+        event.organizingRSO.toLowerCase().includes(search) ||
+        event.id.toLowerCase().includes(search);
 
-    const matchesCategory = filterCategory === 'all' || event.category === filterCategory;
-    const matchesStatus   = filterStatus === 'all' || event.eventStatus === filterStatus;
-    const matchesProposal = filterProposalStatus === 'all' || event.proposalStatus === filterProposalStatus;
+      const matchesCategory = filterCategory === 'all' || event.category === filterCategory;
+      const matchesStatus = filterStatus === 'all' || event.eventStatus === filterStatus;
+      const matchesProposal =
+        filterProposalStatus === 'all' || event.proposalStatus === filterProposalStatus;
 
-    return matchesSearch && matchesCategory && matchesStatus && matchesProposal;
-  });
+      return matchesSearch && matchesCategory && matchesStatus && matchesProposal;
+    });
+  }, [events, searchTerm, filterCategory, filterStatus, filterProposalStatus]);
 
-  /* ---- selection ---- */
+  /* selection */
   const handleEventSelect = (eventId: string) => {
     setSelectedEvents((prev) =>
       prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]
     );
   };
+
   const handleSelectAll = () => {
     if (selectedEvents.length === filteredEvents.length) {
       setSelectedEvents([]);
@@ -225,16 +280,13 @@ const EventManagement: React.FC = () => {
     }
   };
 
-  /* ---- bulk status updates (Approve / Reject / Cancel) ---- */
-  const bulkSetStatus = async (newStatus: 'Approved' | 'Rejected' | 'Cancelled') => {
+  /* bulk actions (optional banner) */
+  const bulkSetStatus = async (newStatus: 'Approved' | 'Rejected') => {
     if (selectedEvents.length === 0 || bulkBusy) return;
     try {
       setBulkBusy(true);
-
       const batch = writeBatch(firestore);
-      selectedEvents.forEach((id) => {
-        batch.update(doc(firestore, 'events', id), { status: newStatus });
-      });
+      selectedEvents.forEach((id) => batch.update(doc(firestore, 'events', id), { status: newStatus }));
       await batch.commit();
 
       setEvents((prev) =>
@@ -244,6 +296,7 @@ const EventManagement: React.FC = () => {
                 ...row,
                 proposalStatus: toProposalStatus(newStatus),
                 eventStatus: toEventStatus(newStatus),
+                statusRaw: newStatus,
               }
             : row
         )
@@ -257,7 +310,62 @@ const EventManagement: React.FC = () => {
     }
   };
 
-  /* ---- badges ---- */
+  /* modal open/close */
+  const openDetails = (ev: Row) => {
+    const details: EventDetails = { ...ev };
+    setDetailsEvent(details);
+    setDetailsOpen(true);
+  };
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setDetailsEvent(null);
+  };
+
+  /* modal footer buttons -> Firestore + local state */
+  const handleModalAction = async (action: ModalAction, ev: EventDetails) => {
+    try {
+      setModalBusy(true);
+
+      // If "Cancelled" uses the same Firestore value as reject, map it here:
+      const firestoreStatus = action === 'Approved' ? 'Approved' : 'Rejected';
+
+      const batch = writeBatch(firestore);
+      batch.update(doc(firestore, 'events', ev.id), { status: firestoreStatus });
+      await batch.commit();
+
+      // update the table
+      setEvents((prev) =>
+        prev.map((r) =>
+          r.id !== ev.id
+            ? r
+            : {
+                ...r,
+                statusRaw: firestoreStatus,
+                proposalStatus: toProposalStatus(firestoreStatus),
+                eventStatus: toEventStatus(firestoreStatus),
+              }
+        )
+      );
+
+      // update the open modal
+      setDetailsEvent((cur) =>
+        !cur
+          ? cur
+          : {
+              ...cur,
+              statusRaw: firestoreStatus,
+              proposalStatus: toProposalStatus(firestoreStatus),
+              eventStatus: toEventStatus(firestoreStatus),
+            }
+      );
+    } catch (err) {
+      console.error('Modal action failed:', err);
+    } finally {
+      setModalBusy(false);
+    }
+  };
+
+  /* badges */
   const getProposalStatusBadge = (status: string) => {
     switch (status) {
       case 'Approved':
@@ -285,6 +393,7 @@ const EventManagement: React.FC = () => {
         return null;
     }
   };
+
   const getEventStatusBadge = (status: string) => {
     switch (status) {
       case 'Completed':
@@ -327,7 +436,7 @@ const EventManagement: React.FC = () => {
     }
   };
 
-  /* ---- stat card ---- */
+  /* stat card */
   type StatCardProps = {
     title: string;
     value: number;
@@ -335,6 +444,7 @@ const EventManagement: React.FC = () => {
     color: string;
     bgColor?: string;
   };
+
   const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, bgColor = 'bg-red-50' }) => (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
@@ -349,24 +459,25 @@ const EventManagement: React.FC = () => {
     </div>
   );
 
-  /* ---- render ---- */
+  /* render */
   return (
     <div className="ml-15 min-h-screen bg-gray-50 flex">
       <Sidebar />
 
       <div className="flex-1 overflow-auto">
         <div className="p-8">
+          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Event Management</h1>
             <p className="text-gray-600">Manage RSO events, proposals, and activities</p>
           </div>
 
-          {/* Stat cards */}
+          {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard title="Total Events"     value={totalEvents}     icon={Calendar}  color="text-red-600"    bgColor="bg-red-50" />
-            <StatCard title="Pending Approval" value={pendingApproval} icon={Clock}     color="text-yellow-600" bgColor="bg-yellow-50" />
-            <StatCard title="On Going"         value={onGoingEvents}   icon={PlayCircle} color="text-purple-600" bgColor="bg-purple-50" />
-            <StatCard title="Completed Events" value={completedEvents} icon={CheckCircle} color="text-blue-600"  bgColor="bg-blue-50" />
+            <StatCard title="Total Events" value={totalEvents} icon={Calendar} color="text-red-600" bgColor="bg-red-50" />
+            <StatCard title="Pending Approval" value={pendingApproval} icon={Clock} color="text-yellow-600" bgColor="bg-yellow-50" />
+            <StatCard title="On Going" value={onGoingEvents} icon={PlayCircle} color="text-purple-600" bgColor="bg-purple-50" />
+            <StatCard title="Completed Events" value={completedEvents} icon={CheckCircle} color="text-blue-600" bgColor="bg-blue-50" />
           </div>
 
           {/* Controls */}
@@ -430,7 +541,7 @@ const EventManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Bulk actions banner */}
+            {/* (Optional) bulk banner */}
             {selectedEvents.length > 0 && (
               <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
                 <div className="flex items-center justify-between">
@@ -441,21 +552,21 @@ const EventManagement: React.FC = () => {
                     <button
                       onClick={() => bulkSetStatus('Approved')}
                       disabled={bulkBusy}
-                      className="px-3 py-1 text-red-700 bg-white border border-red-300 rounded hover:bg-red-50 text-sm disabled:opacity-60"
+                      className="px-3 py-1 text-red-700 bg-white border border-red-300 rounded hover:bg-red-50 transition-colors text-sm disabled:opacity-60"
                     >
                       {bulkBusy ? 'Approving…' : 'Approve Selected'}
                     </button>
                     <button
                       onClick={() => bulkSetStatus('Rejected')}
                       disabled={bulkBusy}
-                      className="px-3 py-1 text-red-700 bg-white border border-red-300 rounded hover:bg-red-50 text-sm disabled:opacity-60"
+                      className="px-3 py-1 text-red-700 bg-white border border-red-300 rounded hover:bg-red-50 transition-colors text-sm disabled:opacity-60"
                     >
                       {bulkBusy ? 'Rejecting…' : 'Reject Selected'}
                     </button>
                     <button
-                      onClick={() => bulkSetStatus('Cancelled')}
+                      onClick={() => bulkSetStatus('Rejected')}
                       disabled={bulkBusy}
-                      className="px-3 py-1 text-red-700 bg-white border border-red-300 rounded hover:bg-red-50 text-sm disabled:opacity-60"
+                      className="px-3 py-1 text-red-700 bg-white border border-red-300 rounded hover:bg-red-50 transition-colors text-sm disabled:opacity-60"
                     >
                       {bulkBusy ? 'Cancelling…' : 'Cancel Selected'}
                     </button>
@@ -475,14 +586,6 @@ const EventManagement: React.FC = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="px-6 py-4 text-left">
-                          <input
-                            type="checkbox"
-                            checked={selectedEvents.length === filteredEvents.length && filteredEvents.length > 0}
-                            onChange={handleSelectAll}
-                            className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                          />
-                        </th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Event Details
                         </th>
@@ -490,7 +593,7 @@ const EventManagement: React.FC = () => {
                           Organizing RSO
                         </th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date & Time
+                          Date &amp; Time
                         </th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Location/Mode
@@ -501,30 +604,20 @@ const EventManagement: React.FC = () => {
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Participants
                         </th>
-                        <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {filteredEvents.map((event) => {
-                        const start = formatDateTime(event.dateTime);
-                        const end   = event.endDateTime ? formatDateTime(event.endDateTime) : { time: '' };
-
+                        const start = fmtDT(event.dateTime);
                         const cap = Math.max(event.maxCapacity || 0, 1);
                         const pct = Math.min(Math.round((event.participantCount / cap) * 100), 100);
 
                         return (
-                          <tr key={event.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4">
-                              <input
-                                type="checkbox"
-                                checked={selectedEvents.includes(event.id)}
-                                onChange={() => handleEventSelect(event.id)}
-                                className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                              />
-                            </td>
-
+                          <tr
+                            key={event.id}
+                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => openDetails(event)}
+                          >
                             <td className="px-6 py-4">
                               <div className="flex items-start">
                                 <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
@@ -543,11 +636,15 @@ const EventManagement: React.FC = () => {
                             <td className="px-6 py-4 text-sm">
                               <div className="flex items-center">
                                 <div className="h-8 w-8 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-xs mr-2">
-                                  {event.organizingRSO.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                                  {event.organizingRSO
+                                    .split(' ')
+                                    .map((w) => w[0])
+                                    .join('')
+                                    .slice(0, 2)}
                                 </div>
                                 <div>
                                   <div className="font-medium text-gray-900">{event.organizingRSO}</div>
-                                  <div className="text-gray-500 text-xs">{event.contactPerson}</div>
+                                  <div className="text-gray-500 text-xs">—</div>
                                 </div>
                               </div>
                             </td>
@@ -560,7 +657,8 @@ const EventManagement: React.FC = () => {
                               <div className="flex items-center">
                                 <Clock className="h-4 w-4 text-gray-400 mr-2" />
                                 <span className="text-gray-600">
-                                  {start.time}{end.time ? ` - ${end.time}` : ''}
+                                  {start.time}
+                                  {event.endDateTime ? ` - ${fmtDT(event.endDateTime).time}` : ''}
                                 </span>
                               </div>
                             </td>
@@ -591,36 +689,15 @@ const EventManagement: React.FC = () => {
                             <td className="px-6 py-4 text-center">
                               <div className="flex items-center justify-center mb-1">
                                 <Users className="h-4 w-4 text-gray-400 mr-1" />
-                                <span className="text-lg font-semibold text-gray-900">{event.participantCount}</span>
+                                <span className="text-lg font-semibold text-gray-900">
+                                  {event.participantCount}
+                                </span>
                                 <span className="text-gray-500 ml-1">/{cap}</span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-1.5">
                                 <div className="bg-red-600 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
                               </div>
                               <div className="text-xs text-gray-500 mt-1">{pct}% full</div>
-                            </td>
-
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end space-x-2">
-                                <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors" title="View Details">
-                                  <Eye className="h-4 w-4" />
-                                </button>
-                                <button className="p-1 text-gray-400 hover:text-blue-600 transition-colors" title="Edit Event">
-                                  <Edit3 className="h-4 w-4" />
-                                </button>
-                                <button className="p-1 text-gray-400 hover:text-green-600 transition-colors" title="Send Email">
-                                  <Mail className="h-4 w-4" />
-                                </button>
-                                <button className="p-1 text-gray-400 hover:text-purple-600 transition-colors" title="Event Photos">
-                                  <Camera className="h-4 w-4" />
-                                </button>
-                                <button className="p-1 text-gray-400 hover:text-red-600 transition-colors" title="Cancel Event">
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                                <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors" title="More Options">
-                                  <MoreVertical className="h-4 w-4" />
-                                </button>
-                              </div>
                             </td>
                           </tr>
                         );
@@ -629,6 +706,7 @@ const EventManagement: React.FC = () => {
                   </table>
                 </div>
 
+                {/* Pagination stub */}
                 <div className="bg-white px-6 py-4 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-500">
@@ -655,6 +733,15 @@ const EventManagement: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal */}
+      <EventDetailsModal
+        open={detailsOpen}
+        event={detailsEvent}
+        onClose={closeDetails}
+        onAction={handleModalAction}
+        busy={modalBusy}
+      />
     </div>
   );
 };
