@@ -106,6 +106,7 @@ type Row = {
   isCollab?: boolean;
   orgId?: string;
   organization?: string;
+  proposalBase64?: string;
   proposalFile?: string;
   proposalLink?: string;
   proposalName?: string;
@@ -252,6 +253,7 @@ const EventManagement: React.FC = () => {
             isCollab: !!e.isCollab,
             orgId: e.orgId || e.orgid || e.orgID || '',
             organization: e.organization || '',
+            proposalBase64: e.proposalBase64 || '', 
             proposalFile: e.proposalFile || '',
             proposalLink: e.proposalLink || '',
             proposalName: e.proposalName || '',
