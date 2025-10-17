@@ -50,12 +50,17 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
         setLoading(true);
 
         const formattedTime = `${startTime} - ${endTime}`;
+        const formattedDate = new Date(date).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        }); 
 
         try {
             await addDoc(collection(firestore, 'events'), {
                 title,
                 description,
-                date,
+                date: formattedDate,
                 time: formattedTime,
                 location,
                 participants: Number(participants),
