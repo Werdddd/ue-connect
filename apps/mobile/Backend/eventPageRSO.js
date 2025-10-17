@@ -7,29 +7,29 @@ export async function fetchEvents() {
   try {
     const querySnapshot = await getDocs(collection(firestore, 'events'));
     const events = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+      id: doc.id,
+      ...doc.data(),
+    }));
     //console.log('Loaded events:', events);
-        return events;
-      } catch (error) {
-        console.error('Failed to load events:', error);
-        throw error;
-    }
-    }
+    return events;
+  } catch (error) {
+    console.error('Failed to load events:', error);
+    throw error;
+  }
+}
 
 // Fetch organizations for collab
 export async function fetchOrganizations() {
   try {
     const querySnapshot = await getDocs(collection(firestore, 'organizations'));
     const organizations = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-  return organizations;
-    } catch (error) {
-      console.error('Failed to fetch organizations:', error);
-      throw error;
+      id: doc.id,
+      ...doc.data(),
+    }));
+    return organizations;
+  } catch (error) {
+    console.error('Failed to fetch organizations:', error);
+    throw error;
   }
 }
 
@@ -37,62 +37,62 @@ export async function fetchOrganizations() {
 export async function addEvent(newEvent) {
   try {
     const auth = getAuth();
-const currentUser = auth.currentUser;
+    const currentUser = auth.currentUser;
 
     if (!currentUser) {
       throw new Error("User must be logged in to create events.");
-}
+    }
 
     const creatorName = currentUser.displayName || currentUser.email || "Unknown Org";
 
     const orgSnapshot = await getDocs(collection(firestore, "organizations"));
-let matchedOrg = null;
+    let matchedOrg = null;
 
     for (const docSnap of orgSnapshot.docs) {
       const orgData = docSnap.data();
-      if (orgData.email && orgData.email.toLowerCase() === currentUser.email.toLowerCase()){
+      if (orgData.email && orgData.email.toLowerCase() === currentUser.email.toLowerCase()) {
         matchedOrg = {
           orgName: orgData.orgName ||
-          "Unknown Organization",
+            "Unknown Organization",
           department: orgData.department ||
-          "N/A",
+            "N/A",
           orgId: docSnap.id,
         };
-      break;
+        break;
       }
     }
 
     const eventWithStatus = {
       ...newEvent,
       status: newEvent.status ||
-"Applied",
+        "Applied",
       isCollab: newEvent.isCollab || false,
       collabOrgs: newEvent.collabOrgs ||
-[],
+        [],
       createdBy: currentUser.uid,
       createdByName: creatorName,
       createdAt: serverTimestamp(),
 
       // ✅ Include organization details
       organization: matchedOrg?.orgName ||
-"Unknown Organization",
+        "Unknown Organization",
       department: matchedOrg?.department || "N/A",
       orgId: matchedOrg?.orgId ||
-null,
+        null,
     };
 
     // Custom ID like OrgEvent1, OrgEvent2...
     const eventsSnapshot = await getDocs(collection(firestore, "events"));
-const newEventID = `OrgEvent${eventsSnapshot.size + 1}`;
+    const newEventID = `OrgEvent${eventsSnapshot.size + 1}`;
 
     const docRef = doc(firestore, "events", newEventID);
     await setDoc(docRef, eventWithStatus);
 
     return newEventID;
-} catch (error) {
+  } catch (error) {
     console.error("Failed to add event:", error);
     throw error;
-}
+  }
 }
 
 /**
@@ -119,7 +119,7 @@ function parseTimeRangeToDates(dateStr, timeStr) {
       } else if (meridiem === 'AM' && hours === 12) {
         hours = 0; // Midnight case
       }
-      
+
       let date = setHours(baseDate, hours);
       date = setMinutes(date, minutes);
       return date;
@@ -171,7 +171,7 @@ function findAvailableSlotsForDay(day, eventsForDay) {
     const prevEvent = bookedSlots[i - 1];
     const currentEvent = bookedSlots[i];
     const gapInMinutes = differenceInMinutes(currentEvent.start, prevEvent.end);
-    
+
     generateSuggestionsForGap(prevEvent.end, gapInMinutes, availableSlots);
     currentTime = currentEvent.end;
   }
@@ -179,7 +179,7 @@ function findAvailableSlotsForDay(day, eventsForDay) {
   // 4. Find gap between the last event and the end of the day
   const finalGapInMinutes = differenceInMinutes(dayEnd, currentTime);
   generateSuggestionsForGap(currentTime, finalGapInMinutes, availableSlots);
-  
+
   return availableSlots;
 }
 
@@ -193,11 +193,11 @@ function generateSuggestionsForGap(startTime, gapInMinutes, suggestions) {
   const formatTime = (date) => format(date, "h:mm a");
 
   // Suggest the longest possible slot first (up to 3 hours)
-    if (gapInMinutes >= 60) { // 1 hour
+  if (gapInMinutes >= 60) { // 1 hour
     const endTime = addHours(startTime, 1);
     suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
   }
-    if (gapInMinutes >= 120) { // 2 hours
+  if (gapInMinutes >= 120) { // 2 hours
     const endTime = addHours(startTime, 2);
     suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
   }
@@ -205,7 +205,7 @@ function generateSuggestionsForGap(startTime, gapInMinutes, suggestions) {
     const endTime = addHours(startTime, 3);
     suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
   }
-    if (gapInMinutes >= 240) { // 3 hours
+  if (gapInMinutes >= 240) { // 3 hours
     const endTime = addHours(startTime, 4);
     suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
   }
@@ -227,16 +227,16 @@ export async function getSuggestedDateTime(location, targetDate) {
     const blackoutSnapshot = await getDocs(collection(firestore, 'blackoutDates'));
     const allEvents = eventsSnapshot.docs.map(doc => doc.data());
     const blackoutDates = blackoutSnapshot.docs.map(doc => doc.data().date);
-    
+
     let suggestions = [];
 
     // SCENARIO 1: User provides a specific date.
     if (targetDate) {
       const date = parse(targetDate, "MMMM d, yyyy", new Date());
       const formattedDate = format(date, "MMMM d, yyyy");
-      
+
       if (!blackoutDates.includes(formattedDate)) {
-        const eventsForDay = allEvents.filter(event => 
+        const eventsForDay = allEvents.filter(event =>
           normalizeLocation(event.location) === targetLocation && event.date === formattedDate
         );
         const availableSlots = findAvailableSlotsForDay(date, eventsForDay);
@@ -244,22 +244,22 @@ export async function getSuggestedDateTime(location, targetDate) {
           suggestions = availableSlots.map(time => `${formattedDate} • ${time}`);
         }
       }
-    // SCENARIO 2: User has NOT provided a date, so find the soonest available.
+      // SCENARIO 2: User has NOT provided a date, so find the soonest available.
     } else {
       const startDate = new Date();
       const MAX_DAYS_AHEAD = 30;
       for (let i = 0; i < MAX_DAYS_AHEAD; i++) {
         const currentDate = addDays(startDate, i);
         const formattedDate = format(currentDate, "MMMM d, yyyy");
-        
+
         if (blackoutDates.includes(formattedDate)) continue;
 
-        const eventsForDay = allEvents.filter(event => 
+        const eventsForDay = allEvents.filter(event =>
           normalizeLocation(event.location) === targetLocation && event.date === formattedDate
         );
-        
+
         const availableSlots = findAvailableSlotsForDay(currentDate, eventsForDay);
-        
+
         if (availableSlots.length > 0) {
           // Add the first few suggestions found and stop searching
           suggestions = availableSlots.slice(0, 4).map(time => `${formattedDate} • ${time}`);
@@ -267,7 +267,7 @@ export async function getSuggestedDateTime(location, targetDate) {
         }
       }
     }
-    
+
     return { suggestedTimes: suggestions };
 
   } catch (error) {
