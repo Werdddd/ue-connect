@@ -28,6 +28,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
     const [loading, setLoading] = useState(false);
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
+    const [proposalName, setProposalName] = useState('');
 
     if (!isOpen) return null;
 
@@ -62,7 +63,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
                 location,
                 participants: Number(participants),
                 banner: bannerBase64,
-                proposalName: 'Uploaded PDF',
+                proposalName: proposalName || 'Uploaded PDF',
                 proposalFile: proposalFileBase64,
                 isCollab,
                 createdAt: serverTimestamp(),
@@ -205,12 +206,17 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
                             accept="application/pdf"
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) handleFileToBase64(file, setProposalFileBase64);
+                                if (file) {
+                                    setProposalName(file.name); // ✅ Capture file name
+                                    handleFileToBase64(file, setProposalFileBase64);
+                                }
                             }}
                             className="w-full border rounded-lg p-2 mt-1"
                         />
                         {proposalFileBase64 && (
-                            <p className="text-green-600 mt-1 text-sm">PDF uploaded successfully</p>
+                            <p className="text-green-600 mt-1 text-sm">
+                                📄 Uploaded: <span className="font-medium">{proposalName}</span>
+                            </p>
                         )}
                     </div>
 
