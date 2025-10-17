@@ -370,12 +370,28 @@ export default function EventPageRSO() {
 
     useEffect(() => {
         const fetchSuggestion = async () => {
-            const suggestion = await getSuggestedDateTime();
-            setSuggestedDateTime(suggestion);
+            // A location is required to start fetching suggestions.
+            if (newLocation && newLocation.trim().length > 2) {
+                // Pass both location and date to the backend.
+                // - If 'newDate' is empty, the backend finds the soonest available day.
+                // - If 'newDate' has a value, the backend finds slots for that specific day.
+                const suggestion = await getSuggestedDateTime(newLocation, newDate);
+                setSuggestedDateTime(suggestion);
+            } else {
+                // If the location is cleared, also clear the suggestions.
+                setSuggestedDateTime(null);
+            }
         };
 
-        fetchSuggestion();
-    }, []);
+        // Debounce the request to avoid calling Firebase on every keystroke.
+        const handler = setTimeout(() => {
+            fetchSuggestion();
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [newLocation, newDate]);
 
     useEffect(() => {
         if (newDate && newTime && newLocation) {
@@ -550,6 +566,15 @@ export default function EventPageRSO() {
                                         value={newDescription}
                                         onChangeText={setNewDescription}
                                     />
+                                    <Text style={[styles.label, { marginTop: 10 }]}>Event Location</Text>
+
+                                    <TextInput
+                                        placeholder="MPH 2, Engineering Building"
+                                        placeholderTextColor="#D3D3D3"
+                                        style={styles.input}
+                                        value={newLocation}
+                                        onChangeText={setNewLocation}
+                                    />
 
                                     <View style={styles.dateTimeRow}>
                                         {/* Date Input */}
@@ -601,20 +626,6 @@ export default function EventPageRSO() {
                                             </View>
                                         </View>
                                     )}
-
-
-
-
-
-                                    <Text style={[styles.label, { marginTop: 10 }]}>Event Location</Text>
-
-                                    <TextInput
-                                        placeholder="MPH 2, Engineering Building"
-                                        placeholderTextColor="#D3D3D3"
-                                        style={styles.input}
-                                        value={newLocation}
-                                        onChangeText={setNewLocation}
-                                    />
                                     {locationConflictWarning ? (
                                         <View style={styles.warningContainer}>
                                             <Text style={styles.warningText}>{locationConflictWarning}</Text>
