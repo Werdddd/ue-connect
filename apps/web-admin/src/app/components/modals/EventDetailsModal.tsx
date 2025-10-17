@@ -141,13 +141,10 @@ const EventDetailsModal: React.FC<Props> = ({ open, event, onClose, onAction, bu
             <div><Label>Status (Event)</Label><Value>{event.eventStatus}</Value></div>
             <div><Label>Category</Label><Value>{event.category}</Value></div>
 
-            <div><Label>Created by</Label><Value>{event.createdBy || event.createdByName}</Value></div>
             <div><Label>Created at</Label><Value>{formatMaybeTimestamp(event.createdAt)}</Value></div>
 
-            <div><Label>Proposal Link</Label><Value>{event.proposalLink}</Value></div>
             <div><Label>Proposal File</Label><Value>{event.proposalFile}</Value></div>
 
-            <div><Label>Proposal Name</Label><Value>{event.proposalName}</Value></div>
             <div><Label>Is Collaboration</Label><Value>{event.isCollab ? 'Yes' : 'No'}</Value></div>
           </div>
         </div>
