@@ -204,17 +204,19 @@ export default function EventDetailsModal({ open, event, onClose, onAction, busy
             <Cell label="Created at">{humanDate(event?.createdAt)}</Cell>
 
             <Cell label="Proposal File">
-              {proposalDownload ? (
+            {proposalDownload ? (
                 <a
-                  href={proposalDownload.href}
-                  download={proposalDownload.filename}
-                  target={proposalDownload.href.startsWith('http') ? '_blank' : undefined}
-                  rel={proposalDownload.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  className="text-blue-600 hover:underline"
+                href={proposalDownload.href}
+                download={proposalDownload.filename}
+                target={proposalDownload.href.startsWith('http') ? '_blank' : undefined}
+                rel={proposalDownload.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                className="text-blue-600 hover:underline"
                 >
-                  Download {proposalDownload.filename}
+                {proposalDownload.filename}
                 </a>
-              ) : '—'}
+            ) : (
+                <span className="text-gray-500 italic">No file uploaded</span>
+            )}
             </Cell>
 
           </div>
