@@ -19,6 +19,7 @@ import { savePost } from '../Backend/uploadPost';
 import { sendNotification } from '../Backend/notifications';
 import EventCard from '../components/eventCard';
 import { fetchEvents, addEvent } from '../Backend/eventPage';
+import { Alert } from 'react-native';
 
 import { calculateCosineSimilarity, buildInteractionMatrix, generateItemBasedRecommendations } from '../Backend/recommendation';
 
@@ -51,6 +52,19 @@ export default function Home() {
   const ss = "superadmin";
   const ss2 = "sheen";
   const ss3 = "admin";
+
+  const profanityList = [
+    'tangina',
+    'tanginamo',
+    'putanginamo',
+    'fuck',
+    'fucku',
+    'fuckyou',
+    'fvck',
+    'gago',
+    'tuli',
+    // add more words here
+  ];
 
   const [currentUserInfo, setCurrentUserInfo] = useState({
     firstName: '',
@@ -738,6 +752,21 @@ export default function Home() {
 
     if (!userEmail) {
       console.log("No email found for the user");
+      return;
+    }
+
+    const lowerText = postText.toLowerCase();
+
+    // Check if any profanity is found
+    const foundProfanity = profanityList.some(word =>
+      lowerText.includes(word)
+    );
+
+    if (foundProfanity) {
+      Alert.alert(
+        'Profanity Detected',
+        'Your post contains inappropriate language. Please remove it before posting.'
+      );
       return;
     }
 
