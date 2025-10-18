@@ -16,6 +16,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { getAuth } from "firebase/auth"; // if using Firebase Auth
 import EventCalendar from "../components/calendar";
+import DropDownPicker from 'react-native-dropdown-picker';
+
 
 export default function EventPageRSO() {
     const navigation = useNavigation();
@@ -48,6 +50,17 @@ export default function EventPageRSO() {
     const auth = getAuth();
     const currentUser = auth.currentUser; // logged-in user
     const userId = currentUser?.uid;
+
+
+    const [openLocation, setOpenLocation] = useState(false);
+    const [locations] = useState([
+        { label: 'MPH 1, EN Building', value: 'MPH 1, EN Building' },
+        { label: 'MPH 2, EN Building', value: 'MPH 2, EN Building' },
+        { label: 'EE Laboratory Rooms, EN Building', value: 'EE Laboratory Rooms, EN Building' },
+        { label: 'EN Briefing Room, EN Building', value: 'EN Briefing Room, EN Building' },
+        { label: 'MPH 3, LCT Building', value: 'MPH 3, LCT Building' },
+        { label: 'Conference Hall, TYK Building', value: 'Conference Hall, TYK Building' },
+    ]);
 
     useEffect(() => {
         loadEvents();
@@ -131,8 +144,8 @@ export default function EventPageRSO() {
     };
 
     const handleSaveProposalLink = () => {
-        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' }); 
-        setIsProposalModalVisible(false); 
+        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' });
+        setIsProposalModalVisible(false);
     };
 
     useEffect(() => {
@@ -540,8 +553,9 @@ export default function EventPageRSO() {
                             style={styles.modalContentWrapper} // Added a wrapper style for layout adjustments
                         >
                             <ScrollView
-
-                                keyboardShouldPersistTaps="handled" // To ensure tapping outside input still dismisses keyboard
+                                nestedScrollEnabled={true}
+                                showsVerticalScrollIndicator={false}
+                                onScrollBeginDrag={() => setOpenLocation(false)}
                             >
                                 <View style={styles.modalContent}>
                                     <Text style={styles.modalTitle}>Create Event</Text>
@@ -563,14 +577,29 @@ export default function EventPageRSO() {
                                     />
                                     <Text style={[styles.label, { marginTop: 10 }]}>Event Location</Text>
 
-                                    <TextInput
-                                        placeholder="MPH 2, Engineering Building"
-                                        placeholderTextColor="#D3D3D3"
-                                        style={styles.input}
-                                        value={newLocation}
-                                        onChangeText={setNewLocation}
-                                    />
-
+                                    <View style={{ zIndex: 1001, marginTop: 5 }}>
+                                        <DropDownPicker
+                                            open={openLocation}
+                                            value={newLocation}
+                                            items={locations}
+                                            setOpen={setOpenLocation}
+                                            setValue={setNewLocation}
+                                            placeholder="Select event location"
+                                            placeholderStyle={{ color: '#D3D3D3' }}
+                                            style={{
+                                                backgroundColor: '#ffffffff',
+                                                borderColor: '#D3D3D3',
+                                                borderRadius: 8,
+                                            }}
+                                            textStyle={{
+                                                color: '#000000ff',
+                                            }}
+                                            dropDownContainerStyle={{
+                                                backgroundColor: '#ffffffff',
+                                                borderColor: '#D3D3D3',
+                                            }}
+                                        />
+                                    </View>
                                     <View style={styles.dateTimeRow}>
                                         {/* Date Input */}
                                         <View style={styles.dateTimeColumn}>
@@ -753,7 +782,7 @@ export default function EventPageRSO() {
                                                 setNewDate('');
                                                 setNewTime('');
                                                 setSelectedBanner(null);
-                                                setSelectedProposal(null);  
+                                                setSelectedProposal(null);
                                                 setProposalLink('');
 
                                             }}
@@ -772,6 +801,7 @@ export default function EventPageRSO() {
                         </KeyboardAvoidingView>
                     </View>
                 </Modal>
+
                 <Modal
                     animationType="fade"
                     transparent={true}
@@ -1233,6 +1263,5 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#333",
     },
-
 
 });
