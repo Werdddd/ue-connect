@@ -27,7 +27,7 @@ import { fetchEvents } from '../../services/fetchEvents';
 
 import { firestore } from '../../Firebase';
 import { writeBatch, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-
+import CreateEventModal from '../components/modals/CreateEventModal';
 import EventDetailsModal, {
   EventDetails,
   formatDateTime as fmtDT,
@@ -64,6 +64,8 @@ function toEventStatus(s?: string) {
     default: return 'Planning';
   }
 }
+
+
 
 const buildISO = (dateStr?: string, timeStr?: string) => {
   if (!dateStr) return '';
@@ -115,7 +117,12 @@ const EventManagement: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterProposalStatus, setFilterProposalStatus] = useState('all');
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
-
+  const [orgData, setOrgData] = useState<{
+    orgId: string;
+    organization: string;
+    department: string;
+    email: string;
+  } | null>(null);
   const [totalEvents, setTotalEvents] = useState(0);
   const [pendingApproval, setPendingApproval] = useState(0);
   const [onGoingEvents, setOnGoingEvents] = useState(0);
@@ -256,6 +263,7 @@ const EventManagement: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   /* filtering */
   const filteredEvents = useMemo(() => {
     const search = searchTerm.toLowerCase();
@@ -599,7 +607,10 @@ const EventManagement: React.FC = () => {
               </div>
 
               <div className="flex gap-3">
-                <button className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                <button
+                  onClick={() => setIsEventModalOpen(true)}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Event
                 </button>
@@ -808,7 +819,11 @@ const EventManagement: React.FC = () => {
         onAction={handleModalAction}
         busy={modalBusy}
       />
-
+      <CreateEventModal
+        isOpen={isEventModalOpen}
+        onClose={() => setIsEventModalOpen(false)}
+        orgData={orgData}
+      />
       {/* Remarks Modal */}
       <RemarkModal
         open={remarkOpen}
