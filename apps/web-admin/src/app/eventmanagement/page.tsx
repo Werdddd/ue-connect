@@ -24,8 +24,6 @@ import {
   getCompletedEventsCount,
 } from '../../services/events';
 import { fetchEvents } from '../../services/fetchEvents';
-
-import { firestore } from '../../Firebase';
 import { writeBatch, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import CreateEventModal from '../components/modals/CreateEventModal';
 import EventDetailsModal, {
@@ -33,8 +31,9 @@ import EventDetailsModal, {
   formatDateTime as fmtDT,
   ModalAction,
 } from '../components/modals/EventDetailsModal';
-
+import { useAuthState } from 'react-firebase-hooks/auth';
 import RemarkModal from '../components/modals/RemarkModal';
+import { firestore, auth } from '@/Firebase';
 
 /* ---------------- helpers ---------------- */
 
@@ -64,8 +63,6 @@ function toEventStatus(s?: string) {
     default: return 'Planning';
   }
 }
-
-
 
 const buildISO = (dateStr?: string, timeStr?: string) => {
   if (!dateStr) return '';
@@ -123,6 +120,7 @@ const EventManagement: React.FC = () => {
     department: string;
     email: string;
   } | null>(null);
+
   const [totalEvents, setTotalEvents] = useState(0);
   const [pendingApproval, setPendingApproval] = useState(0);
   const [onGoingEvents, setOnGoingEvents] = useState(0);
@@ -142,6 +140,20 @@ const EventManagement: React.FC = () => {
   const [remarkAction, setRemarkAction] = useState<'Approved' | 'Rejected' | null>(null);
   const [remarkFor, setRemarkFor] = useState<EventDetails | null>(null);
   const [remarkBusy, setRemarkBusy] = useState(false);
+
+  const [user] = useAuthState(auth);
+  const userEmail = user?.email ?? "";
+
+  useEffect(() => {
+    if (userEmail) {
+      setOrgData({
+        orgId: "001",
+        organization: "Student's Affairs Office",
+        department: "All",
+        email: userEmail,
+      });
+    }
+  }, [userEmail]);
 
   /* stat cards */
   useEffect(() => {
@@ -193,7 +205,7 @@ const EventManagement: React.FC = () => {
                 const firstName = (data.firstName as string) || '';
                 if (firstName) nameMap.set(email, firstName);
               }
-            } catch {}
+            } catch { }
           })
         );
 
@@ -228,8 +240,8 @@ const EventManagement: React.FC = () => {
               approvedCount > 0
                 ? approvedCount
                 : typeof e.participantsCount === 'number'
-                ? e.participantsCount
-                : 0,
+                  ? e.participantsCount
+                  : 0,
             maxCapacity: capacity,
             description: e.description || '',
 
@@ -312,11 +324,11 @@ const EventManagement: React.FC = () => {
         prev.map((row) =>
           selectedEvents.includes(row.id)
             ? {
-                ...row,
-                proposalStatus: toProposalStatus(newStatus),
-                eventStatus: toEventStatus(newStatus),
-                statusRaw: newStatus,
-              }
+              ...row,
+              proposalStatus: toProposalStatus(newStatus),
+              eventStatus: toEventStatus(newStatus),
+              statusRaw: newStatus,
+            }
             : row
         )
       );
@@ -355,11 +367,11 @@ const EventManagement: React.FC = () => {
           r.id !== ev.id
             ? r
             : {
-                ...r,
-                statusRaw: firestoreStatus,
-                proposalStatus: toProposalStatus(firestoreStatus),
-                eventStatus: toEventStatus(firestoreStatus),
-              }
+              ...r,
+              statusRaw: firestoreStatus,
+              proposalStatus: toProposalStatus(firestoreStatus),
+              eventStatus: toEventStatus(firestoreStatus),
+            }
         )
       );
 
@@ -367,11 +379,11 @@ const EventManagement: React.FC = () => {
         !cur
           ? cur
           : {
-              ...cur,
-              statusRaw: firestoreStatus,
-              proposalStatus: toProposalStatus(firestoreStatus),
-              eventStatus: toEventStatus(firestoreStatus),
-            }
+            ...cur,
+            statusRaw: firestoreStatus,
+            proposalStatus: toProposalStatus(firestoreStatus),
+            eventStatus: toEventStatus(firestoreStatus),
+          }
       );
     } catch (err) {
       console.error('Cancel failed:', err);
@@ -409,11 +421,11 @@ const EventManagement: React.FC = () => {
           r.id !== remarkFor.id
             ? r
             : {
-                ...r,
-                statusRaw: statusToSet,
-                proposalStatus: toProposalStatus(statusToSet),
-                eventStatus: toEventStatus(statusToSet),
-              }
+              ...r,
+              statusRaw: statusToSet,
+              proposalStatus: toProposalStatus(statusToSet),
+              eventStatus: toEventStatus(statusToSet),
+            }
         )
       );
 
@@ -422,11 +434,11 @@ const EventManagement: React.FC = () => {
         !cur
           ? cur
           : {
-              ...cur,
-              statusRaw: statusToSet,
-              proposalStatus: toProposalStatus(statusToSet),
-              eventStatus: toEventStatus(statusToSet),
-            }
+            ...cur,
+            statusRaw: statusToSet,
+            proposalStatus: toProposalStatus(statusToSet),
+            eventStatus: toEventStatus(statusToSet),
+          }
       );
 
       setRemarkOpen(false);
@@ -607,6 +619,13 @@ const EventManagement: React.FC = () => {
               </div>
 
               <div className="flex gap-3">
+                {orgData && (
+                  <CreateEventModal
+                    isOpen={isEventModalOpen}
+                    onClose={() => setIsEventModalOpen(false)}
+                    orgData={orgData}
+                  />
+                )}
                 <button
                   onClick={() => setIsEventModalOpen(true)}
                   className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -818,11 +837,6 @@ const EventManagement: React.FC = () => {
         onOpenRemarks={handleOpenRemarks}
         onAction={handleModalAction}
         busy={modalBusy}
-      />
-      <CreateEventModal
-        isOpen={isEventModalOpen}
-        onClose={() => setIsEventModalOpen(false)}
-        orgData={orgData}
       />
       {/* Remarks Modal */}
       <RemarkModal
