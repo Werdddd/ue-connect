@@ -17,6 +17,7 @@ import {
   Shield,
   Award,
   Clock,
+  X
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import {
@@ -34,6 +35,13 @@ const RSOManagement = () => {
   const [rsos, setRsos] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [showModal, setShowModal] = useState(false);
+const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+
+const handleViewOrg = (org: Organization) => {
+  setSelectedOrg(org);
+  setShowModal(true);
+};
   // Fetch organizations from Firestore
   useEffect(() => {
     const fetchRSOs = async () => {
@@ -56,6 +64,7 @@ const RSOManagement = () => {
     totalApproved: rsos.filter((r) => r.status === 'approved').length,
     totalPending: rsos.filter((r) => r.status === 'applied').length,
     totalMembers: rsos.reduce((sum, r) => sum + (r.members?.length || 0), 0),
+    totalOfficers: rsos.reduce((sum, r) => sum + (r.officers?.length || 0), 0),
   };
 
   // Filter RSOs based on search and filters
@@ -143,6 +152,19 @@ const RSOManagement = () => {
       </div>
     </div>
   );
+  const InfoItem: React.FC<{ label: string; value?: string | number }> = ({ label, value }) => {
+  const displayValue =
+    typeof value === 'number' ? value : value ? value : 'N/A';
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-500 mb-1">{label}</p>
+      <p className="text-sm text-gray-900">{displayValue}</p>
+    </div>
+  );
+};
+
+
 
   return (
     <div className="ml-15 min-h-screen bg-gray-50 flex">
@@ -277,8 +299,15 @@ const RSOManagement = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredRSOs.map((rso) => (
-                      <tr key={rso.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
+                      <tr
+                        key={rso.id}
+                        onClick={() => handleViewOrg(rso)}
+                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        <td
+                          className="px-6 py-4"
+                          onClick={(e) => e.stopPropagation()} // prevent opening modal when clicking checkbox
+                        >
                           <input
                             type="checkbox"
                             checked={selectedRSOs.includes(rso.id)}
@@ -287,19 +316,16 @@ const RSOManagement = () => {
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {rso.orgName}
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{rso.orgName}</div>
                           <div className="text-sm text-gray-500">{rso.acronym}</div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {rso.department}
-                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{rso.department}</td>
                         <td className="px-6 py-4">{getStatusBadge(rso.status)}</td>
-                        <td className="px-6 py-4 text-center">
-                          {rso.members?.length || 0}
-                        </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-center">{rso.members?.length || 0}</td>
+                        <td
+                          className="px-6 py-4 text-right"
+                          onClick={(e) => e.stopPropagation()} // prevent modal when clicking actions
+                        >
                           <div className="flex items-center justify-end space-x-2">
                             <button className="p-1 text-gray-400 hover:text-gray-600">
                               <Eye className="h-4 w-4" />
@@ -320,6 +346,7 @@ const RSOManagement = () => {
                         </td>
                       </tr>
                     ))}
+
                   </tbody>
                 </table>
               </div>
@@ -327,6 +354,147 @@ const RSOManagement = () => {
           </div>
         </div>
       </div>
+      {showModal && selectedOrg && (
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm"
+        onClick={() => setShowModal(false)}
+      >
+        <div 
+          className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="bg-red-600 text-white px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {selectedOrg.logoBase64 && (
+                <img
+                  src={selectedOrg.logoBase64}
+                  alt={selectedOrg.orgName}
+                  className="w-12 h-12 rounded-lg bg-white p-1.5 object-contain"
+                />
+              )}
+              <div>
+                <h2 className="text-xl font-semibold">{selectedOrg.orgName}</h2>
+                <p className="text-red-100 text-sm">{selectedOrg.acronym}</p>
+              </div>
+            </div>
+            <button
+              className="text-white hover:bg-white/20 rounded-lg p-1.5 transition"
+              onClick={() => setShowModal(false)}
+            >
+              <X className="h-5 w-5 text-white" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {/* Status Badge */}
+            <div className="mb-5">
+              {getStatusBadge(selectedOrg.status)}
+            </div>
+
+            {/* Description */}
+            {selectedOrg.shortdesc && (
+              <div className="mb-5 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-gray-700 text-sm leading-relaxed">{selectedOrg.shortdesc}</p>
+              </div>
+            )}
+
+            {/* Information Grid */}
+            <div className="space-y-5">
+              {/* Organization Details */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-red-600" />
+                  Organization Details
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="Department" value={selectedOrg.department} />
+                  <InfoItem
+                    label="Registration Type"
+                    value={
+                      selectedOrg.registrationType
+                        ? selectedOrg.registrationType.charAt(0).toUpperCase() + selectedOrg.registrationType.slice(1)
+                        : 'N/A'
+                    }
+                  />
+                  <InfoItem label="Location" value={selectedOrg.location} />
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-red-600" />
+                  Contact Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="Email" value={selectedOrg.email} />
+                  <InfoItem label="Contact Number" value={selectedOrg.contactNumber} />
+                </div>
+              </div>
+
+              {/* Leadership */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-red-600" />
+                  Leadership
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="President" value={selectedOrg.presidentName} />
+                  <InfoItem label="Student ID" value={selectedOrg.presidentStudentId} />
+                  <InfoItem label="Adviser" value={selectedOrg.adviserName} />
+                </div>
+              </div>
+
+              {/* Statistics */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-red-600" />
+                  Membership
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="Total Members" value={selectedOrg.members?.length || 0} />
+                  <InfoItem label="Total Officers" value={selectedOrg.officers?.length || 0} />
+                </div>
+              </div>
+
+              {/* Review Notes */}
+              {selectedOrg.reviewNotes && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-amber-900 mb-2">Review Notes</h3>
+                  <p className="text-amber-800 text-sm">{selectedOrg.reviewNotes}</p>
+                </div>
+              )}
+
+              {/* Timestamps */}
+              {(selectedOrg.submittedAt || selectedOrg.createdAt || selectedOrg.updatedAt) && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    {selectedOrg.submittedAt && (
+                      <span>
+                        Submitted: {new Date(selectedOrg.submittedAt.seconds * 1000).toLocaleDateString()}
+                      </span>
+                    )}
+                    {selectedOrg.updatedAt && (
+                      <>
+                        <span>•</span>
+                        <span>
+                          Updated: {new Date(selectedOrg.updatedAt.seconds * 1000).toLocaleDateString()}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          
+        </div>
+      </div>
+    )}
+
     </div>
   );
 };
