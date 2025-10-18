@@ -281,6 +281,8 @@ export default function Home() {
     't a n g i n a',
     'p u t a',
     'p u t a n g i n a',
+    'nigga',
+    'nigger',
   ];
 
   const [currentUserInfo, setCurrentUserInfo] = useState({
