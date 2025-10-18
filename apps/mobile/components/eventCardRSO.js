@@ -5,7 +5,7 @@ import { firestore } from '../Firebase';
 import { doc, updateDoc, getDoc, deleteField, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { fetchOrganizations } from '../Backend/eventPageRSO';
 
-export default function EventCardRSO({ event }) {
+export default function EventCardRSO({ event, onReapply }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [participantsModalVisible, setParticipantsModalVisible] = useState(false);
   const [participants, setParticipants] = useState([]);
@@ -300,7 +300,7 @@ export default function EventCardRSO({ event }) {
                 </TouchableOpacity>
               )}
 
-              {/* ✅ Show admin remarks if status is Approved or Rejected */}
+              {/* Show Admin remarks  */}
               {(eventStatus === 'Approved' || eventStatus === 'Rejected') && event.adminRemarks ? (
                 <View style={styles.remarksContainer}>
                   <Text style={styles.remarksLabel}>Admin Remarks:</Text>
@@ -308,6 +308,21 @@ export default function EventCardRSO({ event }) {
                 </View>
               ) : null}
 
+              {/* Reapply button when Rejected */}
+              {event.status === 'Rejected' && (
+                <TouchableOpacity
+                  style={styles.reapplyButton}
+                  onPress={() => {
+                    setModalVisible(false);
+
+                    setTimeout(() => {
+                      onReapply?.(event);
+                    }, 300); 
+                  }}
+                >
+                  <Text style={styles.reapplyText}>Reapply Event</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
 
@@ -821,5 +836,16 @@ const styles = StyleSheet.create({
     color: '#555',
     lineHeight: 20,
   },
-
+  reapplyButton: {
+    marginTop: 12,
+    backgroundColor: '#E53935',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  reapplyText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });

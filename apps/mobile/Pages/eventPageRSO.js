@@ -17,7 +17,8 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { getAuth } from "firebase/auth"; // if using Firebase Auth
 import EventCalendar from "../components/calendar";
 import DropDownPicker from 'react-native-dropdown-picker';
-
+import { firestore } from '../Firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 export default function EventPageRSO() {
     const navigation = useNavigation();
@@ -51,6 +52,8 @@ export default function EventPageRSO() {
     const currentUser = auth.currentUser; // logged-in user
     const userId = currentUser?.uid;
 
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editingEventId, setEditingEventId] = useState(null);
 
     const [openLocation, setOpenLocation] = useState(false);
     const [locations] = useState([
@@ -143,9 +146,52 @@ export default function EventPageRSO() {
         }
     };
 
-    const handleSaveProposalLink = () => {
-        setSelectedProposal({ uri: proposalLink, name: 'Proposal Document' });
-        setIsProposalModalVisible(false);
+    const handleUpdateEvent = async () => {
+        if (!editingEventId) return;
+
+        try {
+            const updatedEvent = {
+                banner: selectedBanner,
+                title: newTitle,
+                description: newDescription,
+                date: newDate,
+                time: newTime,
+                location: newLocation,
+                participants: parseInt(newParticipants, 10),
+                proposalName: selectedProposal?.name || null,
+                proposalBase64: selectedProposal?.base64 || null,
+                isCollab,
+                collabOrgs: selectedOrgs,
+                status: 'Applied',
+                adminRemarks: '',
+            };
+
+            const eventRef = doc(firestore, 'events', editingEventId);
+            await updateDoc(eventRef, updatedEvent);
+
+            alert('Event resubmitted for approval!');
+            setIsModalVisible(false);
+            setIsEditMode(false);
+            setEditingEventId(null);
+            await loadEvents();
+        } catch (error) {
+            console.error('Error updating event:', error);
+            alert('Failed to update event. Please try again.');
+        }
+    };
+
+    const handleReapply = (event) => {
+        setNewTitle(event.title);
+        setNewDescription(event.description);
+        setNewDate(event.date);
+        setNewTime(event.time);
+        setNewLocation(event.location);
+        setNewParticipants(String(event.participants));
+        setIsCollab(event.isCollab);
+        setEditingEventId(event.id);
+        setIsEditMode(true);
+        setIsModalVisible(true); 
+        setSelectedBanner(event.banner);
     };
 
     useEffect(() => {
@@ -530,6 +576,7 @@ export default function EventPageRSO() {
                                 isCollab: event.isCollab || false,
                                 adminRemarks: event.adminRemarks || "No Remark",
                             }}
+                            onReapply={handleReapply}
                         />
                     ))}
 
@@ -785,16 +832,15 @@ export default function EventPageRSO() {
                                                 setSelectedBanner(null);
                                                 setSelectedProposal(null);
                                                 setProposalLink('');
-
                                             }}
                                         >
                                             <Text style={styles.buttonText}>Cancel</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.addButton}
-                                            onPress={handleAddEvent}
+                                            onPress={isEditMode ? handleUpdateEvent : handleAddEvent}
                                         >
-                                            <Text style={styles.buttonText}>Add</Text>
+                                            <Text style={styles.buttonText}>{isEditMode ? 'Update Event' : 'Add Event'}</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </View>
