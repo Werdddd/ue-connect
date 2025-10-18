@@ -87,6 +87,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
       // Create Users record (using email as doc ID)
       await setDoc(doc(firestore, 'Users', formData.email), {
         firstName: formData.organizationName,
+        lastName: '',
         role: 'admin',
         email: formData.email,
         timestamp: serverTimestamp(),
@@ -223,7 +224,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
               className="w-full border rounded-lg p-2 mt-1"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium">Password</label>
             <input
