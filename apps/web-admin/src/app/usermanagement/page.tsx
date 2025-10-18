@@ -12,10 +12,139 @@ import {
   Edit3,
   Trash2,
   MoreVertical,
-  UserPlus
+  UserPlus,
+  X,
+  Phone,
+  MapPin,
+  Calendar,
+  Building
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
-import { fetchUsers, UserDoc } from '../../services/fetchUsers'; // ✅ import your new fetchUsers
+import { fetchUsers, UserDoc } from '../../services/fetchUsers';
+
+// User Details Modal Component
+const UserDetailsModal = ({ user, onClose }: { user: UserDoc | null; onClose: () => void }) => {
+  if (!user) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-900">User Details</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6">
+          {/* Profile Section */}
+          <div className="flex items-center mb-6">
+            <div className="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-red-600 font-bold text-2xl">
+                {user.firstName[0]}
+                {user.lastName[0]}
+              </span>
+            </div>
+            <div className="ml-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                {user.firstName} {user.lastName}
+              </h3>
+              <p className="text-gray-500">{user.email}</p>
+            </div>
+          </div>
+
+          {/* Information Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <Mail className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="text-sm font-medium text-gray-900">{user.email}</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <GraduationCap className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Year</p>
+                <p className="text-sm font-medium text-gray-900">{user.Year || 'N/A'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <Building className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Course</p>
+                <p className="text-sm font-medium text-gray-900">{user.Course || 'N/A'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <Shield className="h-5 w-5 text-gray-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Role</p>
+                <p className="text-sm font-medium text-gray-900 capitalize">{user.role}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* RSO Membership Section */}
+          <div className="border-t border-gray-200 pt-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">RSO Membership</h4>
+            {user.orgs && user.orgs.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {user.orgs.map((org, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full"
+                  >
+                    {org}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Not a member of any RSO</p>
+            )}
+          </div>
+
+          {/* Additional Info Section */}
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Additional Information</h4>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-500">User ID</p>
+                  <p className="text-sm font-mono text-gray-900">{user.id}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Account Status</p>
+                  <span className="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                    Active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+       
+      </div>
+    </div>
+  );
+};
 
 const UserManagement = () => {
   const [activeNav, setActiveNav] = useState('User Management');
@@ -26,13 +155,13 @@ const UserManagement = () => {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [users, setUsers] = useState<UserDoc[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<UserDoc | null>(null);
 
-  // ✅ Fetch users from Firestore
   useEffect(() => {
     const loadUsers = async () => {
       try {
         setLoading(true);
-        const data = await fetchUsers(100); // fetch up to 100 users
+        const data = await fetchUsers(100);
         setUsers(data);
       } catch (err) {
         console.error('Error fetching users:', err);
@@ -44,7 +173,6 @@ const UserManagement = () => {
     loadUsers();
   }, []);
 
-    // ✅ Compute stats
   const stats = {
     totalUsers: users.length,
     activeUsers: users.filter(u => u.role === 'user').length,
@@ -52,28 +180,25 @@ const UserManagement = () => {
     rsoOfficers: users.filter(u => u.role === 'admin').length,
   };
 
-  // ✅ Filtering logic
   const filteredUsers = users
-  .filter((user) => user.role === 'user') // ✅ Only display normal users in the table
-  .filter((user) => {
-    const matchesSearch =
-      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchTerm.toLowerCase());
+    .filter((user) => user.role === 'user')
+    .filter((user) => {
+      const matchesSearch =
+        user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.id.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesYear = filterYear === 'all' || user.Year === filterYear;
-    const matchesCourse = filterCourse === 'all' || user.Course === filterCourse;
-    const matchesRSO =
-      filterRSO === 'all' ||
-      (filterRSO === 'member' && (user.orgs?.length ?? 0) > 0) ||
-      (filterRSO === 'officer' && user.role === 'admin') ||
-      (filterRSO === 'non-member' && (user.orgs?.length ?? 0) === 0);
+      const matchesYear = filterYear === 'all' || user.Year === filterYear;
+      const matchesCourse = filterCourse === 'all' || user.Course === filterCourse;
+      const matchesRSO =
+        filterRSO === 'all' ||
+        (filterRSO === 'member' && (user.orgs?.length ?? 0) > 0) ||
+        (filterRSO === 'officer' && user.role === 'admin') ||
+        (filterRSO === 'non-member' && (user.orgs?.length ?? 0) === 0);
 
-    return matchesSearch && matchesYear && matchesCourse && matchesRSO;
-  });
-
-
+      return matchesSearch && matchesYear && matchesCourse && matchesRSO;
+    });
 
   const handleUserSelect = (userId: string) => {
     setSelectedUsers((prev) =>
@@ -89,6 +214,14 @@ const UserManagement = () => {
     } else {
       setSelectedUsers(filteredUsers.map((user) => user.id));
     }
+  };
+
+  const handleRowClick = (user: UserDoc) => {
+    setSelectedUser(user);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedUser(null);
   };
 
   type StatCardProps = {
@@ -121,19 +254,15 @@ const UserManagement = () => {
 
   return (
     <div className="ml-15 min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content */}
       <div className="flex-1 overflow-auto">
         <div className="p-8">
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">User Management</h1>
             <p className="text-gray-600">Manage students, RSO members, and officers</p>
           </div>
 
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard title="Total Students" value={stats.totalUsers} icon={Users} />
             <StatCard title="Active Students" value={stats.activeUsers} icon={UserCheck} />
@@ -141,11 +270,9 @@ const UserManagement = () => {
             <StatCard title="RSO Officers" value={stats.rsoOfficers} icon={Shield} />
           </div>
 
-          {/* Controls */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
             <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
               <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <input
@@ -157,7 +284,6 @@ const UserManagement = () => {
                   />
                 </div>
 
-                {/* Filters */}
                 <select
                   value={filterYear}
                   onChange={(e) => setFilterYear(e.target.value)}
@@ -194,7 +320,6 @@ const UserManagement = () => {
                 </select>
               </div>
 
-              {/* Add Button */}
               <button className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
                 <UserPlus className="h-4 w-4 mr-2" />
                 Add User
@@ -202,7 +327,6 @@ const UserManagement = () => {
             </div>
           </div>
 
-          {/* Users Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -235,8 +359,12 @@ const UserManagement = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
+                    <tr 
+                      key={user.id} 
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => handleRowClick(user)}
+                    >
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={selectedUsers.includes(user.id)}
@@ -279,7 +407,7 @@ const UserManagement = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end space-x-2">
                           <button className="p-1 text-gray-400 hover:text-gray-600">
                             <Eye className="h-4 w-4" />
@@ -309,6 +437,11 @@ const UserManagement = () => {
           </div>
         </div>
       </div>
+
+      {/* User Details Modal */}
+      {selectedUser && (
+        <UserDetailsModal user={selectedUser} onClose={handleCloseModal} />
+      )}
     </div>
   );
 };
