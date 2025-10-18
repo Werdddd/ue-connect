@@ -1,18 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { firestore } from '@/Firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { firestore, auth } from '@/Firebase';
+import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   userEmail: string;
 }
-
-type RegisterOrganizationModalProps = {
-  onClose: () => void;
-};
 
 export default function RegisterOrganizationModal({ open, onClose, userEmail }: Props) {
   const [loading, setLoading] = useState(false);
@@ -23,6 +20,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
     department: '',
     description: '',
     email: '',
+    password: '', // ✅ added password
     contactNumber: '',
     location: '',
     presidentName: '',
@@ -46,18 +44,19 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve({
-        base64: reader.result as string,
-        fileName: file.name,
-        fileSize: file.size,
-      });
+      reader.onload = () =>
+        resolve({
+          base64: reader.result as string,
+          fileName: file.name,
+          fileSize: file.size,
+        });
       reader.onerror = (error) => reject(error);
     });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = async (key: string, file: File | null) => {
@@ -77,6 +76,23 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Create Firebase Auth account
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+      const user = userCredential.user;
+
+      // Create Users record (using email as doc ID)
+      await setDoc(doc(firestore, 'Users', formData.email), {
+        firstName: formData.organizationName,
+        role: 'admin',
+        email: formData.email,
+        timestamp: serverTimestamp(),
+      });
+
+      // Prepare organization data
       const organizationData = {
         // Basic Info
         orgName: formData.organizationName,
@@ -130,12 +146,18 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
         updatedAt: serverTimestamp(),
       };
 
-      await addDoc(collection(firestore, 'organizations'), organizationData);
-      alert('Organization registration submitted successfully!');
+      // Save organization data — use email as document ID
+      await setDoc(doc(firestore, 'organizations', formData.email), organizationData);
+
+      alert('Organization registered successfully!');
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registering organization:', error);
-      alert('Error registering organization. Please try again.');
+      if (error.code === 'auth/email-already-in-use') {
+        alert('Email already in use. Please use a different email.');
+      } else {
+        alert('Error registering organization. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -150,17 +172,29 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           {/* Organization Info */}
           <div>
             <label className="block text-sm font-medium">Organization Name</label>
-            <input name="organizationName" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="organizationName"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Acronym</label>
-            <input name="acronym" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="acronym"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Department</label>
-            <select name="department" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1">
+            <select
+              name="department"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            >
               <option value="">Select Department</option>
               <option value="University Wide">University Wide</option>
               <option value="CSC">CSC</option>
@@ -173,39 +207,78 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
 
           <div>
             <label className="block text-sm font-medium">Description</label>
-            <input name="description" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="description"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Email</label>
-            <input name="email" type="email" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="email"
+              type="email"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium">Password</label>
+            <input
+              name="password"
+              type="password"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Contact Number</label>
-            <input name="contactNumber" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="contactNumber"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Location</label>
-            <input name="location" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="location"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           {/* President & Adviser */}
           <hr className="my-3" />
           <div>
             <label className="block text-sm font-medium">President Name</label>
-            <input name="presidentName" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="presidentName"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">President Student ID</label>
-            <input name="presidentId" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="presidentId"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Adviser Name</label>
-            <input name="adviserName" onChange={handleInputChange} className="w-full border rounded-lg p-2 mt-1" />
+            <input
+              name="adviserName"
+              onChange={handleInputChange}
+              className="w-full border rounded-lg p-2 mt-1"
+            />
           </div>
 
           {/* Logo */}
@@ -214,18 +287,18 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
             <label className="block text-sm font-medium">Organization Logo</label>
             <input
               type="file"
-              onChange={e => handleFileChange('logo', e.target.files?.[0] || null)}
+              onChange={(e) => handleFileChange('logo', e.target.files?.[0] || null)}
               className="w-full border rounded-lg p-2 mt-1"
             />
           </div>
 
           {/* Required Docs */}
-          {Object.keys(processedDocuments).map(key => (
+          {Object.keys(processedDocuments).map((key) => (
             <div key={key}>
               <label className="block text-sm font-medium">{key}</label>
               <input
                 type="file"
-                onChange={e => handleFileChange(key, e.target.files?.[0] || null)}
+                onChange={(e) => handleFileChange(key, e.target.files?.[0] || null)}
                 className="w-full border rounded-lg p-2 mt-1"
               />
             </div>
