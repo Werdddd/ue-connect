@@ -24,7 +24,9 @@ import {
   getOrganizations,
   Organization,
 } from '../../services/organizations';
-
+import { firestore, auth } from '@/Firebase';
+import RegisterOrganizationModal from '../components/modals/RegisterOrganizationModal';
+import { useAuthState } from 'react-firebase-hooks/auth';
 const RSOManagement = () => {
   const [activeNav, setActiveNav] = useState('RSO Management');
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,6 +39,30 @@ const RSOManagement = () => {
 
   const [showModal, setShowModal] = useState(false);
 const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+const [isModalOpen, setIsModalOpen] = useState(false);
+const [user] = useAuthState(auth);
+const userEmail = user?.email ?? "";
+
+const [orgData, setOrgData] = useState<{
+    orgId: string;
+    organization: string;
+    department: string;
+    email: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (userEmail) {
+      setOrgData({
+        orgId: "001",
+        organization: "Student's Affairs Office",
+        department: "All",
+        email: userEmail,
+      });
+    }
+  }, [userEmail]);
+
+
+
 
 const handleViewOrg = (org: Organization) => {
   setSelectedOrg(org);
@@ -251,10 +277,17 @@ const handleViewOrg = (org: Organization) => {
                 </select>
               </div>
 
-              <button className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+              <button className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors" onClick={() => setIsModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Register RSO
               </button>
+
+              <RegisterOrganizationModal
+                open={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                userEmail={userEmail}
+              />
+              
             </div>
           </div>
 
