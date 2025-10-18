@@ -528,6 +528,7 @@ export default function EventPageRSO() {
                                 location: event.location,
                                 status: event.status,
                                 isCollab: event.isCollab || false,
+                                adminRemarks: event.adminRemarks || "No Remark",
                             }}
                         />
                     ))}

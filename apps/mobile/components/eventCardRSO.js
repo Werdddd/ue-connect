@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; 
+import { Ionicons } from '@expo/vector-icons';
 import { firestore } from '../Firebase';
 import { doc, updateDoc, getDoc, deleteField, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { fetchOrganizations } from '../Backend/eventPageRSO';
@@ -37,7 +37,7 @@ export default function EventCardRSO({ event }) {
   const loadCollabOrganizations = async () => {
     try {
       const allOrgs = await fetchOrganizations();
-      const filteredOrgs = allOrgs.filter(org => 
+      const filteredOrgs = allOrgs.filter(org =>
         event.collabOrgIds?.includes(org.id)
       );
       setCollabOrgs(filteredOrgs);
@@ -184,9 +184,9 @@ export default function EventCardRSO({ event }) {
           {collabOrgs.map((org) => (
             <View key={org.id} style={styles.orgLogoWrapper}>
               {org.logoUri || org.logoBase64 ? (
-                <Image 
-                  source={{ uri: org.logoUri || org.logoBase64 }} 
-                  style={styles.orgLogo} 
+                <Image
+                  source={{ uri: org.logoUri || org.logoBase64 }}
+                  style={styles.orgLogo}
                   resizeMode="contain"
                 />
               ) : (
@@ -220,9 +220,9 @@ export default function EventCardRSO({ event }) {
         <View style={styles.infoContainer}>
           <View style={styles.headerRow}>
             {eventOrg?.logoUri || eventOrg?.logoBase64 ? (
-              <Image 
-                source={{ uri: eventOrg.logoUri || eventOrg.logoBase64 }} 
-                style={styles.seal} 
+              <Image
+                source={{ uri: eventOrg.logoUri || eventOrg.logoBase64 }}
+                style={styles.seal}
                 resizeMode="cover"
               />
             ) : (
@@ -299,6 +299,15 @@ export default function EventCardRSO({ event }) {
                   <Text style={styles.markFinishedText}>Mark as Finished</Text>
                 </TouchableOpacity>
               )}
+
+              {/* ✅ Show admin remarks if status is Approved or Rejected */}
+              {(eventStatus === 'Approved' || eventStatus === 'Rejected') && event.adminRemarks ? (
+                <View style={styles.remarksContainer}>
+                  <Text style={styles.remarksLabel}>Admin Remarks:</Text>
+                  <Text style={styles.remarksText}>{event.adminRemarks}</Text>
+                </View>
+              ) : null}
+
             </ScrollView>
           </View>
 
@@ -344,13 +353,13 @@ export default function EventCardRSO({ event }) {
                           </View>
                         </View>
                         <View style={styles.iconButtons}>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => handleStatusChange(participant.email, 'Approved')}
                           >
                             <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
                           </TouchableOpacity>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => handleStatusChange(participant.email, 'Rejected')}
                           >
@@ -793,4 +802,24 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 4,
   },
+  remarksContainer: {
+    marginTop: 10,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  remarksLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  remarksText: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 20,
+  },
+
 });
