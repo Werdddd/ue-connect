@@ -156,12 +156,19 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose, or
                     {/* Location */}
                     <div>
                         <label className="font-medium">Event Location</label>
-                        <input
-                            type="text"
+                        <select
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
-                            className="w-full border rounded-lg p-2 mt-1"
-                        />
+                            className="w-full border rounded-lg p-2 mt-1 bg-white"
+                        >
+                            <option value="">Select a location</option>
+                            <option value="MPH 1, EN Building">MPH 1, EN Building</option>
+                            <option value="MPH 2, EN Building">MPH 2, EN Building</option>
+                            <option value="EE Laboratory Rooms, EN Building">EE Laboratory Rooms, EN Building</option>
+                            <option value="EN Briefing Room, EN Building">EN Briefing Room, EN Building</option>
+                            <option value="MPH 3, LCT Building">MPH 3, LCT Building</option>
+                            <option value="Conference Hall, TYK Building">Conference Hall, TYK Building</option>
+                        </select>
                     </div>
 
                     {/* Participants */}
