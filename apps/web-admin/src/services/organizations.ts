@@ -11,6 +11,19 @@ import {
 } from "firebase/firestore";
 import { firestore } from "../Firebase";
 
+export type DocumentReview = {
+  status: 'approved' | 'rejected' | null;
+  remarks: string;
+};
+
+export type DocumentReviews = {
+  constitutionByLaws?: DocumentReview;
+  atoApplication?: DocumentReview;
+  officersList?: DocumentReview;
+  gpoa?: DocumentReview;
+  registrationForm?: DocumentReview;
+};
+
 export type Organization = {
   id: string;
   orgName: string;
@@ -23,8 +36,33 @@ export type Organization = {
   presidentName: string;
   presidentStudentId: string;
   adviserName: string;
+  
+  // Logo
   logoBase64?: string;
   logoFileName?: string;
+  logoFileSize?: number;
+  
+  // Documents
+  constitutionByLawsBase64?: string;
+  constitutionByLawsFileName?: string;
+  constitutionByLawsFileSize?: number;
+  
+  atoApplicationBase64?: string;
+  atoApplicationFileName?: string;
+  atoApplicationFileSize?: number;
+  
+  officersListBase64?: string;
+  officersListFileName?: string;
+  officersListFileSize?: number;
+  
+  gpoaBase64?: string;
+  gpoaFileName?: string;
+  gpoaFileSize?: number;
+  
+  registrationFormBase64?: string;
+  registrationFormFileName?: string;
+  registrationFormFileSize?: number;
+  
   status: string; // applied | approved | rejected
   registrationType?: string;
   members?: string[];
@@ -34,6 +72,10 @@ export type Organization = {
   createdAt?: any;
   updatedAt?: any;
   reviewNotes?: string;
+  reviewedAt?: any;
+  
+  // Document-level reviews
+  documentReviews?: DocumentReviews;
 };
 
 export async function getTotalOrganizations(): Promise<number> {
@@ -42,9 +84,6 @@ export async function getTotalOrganizations(): Promise<number> {
   return snap.size;
 }
 
-/**
- * Fetches organizations grouped by orgType (for charts)
- */
 export async function getOrganizationsByType(): Promise<
   { name: string; value: number }[]
 > {
@@ -62,9 +101,6 @@ export async function getOrganizationsByType(): Promise<
   return Object.entries(typeCounts).map(([name, value]) => ({ name, value }));
 }
 
-/**
- * ✅ Fetch ALL organizations
- */
 export const getOrganizations = async (): Promise<Organization[]> => {
   try {
     const querySnapshot = await getDocs(collection(firestore, "organizations"));
@@ -81,9 +117,6 @@ export const getOrganizations = async (): Promise<Organization[]> => {
   }
 };
 
-/**
- * ✅ Fetch all approved organizations
- */
 export const getApprovedOrganizations = async (): Promise<Organization[]> => {
   try {
     const q = query(
@@ -104,9 +137,6 @@ export const getApprovedOrganizations = async (): Promise<Organization[]> => {
   }
 };
 
-/**
- * ✅ Fetch all applied (pending) organizations
- */
 export const getAppliedOrganizations = async (): Promise<Organization[]> => {
   try {
     const q = query(
@@ -127,9 +157,6 @@ export const getAppliedOrganizations = async (): Promise<Organization[]> => {
   }
 };
 
-/**
- * ✅ Fetch organizations by department (approved only)
- */
 export const getOrganizationsByDepartment = async (
   department: string
 ): Promise<Organization[]> => {
@@ -153,9 +180,6 @@ export const getOrganizationsByDepartment = async (
   }
 };
 
-/**
- * ✅ Get a single organization by ID
- */
 export const getOrganizationById = async (
   orgId: string
 ): Promise<Organization | null> => {
@@ -176,26 +200,92 @@ export const getOrganizationById = async (
 };
 
 /**
- * ✅ Update organization status (approve / reject)
+ * ✅ Enhanced: Update organization status with document reviews
  */
 export const updateOrganizationStatus = async (
   orgId: string,
   status: "approved" | "rejected",
-  reviewNotes: string = ""
+  reviewNotes: string = "",
+  documentReviews?: DocumentReviews
 ): Promise<{ success: boolean }> => {
   try {
     const docRef = doc(firestore, "organizations", orgId);
 
-    await updateDoc(docRef, {
+    const updateData: any = {
       status,
       reviewNotes,
+      reviewedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    // Add document reviews if provided
+    if (documentReviews) {
+      updateData.documentReviews = documentReviews;
+    }
+
+    await updateDoc(docRef, updateData);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating organization status:", error);
+    throw error;
+  }
+};
+
+/**
+ * ✅ NEW: Update organization with full review data (status, remarks, document reviews)
+ */
+export const submitOrganizationReview = async (
+  orgId: string,
+  reviewData: {
+    status: "approved" | "rejected" | "applied";
+    reviewNotes: string;
+    documentReviews: Record<string, { status: string | null; remarks: string }>;
+  }
+): Promise<{ success: boolean }> => {
+  try {
+    const docRef = doc(firestore, "organizations", orgId);
+
+    // Convert document reviews to proper format
+    const formattedDocumentReviews: any = {};
+    Object.entries(reviewData.documentReviews).forEach(([key, value]) => {
+      formattedDocumentReviews[key] = {
+        status: value.status,
+        remarks: value.remarks || "",
+      };
+    });
+
+    await updateDoc(docRef, {
+      status: reviewData.status,
+      reviewNotes: reviewData.reviewNotes,
+      documentReviews: formattedDocumentReviews,
       reviewedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
 
     return { success: true };
   } catch (error) {
-    console.error("Error updating organization status:", error);
+    console.error("Error submitting organization review:", error);
+    throw error;
+  }
+};
+
+/**
+ * ✅ NEW: Helper function to download document from base64
+ */
+export const downloadDocumentFromBase64 = (
+  base64String: string,
+  fileName: string,
+  mimeType: string = "application/pdf"
+) => {
+  try {
+    const linkSource = `data:${mimeType};base64,${base64String}`;
+    const downloadLink = document.createElement("a");
+    downloadLink.href = linkSource;
+    downloadLink.download = fileName;
+    downloadLink.click();
+  } catch (error) {
+    console.error("Error downloading document:", error);
     throw error;
   }
 };
