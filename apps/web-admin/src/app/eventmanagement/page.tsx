@@ -800,29 +800,6 @@ const EventManagement: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
-
-                {/* Pagination stub */}
-                <div className="bg-white px-6 py-4 border-t border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
-                      Showing {filteredEvents.length} of {events.length} events
-                    </div>
-                    <div className="flex space-x-2">
-                      <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-                        Previous
-                      </button>
-                      <button className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
-                        1
-                      </button>
-                      <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-                        2
-                      </button>
-                      <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </>
             )}
           </div>
