@@ -15,12 +15,12 @@ export default function Landing() {
       >
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.button2}
         onPress={() => navigation.navigate('SignUp')}
       >
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
+        <Text style={styles.buttonText}>Signup</Text>
+      </TouchableOpacity> */}
     </View>
   );
 }

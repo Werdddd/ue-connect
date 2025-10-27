@@ -10,6 +10,7 @@ export default function RegisterOrganization() {
     const navigation = useNavigation();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [logo, setLogo] = useState(null);
+    const [selectedCourses, setSelectedCourses] = useState([]);
     // Form state
     const [formData, setFormData] = useState({
         organizationName: '',
@@ -36,11 +37,47 @@ export default function RegisterOrganization() {
 
     const departments = ['University Wide','CSC', 'COE', 'CAS', 'CFAD', 'CBA'];
 
+    const courses = [
+        { label: 'College of Engineering', value: 'label-engineering', isLabel: true },
+        { label: 'BSCE', value: 'BSCE' },
+        { label: 'BSCpE', value: 'BSCpE' },
+        { label: 'BSEE', value: 'BSEE' },
+        { label: 'BSECE', value: 'BSECE' },
+        { label: 'BSME', value: 'BSME' },
+        { label: 'BSCS', value: 'BSCS' },
+        { label: 'BSIT', value: 'BSIT' },
+        { label: 'BSDS', value: 'BSDS' },
+        { label: 'College of Fine Arts, Architecture and Design', value: 'label-cfad', isLabel: true },
+        { label: 'BMA', value: 'BMA' },
+        { label: 'BSID', value: 'BSID' },
+        { label: 'BFA', value: 'BFA' },
+        { label: 'BS Architecture', value: 'BS Architecture' },
+        { label: 'Business Administration', value: 'label-ba', isLabel: true },
+        { label: 'BS Accountancy', value: 'BS Accountancy' },
+        { label: 'BSMA', value: 'BSMA' },
+        { label: 'BSBA', value: 'BSBA' },
+        { label: 'College of Arts and Sciences', value: 'label-cas', isLabel: true },
+        { label: 'BSC', value: 'BSC' },
+        { label: 'BSP', value: 'BSP' },
+        { label: 'BSHM', value: 'BSHM' },
+        { label: 'BSTM', value: 'BSTM' },
+    ];
+
     const handleInputChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+    };
+
+    const toggleCourse = (courseValue) => {
+        setSelectedCourses(prev => {
+            if (prev.includes(courseValue)) {
+                return prev.filter(c => c !== courseValue);
+            } else {
+                return [...prev, courseValue];
+            }
+        });
     };
 
     const pickDocument = async (documentType) => {
@@ -109,6 +146,12 @@ export default function RegisterOrganization() {
         if (!formData.organizationName || !formData.acronym || !formData.department || 
             !formData.email || !formData.presidentName || !formData.presidentId || !formData.adviserName) {
             Alert.alert('Error', 'Please fill in all required fields');
+            return false;
+        }
+
+        // Check if at least one course is selected
+        if (selectedCourses.length === 0) {
+            Alert.alert('Error', 'Please select at least one course that can join your organization');
             return false;
         }
 
@@ -193,8 +236,8 @@ export default function RegisterOrganization() {
                         try {
                             console.log('Starting registration process...');
 
-                            // Send logo + formData + documents
-                            const result = await registerOrganization(formData, documents, logo);
+                            // Send logo + formData + documents + canJoin
+                            const result = await registerOrganization(formData, documents, logo, selectedCourses);
 
                             console.log('Registration successful:', result.id);
 
@@ -413,6 +456,54 @@ export default function RegisterOrganization() {
                                 onChangeText={(text) => handleInputChange('adviserName', text)}
                             />
                         </View>
+                    </View>
+
+                    {/* Eligible Courses Section */}
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Eligible Courses *</Text>
+                        <Text style={styles.sectionSubtitle}>
+                            Select at least one course that can join your organization
+                        </Text>
+                        
+                        <View style={styles.coursesContainer}>
+                            {courses.map((course) => {
+                                if (course.isLabel) {
+                                    return (
+                                        <Text key={course.value} style={styles.courseLabel}>
+                                            {course.label}
+                                        </Text>
+                                    );
+                                }
+                                
+                                const isSelected = selectedCourses.includes(course.value);
+                                return (
+                                    <TouchableOpacity
+                                        key={course.value}
+                                        style={[
+                                            styles.courseButton,
+                                            isSelected && styles.courseButtonActive
+                                        ]}
+                                        onPress={() => toggleCourse(course.value)}
+                                    >
+                                        <Text style={[
+                                            styles.courseButtonText,
+                                            isSelected && styles.courseButtonTextActive
+                                        ]}>
+                                            {course.label}
+                                        </Text>
+                                        {isSelected && (
+                                            <Ionicons name="checkmark-circle" size={18} color="#fff" style={styles.checkIcon} />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                        
+                        {selectedCourses.length > 0 && (
+                            <Text style={styles.selectedCount}>
+                                {selectedCourses.length} course{selectedCourses.length > 1 ? 's' : ''} selected
+                            </Text>
+                        )}
                     </View>
 
                     {/* Logo Upload Section */}
@@ -721,9 +812,9 @@ const styles = StyleSheet.create({
         height: 20,
     },
     logoPreviewContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    marginTop: 10,
+        position: 'relative',
+        alignItems: 'center',
+        marginTop: 10,
     },
     logoPreview: {
         width: 120,
@@ -739,5 +830,50 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 15,
     },
-
+    coursesContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    courseLabel: {
+        width: '100%',
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        marginTop: 12,
+        marginBottom: 8,
+    },
+    courseButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: '#f5f5f5',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        marginRight: 8,
+        marginBottom: 8,
+    },
+    courseButtonActive: {
+        backgroundColor: '#E50914',
+        borderColor: '#E50914',
+    },
+    courseButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+    },
+    courseButtonTextActive: {
+        color: '#fff',
+    },
+    checkIcon: {
+        marginLeft: 6,
+    },
+    selectedCount: {
+        fontSize: 14,
+        color: '#4CAF50',
+        fontWeight: '600',
+        marginTop: 8,
+    },
 });

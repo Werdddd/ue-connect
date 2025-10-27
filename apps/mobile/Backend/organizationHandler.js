@@ -78,9 +78,10 @@ const processDocument = async (file, documentType) => {
  * @param {Object} formData - Organization information
  * @param {Object} documents - All required documents
  * @param {Object} logo - Organization logo image {uri, name, size, mimeType}
+ * @param {Array} canJoin - Array of course codes that can join the organization
  * @returns {Promise<Object>} - Created organization data with ID
  */
-export const registerOrganization = async (formData, documents, logo) => {
+export const registerOrganization = async (formData, documents, logo, canJoin = []) => {
     try {
 
         const auth = getAuth();
@@ -163,6 +164,9 @@ export const registerOrganization = async (formData, documents, logo) => {
             presidentStudentId: formData.presidentId,
 
             adviserName: formData.adviserName,
+
+            // Eligible Courses
+            canJoin: canJoin || [],
 
             // Required Documents
             constitutionByLawsBase64: processedDocuments.constitutionByLaws.base64,

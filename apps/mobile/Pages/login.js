@@ -116,12 +116,12 @@ export default function Login() {
                 <Text style={styles.buttonText}>Login</Text>
               </TouchableOpacity>
 
-              <View style={styles.signUpContainer}>
+              {/* <View style={styles.signUpContainer}>
                 <Text style={styles.dontHaveAccount}>Don't have an account? </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
                   <Text style={styles.signUp}>Sign up</Text>
                 </TouchableOpacity>
-              </View>
+              </View> */}
             </View>
           </ScrollView>
         </TouchableWithoutFeedback>

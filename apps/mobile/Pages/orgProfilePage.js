@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Linking, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
@@ -165,31 +165,67 @@ setIsApplied((data.applicants || []).includes(userEmail));
 
     const addUserToApplication = async (orgName, userEmail) => {
     try {
+        // Fetch organization data
         const q = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
             const orgDoc = querySnapshot.docs[0];
             const orgRef = doc(firestore, 'organizations', orgDoc.id);
-
             const data = orgDoc.data();
             const applicants = data.applicants || [];
             const userIsApplicant = applicants.includes(userEmail);
 
+            // If user is already an applicant, allow them to cancel
             if (userIsApplicant) {
                 await updateDoc(orgRef, {
                     applicants: applicants.filter(email => email !== userEmail),
                 });
                 setIsApplied(false);
-            } else {
-                await updateDoc(orgRef, {
-                    applicants: [...applicants, userEmail],
-                });
-                setIsApplied(true);
+                Alert.alert('Application Cancelled', 'Your application has been withdrawn.');
+                return;
             }
+
+            // Check if user's course is eligible
+            const canJoin = data.canJoin || [];
+            
+            // Fetch user's course from Users collection
+            const userDocRef = doc(firestore, 'Users', userEmail);
+            const userSnap = await getDoc(userDocRef);
+
+            if (!userSnap.exists()) {
+                Alert.alert('Error', 'User profile not found. Please complete your profile first.');
+                return;
+            }
+
+            const userData = userSnap.data();
+            const userCourse = userData.Course;
+
+            if (!userCourse) {
+                Alert.alert('Profile Incomplete', 'Please add your course to your profile before joining organizations.');
+                return;
+            }
+
+            // Check if user's course is in the canJoin array
+            if (canJoin.length > 0 && !canJoin.includes(userCourse)) {
+                Alert.alert(
+                    'Not Eligible',
+                    `Sorry, this organization is only open to students from: ${canJoin.join(', ')}.\n\nYour course (${userCourse}) is not eligible to join.`,
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            // User is eligible, add to applicants
+            await updateDoc(orgRef, {
+                applicants: [...applicants, userEmail],
+            });
+            setIsApplied(true);
+            Alert.alert('Application Submitted', 'Your application has been submitted successfully!');
         }
     } catch (error) {
         console.error('Error updating applicants:', error);
+        Alert.alert('Error', 'Failed to submit application. Please try again.');
     }
 };
 
