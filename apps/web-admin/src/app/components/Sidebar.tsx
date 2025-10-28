@@ -34,7 +34,7 @@ const Sidebar: React.FC = () => {
     { name: 'Users', icon: Users, path: '/usermanagement' },
     { name: 'Organizations', icon: Building2, path: '/rsomanagement' },
     { name: 'Events', icon: Calendar, path: '/eventmanagement' },
-    // { name: 'Documents', icon: FileText, path: '/documentmanagement' }
+    { name: 'User Posts', icon: FileText, path: '/userposts' }
   ];
 
   return (
