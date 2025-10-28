@@ -123,7 +123,9 @@ const PostManagement = () => {
         null,
     ); // Stores post ID
     const [error, setError] = useState<string | null>(null); // For Firebase errors
-
+    // PAGINATION
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10; // Number of posts per page
     useEffect(() => {
         setLoading(true);
         const postsCollectionRef = collection(firestore, 'newsfeed');
@@ -218,6 +220,13 @@ const PostManagement = () => {
 
         return matchesSearch;
     });
+
+    // PAGINATED SLICE
+    const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
+    const paginatedPosts = filteredPosts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+    );
 
     // Handle row selection
     const handlePostSelect = (postId: string) => {
@@ -410,7 +419,7 @@ const PostManagement = () => {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {filteredPosts.length > 0 ? (
-                                        filteredPosts.map((post) => (
+                                        paginatedPosts.map((post) => (
                                             <tr
                                                 key={post.id}
                                                 className="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -497,9 +506,44 @@ const PostManagement = () => {
                         </div>
 
                         <div className="bg-white px-6 py-4 border-t border-gray-200">
+                        <div className="flex items-center justify-between">
                             <p className="text-sm text-gray-500">
-                                Showing {filteredPosts.length} of {posts.length} posts
+                            Showing {(currentPage - 1) * itemsPerPage + 1}–
+                            {Math.min(currentPage * itemsPerPage, filteredPosts.length)} of {filteredPosts.length} posts
                             </p>
+
+                            <div className="flex space-x-2">
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                                <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`px-3 py-1 text-sm rounded ${
+                                    pageNum === currentPage
+                                    ? 'bg-red-600 text-white'
+                                    : 'border border-gray-300 hover:bg-gray-50'
+                                }`}
+                                >
+                                {pageNum}
+                                </button>
+                            ))}
+
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Next
+                            </button>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>
