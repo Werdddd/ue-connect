@@ -7,9 +7,10 @@ import {
   doc,
   query,
   where,
-  serverTimestamp,
+  serverTimestamp, setDoc,
 } from "firebase/firestore";
-import { firestore } from "../Firebase";
+import { auth, firestore } from "../Firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 export type DocumentReview = {
   status: 'approved' | 'rejected' | null;
@@ -238,7 +239,7 @@ export const updateOrganizationStatus = async (
 export const submitOrganizationReview = async (
   orgId: string,
   reviewData: {
-    status: "approved" | "rejected" | "applied";
+    status: "approved" | "rejected" | "applied"| "terminated"| "hold";
     reviewNotes: string;
     documentReviews: Record<string, { status: string | null; remarks: string }>;
   }
@@ -287,5 +288,44 @@ export const downloadDocumentFromBase64 = (
   } catch (error) {
     console.error("Error downloading document:", error);
     throw error;
+  }
+};
+export const autoCreateUser = async (
+  email: string,
+  password: string,
+  details: {
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+    organizationId?: string;
+  } = {}
+): Promise<{ success: boolean; uid?: string; error?: string }> => {
+  try {
+    // 1️⃣ Create the user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = userCredential.user.uid;
+
+    // 2️⃣ Use email as Firestore document ID
+    const emailDocId = email.toLowerCase(); // normalize email for consistency
+    const userDoc = doc(firestore, "Users", emailDocId);
+
+    // 3️⃣ Store user info in Firestore (orgName will appear as firstName)
+    await setDoc(userDoc, {
+      uid, // still store actual Firebase UID
+      email,
+      firstName: details.firstName || "",
+      lastName: details.lastName || "",
+      role: details.role || "student",
+      organizationId: details.organizationId || null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    console.log("✅ User auto-created (email as doc ID):", emailDocId);
+
+    return { success: true, uid };
+  } catch (error: any) {
+    console.error("❌ Error auto-creating user:", error);
+    return { success: false, error: error.message };
   }
 };

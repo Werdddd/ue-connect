@@ -18,7 +18,7 @@ export default function RegisterOrganization() {
         department: '',
         description: '',
         location: '',
-        email: '',
+      
         contactNumber: '',
         presidentName: '',
         presidentId: '',
@@ -143,8 +143,8 @@ export default function RegisterOrganization() {
 
     const validateForm = () => {
         // Check required fields
-        if (!formData.organizationName || !formData.acronym || !formData.department || 
-            !formData.email || !formData.presidentName || !formData.presidentId || !formData.adviserName) {
+        if (!formData.organizationName || !formData.acronym || !formData.department
+          || !formData.presidentName || !formData.presidentId || !formData.adviserName) {
             Alert.alert('Error', 'Please fill in all required fields');
             return false;
         }
@@ -213,10 +213,10 @@ export default function RegisterOrganization() {
     const handleSubmit = async () => {
         if (!validateForm()) return;
 
-        // Validate ue.edu.ph email
-        if (!formData.email.toLowerCase().endsWith('@ue.edu.ph')) {
-            throw new Error('Email must end with @ue.edu.ph');
-        }
+        // // Validate ue.edu.ph email
+        // if (!formData.email.toLowerCase().endsWith('@ue.edu.ph')) {
+        //     throw new Error('Email must end with @ue.edu.ph');
+        // }
 
 
         if (!logo) {
@@ -378,7 +378,7 @@ export default function RegisterOrganization() {
                             />
                         </View>
 
-                        <View style={styles.inputGroup}>
+                        {/* <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email Address *</Text>
                             <TextInput
                                 style={styles.input}
@@ -394,7 +394,7 @@ export default function RegisterOrganization() {
                                 </Text>
                             )}
 
-                        </View>
+                        </View> */}
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Contact Number</Text>
@@ -410,7 +410,7 @@ export default function RegisterOrganization() {
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Location</Text>
                             <TextInput
-                                style={[styles.input, styles.textArea]}
+                                style={styles.input}
                                 placeholder="Location of your organization within the campus"
                                 value={formData.location}
                                 onChangeText={(text) => handleInputChange('location', text)}
