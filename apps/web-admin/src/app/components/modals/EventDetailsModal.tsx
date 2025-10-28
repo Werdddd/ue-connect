@@ -101,18 +101,16 @@ type Props = {
   busy?: boolean;
 };
 
-
-
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-xs font-semibold text-gray-500 tracking-wide uppercase">{children}</div>
+  <div className="text-xs font-medium text-gray-500 mb-1">{children}</div>
 );
 
 const Value: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-gray-900">{children ?? '—'}</div>
+  <div className="text-sm text-gray-900">{children ?? '—'}</div>
 );
 
 const Cell: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="space-y-1">
+  <div>
     <Label>{label}</Label>
     <Value>{children}</Value>
   </div>
@@ -145,103 +143,138 @@ export default function EventDetailsModal({ open, event, onClose, onOpenRemarks,
   const end   = event?.endDateTime ? formatDateTime(event.endDateTime) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4">
-      <div className="w-full max-w-4xl rounded-xl bg-white shadow-xl overflow-hidden">
-        {/* header */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">Event Details</h2>
-          <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700" aria-label="Close">
-            <X className="h-5 w-5" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-4xl rounded-xl bg-white shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-red-600 px-8 py-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">Event Details</h2>
+            <button 
+              onClick={onClose} 
+              className="text-white hover:text-red-100 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
-        {/* body */}
-        <div className="px-6 py-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {/* Banner on top, full width, contained */}
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-8 py-6">
+          <div className="space-y-6">
+            {/* Banner */}
             {event?.banner && (
-              <div className="md:col-span-2 space-y-1">
-                <Label>Banner</Label>
-                <div className="rounded-lg border bg-gray-50 overflow-hidden flex items-center justify-center">
+              <div>
+                <Label>Event Banner</Label>
+                <div className="rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-4">
                   <img
                     src={event.banner}
                     alt={`${event?.title ?? 'Event'} banner`}
-                    className="block max-w-full max-h-64 object-contain"
+                    className="block max-w-full max-h-64 object-contain rounded"
                   />
                 </div>
               </div>
             )}
 
-            <Cell label="Title">{event?.title || '—'}</Cell>
-            <Cell label="Organization">{event?.organizingRSO || '—'}</Cell>
+            {/* Grid Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Cell label="Event Title">{event?.title || '—'}</Cell>
+              <Cell label="Organizing RSO">{event?.organizingRSO || '—'}</Cell>
 
-            <Cell label="Description">{event?.description || '—'}</Cell>
-            <Cell label="Location">{event?.location || '—'}</Cell>
+              <div className="md:col-span-2">
+                <Cell label="Description">{event?.description || '—'}</Cell>
+              </div>
 
-            <Cell label="Date">{start.date}</Cell>
-            <Cell label="Time">{start.time}{end ? ` - ${end.time}` : ''}</Cell>
+              <Cell label="Location">{event?.location || '—'}</Cell>
+              <Cell label="Mode">{event?.mode || '—'}</Cell>
 
-            <Cell label="Participants">
-              {`${event?.participantCount ?? 0} / ${event?.maxCapacity ?? 0}`}
-            </Cell>
+              <Cell label="Date">{start.date}</Cell>
+              <Cell label="Time">{start.time}{end ? ` - ${end.time}` : ''}</Cell>
 
-            <Cell label="Mode">{event?.mode || '—'}</Cell>
-            <Cell label="Status (Proposal)">{event?.proposalStatus || '—'}</Cell>
-            <Cell label="Status (Event)">{event?.eventStatus || '—'}</Cell>
+              <Cell label="Participants">
+                {`${event?.participantCount ?? 0} / ${event?.maxCapacity ?? 0}`}
+              </Cell>
+              <Cell label="Created At">{humanDate(event?.createdAt)}</Cell>
 
-            <Cell label="Created at">{humanDate(event?.createdAt)}</Cell>
+              <Cell label="Proposal Status">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  event?.proposalStatus === 'Approved' ? 'bg-green-100 text-green-800' :
+                  event?.proposalStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
+                  event?.proposalStatus === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {event?.proposalStatus || '—'}
+                </span>
+              </Cell>
 
-            <Cell label="Proposal File">
-              {proposalDownload ? (
-                <a
-                  href={proposalDownload.href}
-                  download={proposalDownload.filename}
-                  target={proposalDownload.href.startsWith('http') ? '_blank' : undefined}
-                  rel={proposalDownload.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  className="text-blue-600 hover:underline"
-                >
-                  {proposalDownload.filename} <span className="opacity-70">(Download)</span>
-                </a>
-              ) : (
-                <span className="text-gray-500 italic">No file uploaded</span>
-              )}
-            </Cell>
+              <Cell label="Event Status">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  event?.eventStatus === 'Completed' ? 'bg-blue-100 text-blue-800' :
+                  event?.eventStatus === 'Ongoing' ? 'bg-purple-100 text-purple-800' :
+                  event?.eventStatus === 'Upcoming' ? 'bg-indigo-100 text-indigo-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {event?.eventStatus || '—'}
+                </span>
+              </Cell>
+
+              <div className="md:col-span-2">
+                <Cell label="Proposal File">
+                  {proposalDownload ? (
+                    <a
+                      href={proposalDownload.href}
+                      download={proposalDownload.filename}
+                      target={proposalDownload.href.startsWith('http') ? '_blank' : undefined}
+                      rel={proposalDownload.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                      className="text-red-600 hover:text-red-700 hover:underline font-medium"
+                    >
+                      📄 {proposalDownload.filename}
+                    </a>
+                  ) : (
+                    <span className="text-gray-400 italic">No file uploaded</span>
+                  )}
+                </Cell>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* footer */}
-        <div className="flex items-center justify-between gap-3 border-t px-6 py-4">
-          <div className="flex gap-2">
-            {event && (
-              <>
-                {/* Open the separate remarks modal */}
-                <button
-                  onClick={() => onOpenRemarks?.('Approved', event)}
-                  className="rounded-md bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
-                >
-                  Approve
-                </button>
-                <button
-                  onClick={() => onOpenRemarks?.('Rejected', event)}
-                  className="rounded-md border border-amber-400 bg-amber-50 px-4 py-2 text-amber-700 hover:bg-amber-100"
-                >
-                  Reject
-                </button>
-                {/* Cancel stays as a direct action */}
-                <button
-                  disabled={busy}
-                  onClick={() => onAction?.('Cancelled', event)}
-                  className="rounded-md border border-rose-400 bg-rose-50 px-4 py-2 text-rose-700 hover:bg-rose-100 disabled:opacity-60"
-                >
-                  {busy ? 'Saving…' : 'Cancel'}
-                </button>
-              </>
-            )}
-          </div>
+        {/* Footer */}
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-200">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex gap-2">
+              {event && (
+                <>
+                  <button
+                    onClick={() => onOpenRemarks?.('Approved', event)}
+                    className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors shadow-sm"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => onOpenRemarks?.('Rejected', event)}
+                    className="rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors shadow-sm"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    disabled={busy}
+                    onClick={() => onAction?.('Cancelled', event)}
+                    className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {busy ? 'Saving…' : 'Cancel'}
+                  </button>
+                </>
+              )}
+            </div>
 
-          <button onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">
-            Close
-          </button>
+            <button 
+              onClick={onClose} 
+              className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>

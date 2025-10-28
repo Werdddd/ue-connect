@@ -44,7 +44,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [conflictMessage, setConflictMessage] = useState('');
 
-  // Load organizations with role admin
   useEffect(() => {
     const getOrganizations = async () => {
       const q = query(collection(firestore, 'Users'), where('role', '==', 'admin'));
@@ -56,14 +55,12 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
     getOrganizations();
   }, []);
 
-  // Convert uploaded file to base64
   const handleFileToBase64 = (file: File, setter: (val: string) => void) => {
     const reader = new FileReader();
     reader.onloadend = () => setter(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  // Check for schedule conflicts + suggest slots
   useEffect(() => {
     const checkSchedule = async () => {
       if (!date || !startTime || !endTime || !location) return;
@@ -97,7 +94,6 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
 
       if (conflicts.length > 0) {
         setConflictMessage('⚠️ This time conflicts with another event.');
-        // Suggest 4 later slots
         const duration = (selectedEnd.getTime() - selectedStart.getTime()) / 60000;
         const suggestionsList: string[] = [];
         let nextStart = new Date(selectedEnd);
@@ -120,7 +116,7 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
             suggestionsList.push(`${fmt(nextStart)} - ${fmt(nextEnd)}`);
           }
           nextStart = new Date(nextStart.getTime() + duration * 60000);
-          if (nextStart.getHours() >= 22) break; // Stop if too late
+          if (nextStart.getHours() >= 22) break;
         }
         setSuggestions(suggestionsList);
       }
@@ -193,193 +189,213 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg p-6 relative overflow-y-auto max-h-[90vh]">
-        <button onClick={onClose} className="absolute top-3 right-3 text-gray-600 hover:text-black">
-          <X className="w-5 h-5" />
-        </button>
-
-        <h2 className="text-2xl font-semibold mb-4">Create Event</h2>
-
-        <div className="space-y-4">
-          {/* Organizer */}
-          <div>
-            <label className="font-medium">Organizer</label>
-            <select
-              value={selectedOrg}
-              onChange={(e) => setSelectedOrg(e.target.value)}
-              className="w-full border rounded-lg p-2 mt-1 bg-white"
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-red-600 px-8 py-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">Create Event</h2>
+            <button 
+              onClick={onClose} 
+              className="text-white hover:text-red-100 transition-colors"
             >
-              <option value="">Select Organization</option>
-              {orgs.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.firstName}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Title */}
-          <div>
-            <label className="font-medium">Event Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full border rounded-lg p-2 mt-1"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="font-medium">Event Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full border rounded-lg p-2 mt-1"
-            />
-          </div>
-
-          {/* Date */}
-          <div>
-            <label className="font-medium">Event Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full border rounded-lg p-2 mt-1"
-            />
-          </div>
-
-          {/* Time + Suggestions */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="font-medium">Start Time</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full border rounded-lg p-2 mt-1"
-              />
-            </div>
-            <div>
-              <label className="font-medium">End Time</label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full border rounded-lg p-2 mt-1"
-              />
-            </div>
-          </div>
-
-          {/* Notice Box */}
-          {(conflictMessage || suggestions.length > 0) && (
-            <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-yellow-800 font-medium">
-                <AlertTriangle className="w-4 h-4" />
-                {conflictMessage}
-              </div>
-              {suggestions.length > 0 && (
-                <div className="text-sm text-yellow-700">
-                  Suggested available slots:
-                  <ul className="list-disc pl-5 mt-1">
-                    {suggestions.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Location */}
-          <div>
-            <label className="font-medium">Event Location</label>
-            <select
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full border rounded-lg p-2 mt-1 bg-white"
-            >
-              <option value="">Select a location</option>
-              <option value="MPH 1, EN Building">MPH 1, EN Building</option>
-              <option value="MPH 2, EN Building">MPH 2, EN Building</option>
-              <option value="EE Laboratory Rooms, EN Building">EE Laboratory Rooms, EN Building</option>
-              <option value="EN Briefing Room, EN Building">EN Briefing Room, EN Building</option>
-              <option value="MPH 3, LCT Building">MPH 3, LCT Building</option>
-              <option value="Conference Hall, TYK Building">Conference Hall, TYK Building</option>
-            </select>
-          </div>
-
-          {/* Participants */}
-          <div>
-            <label className="font-medium">Event Participants</label>
-            <input
-              type="number"
-              value={participants}
-              onChange={(e) => setParticipants(e.target.value === '' ? '' : Number(e.target.value))}
-              className="w-full border rounded-lg p-2 mt-1"
-            />
-          </div>
-
-          {/* Banner */}
-          <div>
-            <label className="font-medium">Event Banner</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileToBase64(file, setBannerBase64);
-              }}
-              className="w-full border rounded-lg p-2 mt-1"
-            />
-            {bannerBase64 && (
-              <img src={bannerBase64} className="mt-2 rounded-lg w-full max-h-48 object-cover" />
-            )}
-          </div>
-
-          {/* Proposal PDF */}
-          <div>
-            <label className="font-medium">Event Proposal (PDF)</label>
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setProposalName(file.name);
-                  handleFileToBase64(file, setProposalFileBase64);
-                }
-              }}
-              className="w-full border rounded-lg p-2 mt-1"
-            />
-            {proposalFileBase64 && (
-              <p className="text-green-600 mt-1 text-sm">
-                📄 Uploaded: <span className="font-medium">{proposalName}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Collaboration */}
-          <div className="flex items-center gap-2 mt-4">
-            <label className="font-medium">Collaboration Event?</label>
-            <input
-              type="checkbox"
-              checked={isCollab}
-              onChange={(e) => setIsCollab(e.target.checked)}
-              className="w-5 h-5 accent-blue-500"
-            />
+              <X className="w-6 h-6" />
+            </button>
           </div>
         </div>
 
-        <button
-          onClick={handleCreateEvent}
-          disabled={loading}
-          className="mt-6 w-full bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700"
-        >
-          {loading ? 'Creating...' : 'Create Event'}
-        </button>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-8 py-6">
+          <div className="space-y-6">
+            {/* Organizer */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Organizer</label>
+              <select
+                value={selectedOrg}
+                onChange={(e) => setSelectedOrg(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+              >
+                <option value="">Select organization</option>
+                {orgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.firstName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Event Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="Enter event name"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none"
+                placeholder="Describe your event"
+              />
+            </div>
+
+            {/* Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            {/* Time */}
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Conflict Warning */}
+            {(conflictMessage || suggestions.length > 0) && (
+              <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-lg p-4">
+                <div className="flex items-start gap-3 text-amber-800 text-sm mb-2">
+                  <AlertTriangle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                  <span className="font-medium">{conflictMessage}</span>
+                </div>
+                {suggestions.length > 0 && (
+                  <div className="text-sm text-amber-700 ml-8">
+                    <p className="font-medium mb-2">Available slots:</p>
+                    <div className="space-y-1">
+                      {suggestions.map((s, i) => (
+                        <div key={i} className="pl-3 border-l-2 border-amber-300">{s}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Location */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+              >
+                <option value="">Select location</option>
+                <option value="MPH 1, EN Building">MPH 1, EN Building</option>
+                <option value="MPH 2, EN Building">MPH 2, EN Building</option>
+                <option value="EE Laboratory Rooms, EN Building">EE Laboratory Rooms, EN Building</option>
+                <option value="EN Briefing Room, EN Building">EN Briefing Room, EN Building</option>
+                <option value="MPH 3, LCT Building">MPH 3, LCT Building</option>
+                <option value="Conference Hall, TYK Building">Conference Hall, TYK Building</option>
+              </select>
+            </div>
+
+            {/* Participants */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Expected Participants</label>
+              <input
+                type="number"
+                value={participants}
+                onChange={(e) => setParticipants(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                placeholder="0"
+              />
+            </div>
+
+            {/* Banner */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Event Banner</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileToBase64(file, setBannerBase64);
+                }}
+                className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-50 file:text-red-600 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
+              />
+              {bannerBase64 && (
+                <img src={bannerBase64} className="mt-3 rounded-lg w-full h-40 object-cover border border-gray-200" alt="Banner preview" />
+              )}
+            </div>
+
+            {/* Proposal */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Event Proposal (PDF)</label>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setProposalName(file.name);
+                    handleFileToBase64(file, setProposalFileBase64);
+                  }
+                }}
+                className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-50 file:text-red-600 hover:file:bg-red-100 file:cursor-pointer cursor-pointer"
+              />
+              {proposalFileBase64 && (
+                <p className="text-sm text-gray-600 mt-2 flex items-center gap-2">
+                  <span className="text-green-600">✓</span> {proposalName}
+                </p>
+              )}
+            </div>
+
+            {/* Collaboration */}
+            <div className="flex items-center gap-3 pt-2">
+              <input
+                type="checkbox"
+                id="collab"
+                checked={isCollab}
+                onChange={(e) => setIsCollab(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+              />
+              <label htmlFor="collab" className="text-sm text-gray-700 font-medium">
+                This is a collaboration event
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 py-5 bg-gray-50 border-t border-gray-200">
+          <button
+            onClick={handleCreateEvent}
+            disabled={loading}
+            className="w-full bg-red-600 text-white py-3 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          >
+            {loading ? 'Creating...' : 'Create Event'}
+          </button>
+        </div>
       </div>
     </div>
   );
