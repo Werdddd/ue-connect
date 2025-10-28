@@ -232,44 +232,45 @@ export const updateOrganizationStatus = async (
     throw error;
   }
 };
-
 /**
- * ✅ NEW: Update organization with full review data (status, remarks, document reviews)
+ * ✅ FIXED: Allow updating individual document statuses (approved/rejected/pending/etc.)
  */
 export const submitOrganizationReview = async (
   orgId: string,
   reviewData: {
-    status: "approved" | "rejected" | "applied"| "terminated"| "hold";
+    status: "approved" | "rejected" | "applied" | "terminated" | "hold";
     reviewNotes: string;
-    documentReviews: Record<string, { status: string | null; remarks: string }>;
+    documentReviews: Record<string, { status: string | null; remarks: string | null }>;
   }
 ): Promise<{ success: boolean }> => {
   try {
     const docRef = doc(firestore, "organizations", orgId);
 
-    // Convert document reviews to proper format
-    const formattedDocumentReviews: any = {};
-    Object.entries(reviewData.documentReviews).forEach(([key, value]) => {
-      formattedDocumentReviews[key] = {
-        status: value.status,
-        remarks: value.remarks || "",
-      };
-    });
-
-    await updateDoc(docRef, {
+    // 🛠 Prepare update object based on Firestore field naming
+    const updatePayload: any = {
       status: reviewData.status,
       reviewNotes: reviewData.reviewNotes,
-      documentReviews: formattedDocumentReviews,
       reviewedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+    };
+
+    Object.entries(reviewData.documentReviews).forEach(([key, value]) => {
+      // Example key: "atoApplication" → converts to:
+      // atoApplicationStatus, atoApplicationRemarks
+      updatePayload[`${key}Status`] = value.status ?? "pending";
+      updatePayload[`${key}Remarks`] = value.remarks ?? "";
     });
 
+    await updateDoc(docRef, updatePayload);
+
+    console.log("✅ Updated organization review:", updatePayload);
     return { success: true };
   } catch (error) {
-    console.error("Error submitting organization review:", error);
+    console.error("❌ Error submitting review:", error);
     throw error;
   }
 };
+
 
 /**
  * ✅ NEW: Helper function to download document from base64

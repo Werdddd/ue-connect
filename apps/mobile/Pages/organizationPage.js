@@ -31,6 +31,15 @@ export default function OrganizationPage() {
     const [showRequirementsModal, setShowRequirementsModal] = useState(false);
     const [showReaccreditationModal, setShowReaccreditationModal] = useState(false);
 
+    const documentStatusList = [
+    { key: "constitutionByLaws", label: "Constitution & By-Laws" },
+    { key: "atoApplication", label: "Application for ATO" },
+    { key: "officersList", label: "Officers List" },
+    { key: "gpoa", label: "General Plan of Action (GPOA)" },
+    { key: "registrationForm", label: "Registration Form" }
+    ];
+
+
     const getOrganizationTitle = () => {
         switch (selectedDepartment) {
             case 'All':
@@ -125,11 +134,11 @@ export default function OrganizationPage() {
     const [pendingOrg, setPendingOrg] = useState(null);
 
     useEffect(() => {
-    const fetchPending = async () => {
-        const result = await checkAppliedOrganization();
-        setPendingOrg(result);
-    };
-    fetchPending();
+        const fetchPending = async () => {
+            const result = await checkAppliedOrganization();
+            setPendingOrg(result);
+        };
+        fetchPending();
     }, []);
 
     return (
@@ -171,82 +180,187 @@ export default function OrganizationPage() {
                             );
                         })}
 
-                  {/* Registration Section */}
-                    {(!pendingOrg || pendingOrg.status === 'rejected') && (
-                    <View style={styles.registerSection}>
-                        <View style={styles.registerCard}>
-                        <Text style={styles.registerTitle}>Start Your Own Organization</Text>
-                        <Text style={styles.registerSubtitle}>
-                            Have an idea for a new student organization?
-                        </Text>
-                        <TouchableOpacity 
-                            style={styles.requirementsButton}
-                            onPress={() => setShowRequirementsModal(true)}
-                        >
-                            <Text style={styles.requirementsButtonText}>
-                            View Registration Requirements
-                            </Text>
-                        </TouchableOpacity>
-                        </View>
-
-                        {/* Reaccreditation Section */}
-                        <View style={[styles.registerCard, styles.reaccreditCard]}>
-                        <Text style={styles.reaccredTitle}>Existing Organization?</Text>
-                        <Text style={styles.registerSubtitle}>
-                            Keep your organization active with annual reaccreditation
-                        </Text>
-                        <TouchableOpacity 
-                            style={[styles.requirementsButton, styles.reaccreditButton]}
-                            onPress={() => setShowReaccreditationModal(true)}
-                        >
-                            <Text style={styles.requirementsButtonText}>
-                            View Reaccreditation Requirements
-                            </Text>
-                        </TouchableOpacity>
-                        </View>
-                    </View>
-                    )}
-
                     {/* Pending Application Section */}
-                    {pendingOrg && (() => {
-                        let cardStyle = styles.statusCard;
-                        let titleColor = '#1E88E5'; // Default blue for applied
-                        let bgColor = '#F0F8FF';    // Default light blue for applied
-                        let borderColor = '#D0E8FF';
-
-                        if (pendingOrg.status === 'approved') {
-                            titleColor = '#34A853'; // Green
-                            bgColor = '#E6F9ED';    // Light green
-                            borderColor = '#34A853';
-                        } else if (pendingOrg.status === 'rejected') {
-                            titleColor = '#E50914'; // Red
-                            bgColor = '#FFF0F0';    // Light red
-                            borderColor = '#E50914';
-                        } else if (pendingOrg.status === 'applied') {
-                            titleColor = '#1E88E5'; // Blue
-                            bgColor = '#F0F8FF';    // Light blue
-                            borderColor = '#1E88E5';
-                        }
-
-                        return (
+                    {pendingOrg && (
+                        <View style={styles.pendingSection}>
+                            {/* Main Status Card */}
                             <View style={[
-                                cardStyle,
-                                { borderColor: borderColor, backgroundColor: bgColor }
+                                styles.statusCard,
+                                {
+                                    borderColor: (() => {
+                                        const configs = {
+                                            applied: '#1E88E5',
+                                            approved: '#34A853',
+                                            rejected: '#E50914',
+                                            hold: '#F4A100',
+                                            terminated: '#B0B0B0'
+                                        };
+                                        return configs[pendingOrg.status] || '#1E88E5';
+                                    })(),
+                                    backgroundColor: (() => {
+                                        const configs = {
+                                            applied: '#E3F2FD',
+                                            approved: '#E6F9ED',
+                                            rejected: '#FFE6E6',
+                                            hold: '#FFF9E6',
+                                            terminated: '#F2F2F2'
+                                        };
+                                        return configs[pendingOrg.status] || '#E3F2FD';
+                                    })()
+                                }
                             ]}>
-                                <Text style={[styles.registerTitle, { color: titleColor }]}>
-                                    {pendingOrg.status === 'applied' && 'Pending Application'}
+                                <Text style={[
+                                    styles.statusTitle,
+                                    {
+                                        color: (() => {
+                                            const configs = {
+                                                applied: '#1E88E5',
+                                                approved: '#34A853',
+                                                rejected: '#E50914',
+                                                hold: '#F4A100',
+                                                terminated: '#6D6D6D'
+                                            };
+                                            return configs[pendingOrg.status] || '#1E88E5';
+                                        })()
+                                    }
+                                ]}>
+                                    {pendingOrg.status === 'applied' && 'Application Under Review'}
                                     {pendingOrg.status === 'approved' && 'Application Approved'}
                                     {pendingOrg.status === 'rejected' && 'Application Rejected'}
+                                    {pendingOrg.status === 'hold' && 'Application On Hold'}
+                                    {pendingOrg.status === 'terminated' && 'Organization Terminated'}
                                 </Text>
-                                <Text style={styles.registerSubtitle}>
-                                    Your application for <Text style={{ fontWeight: 'bold' }}>{pendingOrg.acronym}</Text>
-                                    {pendingOrg.status === 'applied' && ' is currently under review.'}
-                                    {pendingOrg.status === 'approved' && ' has been approved!'}
-                                    {pendingOrg.status === 'rejected' && ' was rejected. Please review requirements and try again.'}
+
+                                <Text style={styles.statusMessage}>
+                                    Your application for <Text style={styles.boldText}>{pendingOrg.acronym}</Text>
+                                    {pendingOrg.status === 'applied' && ' is currently being reviewed by the student council.'}
+                                    {pendingOrg.status === 'approved' && ' has been approved! You can now access your organization dashboard.'}
+                                    {pendingOrg.status === 'rejected' && ' was rejected. Please review the remarks below and resubmit with corrections.'}
+                                    {pendingOrg.status === 'hold' && ' is temporarily on hold. Please wait for further instructions from the council.'}
+                                    {pendingOrg.status === 'terminated' && ' has been terminated by the administration.'}
                                 </Text>
+
+                                {/* ✅ Add This */}
+                                {pendingOrg.reviewNotes && (
+                                    <Text style={[styles.statusMessage, { marginTop: 12, fontStyle: 'italic' }]}>
+                                        Remarks: {pendingOrg.reviewNotes}
+                                    </Text>
+                                )}
                             </View>
-                        );
-                    })()}
+
+
+                            {/* Overall Remarks Card
+                            <View style={styles.remarksCard}>
+                                <View style={styles.remarksHeader}>
+                                    <Text style={styles.remarksHeaderText}>📋 Overall Remarks</Text>
+                                </View>
+                                <Text style={styles.remarksText}>
+                                    {pendingOrg.overallRemarks || "No overall remarks yet."}
+                                </Text>
+                            </View> */}
+
+                            {/* Document Status Card */}
+                            <View style={styles.documentsCard}>
+                                <View style={styles.documentsHeader}>
+                                    <Text style={styles.documentsHeaderText}>Document Status</Text>
+                                </View>
+                                
+                                {documentStatusList.map((doc, index) => {
+                                    const status = pendingOrg?.[`${doc.key}Status`] ?? "pending";
+                                    const remarks = pendingOrg?.[`${doc.key}Remarks`] ?? "";
+
+                                    return (
+                                        <View key={index} style={styles.documentItem}>
+                                        <View style={styles.documentHeader}>
+                                            <Text style={styles.documentTitle}>{doc.label}</Text>
+
+                                            <View style={[
+                                            styles.statusBadge,
+                                            {
+                                                backgroundColor:
+                                                status === "approved" ? "#E6F9ED" :
+                                                status === "rejected" ? "#FFE6E6" :
+                                                status === "pending" ? "#FFF9E6" : "#E0E0E0"
+                                            }
+                                            ]}>
+                                            <Text style={[
+                                                styles.statusBadgeText,
+                                                {
+                                                color:
+                                                    status === "approved" ? "#34A853" :
+                                                    status === "rejected" ? "#E50914" :
+                                                    status === "pending" ? "#F4A100" : "#555"
+                                                }
+                                            ]}>
+                                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                            </Text>
+                                            </View>
+                                        </View>
+
+                                        {remarks ? (
+                                            <Text style={styles.documentRemarks}>
+                                            Remarks: {remarks}
+                                            </Text>
+                                        ) : null}
+                                        </View>
+                                    );
+                                    })}
+                                    {documentStatusList.map((doc, index) => {
+                                    const status = pendingOrg?.[`${doc.key}Status`] ?? "pending";
+                                    const remarks = pendingOrg?.[`${doc.key}Remarks`] ?? "";
+
+                                    
+                                    })}
+
+                            </View>
+
+                            {/* Resubmit Button for Rejected Applications */}
+                            {pendingOrg.status === 'rejected' && (
+                                <TouchableOpacity 
+                                    style={styles.resubmitButton}
+                                    onPress={() => navigation.navigate('RegisterOrganization')}
+                                >
+                                    <Text style={styles.resubmitButtonText}>Resubmit Application</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+
+                    {/* Registration Section */}
+                    {(!pendingOrg || pendingOrg.status === 'rejected') && (
+                        <View style={styles.registerSection}>
+                            <View style={styles.registerCard}>
+                                <Text style={styles.registerTitle}>Start Your Own Organization</Text>
+                                <Text style={styles.registerSubtitle}>
+                                    Have an idea for a new student organization?
+                                </Text>
+                                <TouchableOpacity 
+                                    style={styles.requirementsButton}
+                                    onPress={() => setShowRequirementsModal(true)}
+                                >
+                                    <Text style={styles.requirementsButtonText}>
+                                        View Registration Requirements
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Reaccreditation Section */}
+                            <View style={[styles.registerCard, styles.reaccreditCard]}>
+                                <Text style={styles.reaccredTitle}>Existing Organization?</Text>
+                                <Text style={styles.registerSubtitle}>
+                                    Keep your organization active with annual reaccreditation
+                                </Text>
+                                <TouchableOpacity 
+                                    style={[styles.requirementsButton, styles.reaccreditButton]}
+                                    onPress={() => setShowReaccreditationModal(true)}
+                                >
+                                    <Text style={styles.requirementsButtonText}>
+                                        View Reaccreditation Requirements
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
 
                 </ScrollView>
 
@@ -399,6 +513,131 @@ const styles = StyleSheet.create({
         width: '100%',
         marginTop: 2,
     },
+    // Pending Section Styles
+    pendingSection: {
+        marginHorizontal: 20,
+        marginTop: 20,
+        marginBottom: 10,
+    },
+    statusCard: {
+        borderRadius: 12,
+        padding: 20,
+        borderWidth: 2,
+        marginBottom: 16,
+    },
+    statusTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    statusMessage: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    boldText: {
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    remarksCard: {
+        backgroundColor: '#FFF9E6',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: '#FFB800',
+    },
+    remarksHeader: {
+        marginBottom: 8,
+    },
+    remarksHeaderText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#8B6E00',
+    },
+    remarksText: {
+        fontSize: 14,
+        color: '#5C4A00',
+        lineHeight: 20,
+    },
+    documentsCard: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    documentsHeader: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#E0E0E0',
+        paddingBottom: 12,
+        marginBottom: 16,
+    },
+    documentsHeaderText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    documentItem: {
+        marginBottom: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    documentHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    documentTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+        flex: 1,
+        marginRight: 8,
+    },
+    statusBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    statusBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    documentRemarks: {
+        fontSize: 13,
+        color: '#666',
+        lineHeight: 18,
+        fontStyle: 'italic',
+    },
+    noDocumentsText: {
+        fontSize: 14,
+        color: '#999',
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    resubmitButton: {
+        backgroundColor: '#E50914',
+        padding: 16,
+        borderRadius: 8,
+        marginTop: 8,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    resubmitButtonText: {
+        color: 'white',
+        textAlign: 'center',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
     // Registration Section Styles
     registerSection: {
         marginTop: 30,
@@ -418,17 +657,6 @@ const styles = StyleSheet.create({
         borderColor: '#FFE0E0',
         alignItems: 'center',
         marginTop: 10,
-    
-    },
-    statusCard: {
-        backgroundColor: '#FFF5F5',
-        borderRadius: 12,
-        padding: 24,
-        borderWidth: 1,
-        borderColor: '#FFE0E0',
-        alignItems: 'center',
-        marginTop: 10,
-    marginHorizontal: 20,
     },
     reaccreditCard: {
         backgroundColor: '#F0F8FF',

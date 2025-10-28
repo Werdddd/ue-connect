@@ -82,152 +82,147 @@ const processDocument = async (file, documentType) => {
  * @returns {Promise<Object>} - Created organization data with ID
  */
 export const registerOrganization = async (formData, documents, logo, canJoin = []) => {
-    try {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
 
-        const auth = getAuth();
-        const user = auth.currentUser;
-
-        // Validate required fields
-        if (!formData.organizationName || !formData.acronym || !formData.department) {
-            throw new Error('Missing required organization information');
-        }
-
-        if (!formData.email || !formData.presidentName || !formData.presidentId || !formData.adviserName) {
-            throw new Error('Missing required president information');
-        }
-
-        // Validate all required documents are present
-        const requiredDocuments = [
-            'constitutionByLaws',
-            // 'facultyAdviser',
-            'atoApplication',
-            'officersList',
-            'gpoa',
-            'registrationForm'
-        ];
-
-        for (const docType of requiredDocuments) {
-            if (!documents[docType]) {
-                throw new Error(`Missing required document: ${docType}`);
-            }
-        }
-
-        // Check if acronym already exists
-        const orgQuery = query(
-            collection(firestore, 'organizations'),
-            where('acronym', '==', formData.acronym.toUpperCase())
-        );
-        const querySnapshot = await getDocs(orgQuery);
-
-        if (!querySnapshot.empty) {
-            throw new Error('An organization with this acronym already exists');
-        }
-
-        // Process all documents to base64
-        console.log('Processing documents to base64...');
-        const processedDocuments = {};
-
-        for (const [docType, docFile] of Object.entries(documents)) {
-            if (docFile) {
-                console.log(`Converting ${docType} to base64...`);
-                processedDocuments[docType] = await processDocument(docFile, docType);
-            }
-        }
-
-        // Process logo if provided
-        let processedLogo = null;
-        if (logo && logo.uri) {
-            console.log('Processing organization logo...');
-            const base64Logo = await convertFileToBase64(logo.uri);
-            processedLogo = {
-                base64: `data:image/jpeg;base64,${base64Logo}`,
-                fileName: logo.name || 'org_logo.png',
-                fileSize: logo.size || null,
-                mimeType: logo.mimeType || 'image/png',
-                uploadedAt: new Date().toISOString(),
-            };
-        }
-
-        // Prepare organization data for Firestore
-         const organizationData = {
-            // Basic Info
-            orgName: formData.organizationName,
-            acronym: formData.acronym.toUpperCase(),
-            department: formData.department,
-            shortdesc: formData.description || '',
-            email: formData.email,
-            contactNumber: formData.contactNumber || '',
-            location: formData.location || '',
-
-            // President Info
-            presidentName: formData.presidentName,
-            presidentStudentId: formData.presidentId,
-
-            adviserName: formData.adviserName,
-
-            // Eligible Courses
-            canJoin: canJoin || [],
-
-            // Required Documents
-            constitutionByLawsBase64: processedDocuments.constitutionByLaws.base64,
-            constitutionByLawsFileName: processedDocuments.constitutionByLaws.fileName,
-            constitutionByLawsFileSize: processedDocuments.constitutionByLaws.fileSize,
-
-            // facultyAdviserBase64: processedDocuments.facultyAdviser.base64,
-            // facultyAdviserFileName: processedDocuments.facultyAdviser.fileName,
-            // facultyAdviserFileSize: processedDocuments.facultyAdviser.fileSize,
-
-            atoApplicationBase64: processedDocuments.atoApplication.base64,
-            atoApplicationFileName: processedDocuments.atoApplication.fileName,
-            atoApplicationFileSize: processedDocuments.atoApplication.fileSize,
-
-            officersListBase64: processedDocuments.officersList.base64,
-            officersListFileName: processedDocuments.officersList.fileName,
-            officersListFileSize: processedDocuments.officersList.fileSize,
-
-            gpoaBase64: processedDocuments.gpoa.base64,
-            gpoaFileName: processedDocuments.gpoa.fileName,
-            gpoaFileSize: processedDocuments.gpoa.fileSize,
-
-            registrationFormBase64: processedDocuments.registrationForm.base64,
-            registrationFormFileName: processedDocuments.registrationForm.fileName,
-            registrationFormFileSize: processedDocuments.registrationForm.fileSize,
-
-            // Logo
-            logoBase64: processedLogo ? processedLogo.base64 : null,
-            logoFileName: processedLogo ? processedLogo.fileName : null,
-            logoFileSize: processedLogo ? processedLogo.fileSize : null,
-
-            // Status & Meta
-            status: 'applied',
-            registrationType: 'new',
-            members: [],
-            officers: [],
-
-            // Track who registered the org
-            registeredBy: user.email,  // ✅ store the email here
-
-            submittedAt: serverTimestamp(),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-        };
-
-
-        // Save to Firestore
-        console.log('Saving organization to Firestore...');
-        const docRef = await addDoc(collection(firestore, 'organizations'), organizationData);
-
-        console.log('Organization registered successfully with ID:', docRef.id);
-
-        return {
-            id: docRef.id,
-            ...organizationData,
-        };
-    } catch (error) {
-        console.error('Error registering organization:', error);
-        throw error;
+    if (!formData.organizationName || !formData.acronym || !formData.department) {
+      throw new Error("Missing required organization information");
     }
+
+    if (
+    
+      !formData.presidentName ||
+      !formData.presidentId ||
+      !formData.adviserName
+    ) {
+      throw new Error("Missing required president information");
+    }
+
+    const requiredDocuments = [
+      "constitutionByLaws",
+      "atoApplication",
+      "officersList",
+      "gpoa",
+      "registrationForm",
+    ];
+
+    for (const docType of requiredDocuments) {
+      if (!documents[docType]) {
+        throw new Error(`Missing required document: ${docType}`);
+      }
+    }
+
+    // Check for existing organization by acronym
+    const orgQuery = query(
+      collection(firestore, "organizations"),
+      where("acronym", "==", formData.acronym.toUpperCase())
+    );
+    const querySnapshot = await getDocs(orgQuery);
+
+    if (!querySnapshot.empty) {
+      throw new Error("An organization with this acronym already exists");
+    }
+
+    // Convert documents to base64
+    const processedDocuments = {};
+    for (const [docType, docFile] of Object.entries(documents)) {
+      if (docFile) processedDocuments[docType] = await processDocument(docFile, docType);
+    }
+
+    // Convert logo if provided
+    let processedLogo = null;
+    if (logo && logo.uri) {
+      const base64Logo = await convertFileToBase64(logo.uri);
+      processedLogo = {
+        base64: `data:image/jpeg;base64,${base64Logo}`,
+        fileName: logo.name || "org_logo.png",
+        fileSize: logo.size || null,
+        mimeType: logo.mimeType || "image/png",
+        uploadedAt: new Date().toISOString(),
+      };
+    }
+
+    // ✅ Firestore structure
+    const organizationData = {
+      // Basic Info
+      orgName: formData.organizationName,
+      acronym: formData.acronym.toUpperCase(),
+      department: formData.department,
+      shortdesc: formData.description || "",
+      email: formData.email || "",
+      contactNumber: formData.contactNumber || "",
+      location: formData.location || "",
+
+      // President & Adviser
+      presidentName: formData.presidentName,
+      presidentStudentId: formData.presidentId,
+      adviserName: formData.adviserName,
+
+      // Eligible Courses
+      canJoin: canJoin || [],
+
+      // Uploaded Documents
+      constitutionByLawsBase64: processedDocuments.constitutionByLaws.base64,
+      constitutionByLawsFileName: processedDocuments.constitutionByLaws.fileName,
+      constitutionByLawsFileSize: processedDocuments.constitutionByLaws.fileSize,
+
+      atoApplicationBase64: processedDocuments.atoApplication.base64,
+      atoApplicationFileName: processedDocuments.atoApplication.fileName,
+      atoApplicationFileSize: processedDocuments.atoApplication.fileSize,
+
+      officersListBase64: processedDocuments.officersList.base64,
+      officersListFileName: processedDocuments.officersList.fileName,
+      officersListFileSize: processedDocuments.officersList.fileSize,
+
+      gpoaBase64: processedDocuments.gpoa.base64,
+      gpoaFileName: processedDocuments.gpoa.fileName,
+      gpoaFileSize: processedDocuments.gpoa.fileSize,
+
+      registrationFormBase64: processedDocuments.registrationForm.base64,
+      registrationFormFileName: processedDocuments.registrationForm.fileName,
+      registrationFormFileSize: processedDocuments.registrationForm.fileSize,
+
+      // ✅ Individual document review fields (pending + null remarks)
+      constitutionByLawsStatus: "pending",
+      constitutionByLawsRemarks: null,
+      atoApplicationStatus: "pending",
+      atoApplicationRemarks: null,
+      officersListStatus: "pending",
+      officersListRemarks: null,
+      gpoaStatus: "pending",
+      gpoaRemarks: null,
+      registrationFormStatus: "pending",
+      registrationFormRemarks: null,
+
+      // Logo (optional)
+      logoBase64: processedLogo ? processedLogo.base64 : null,
+      logoFileName: processedLogo ? processedLogo.fileName : null,
+      logoFileSize: processedLogo ? processedLogo.fileSize : null,
+
+      // Meta
+      status: "applied",
+      registrationType: "new",
+      members: [],
+      officers: [],
+      registeredBy: user?.email || "unknown",
+      submittedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    // Save to Firestore
+    const docRef = await addDoc(collection(firestore, "organizations"), organizationData);
+
+    console.log("✅ Organization registered successfully:", docRef.id);
+    return { id: docRef.id, ...organizationData };
+  } catch (error) {
+    console.error("❌ Error registering organization:", error);
+    throw error;
+  }
 };
+
+
 
 /**
  * Get all organizations (existing function - keep as is)
@@ -367,7 +362,6 @@ export const getOrganizationsByDepartment = async (department) => {
         throw error;
     }
 };
-
 export const checkAppliedOrganization = async () => {
   try {
     const auth = getAuth();
@@ -377,32 +371,107 @@ export const checkAppliedOrganization = async () => {
       return null; // no user logged in
     }
 
+    // Fetch all organizations created by this user
     const orgQuery = query(
-      collection(firestore, 'organizations'),
-      where('registeredBy', '==', user.email)
-      // Remove status filter to get all applications by user
+      collection(firestore, "organizations"),
+      where("registeredBy", "==", user.email)
     );
 
     const querySnapshot = await getDocs(orgQuery);
 
     if (!querySnapshot.empty) {
-      // Sort by createdAt or submittedAt (newest first)
+      // Sort by newest
       const orgs = querySnapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
         .sort((a, b) => {
           const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
           const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
           return bTime - aTime;
         });
-      return orgs[0]; // Return the latest application
+
+      const latestOrg = orgs[0];
+
+      // ✅ Extract document reviews and remarks
+      const documentReviews = latestOrg.documentReviews || {};
+      const reviewNotes = latestOrg.reviewNotes || "";
+
+      // ✅ Define all possible documents that can be submitted
+      const allDocuments = [
+        {
+          key: 'constitutionByLaws',
+          displayName: 'Constitution & By-Laws',
+          base64Field: 'constitutionByLawsBase64',
+          fileNameField: 'constitutionByLawsFileName'
+        },
+        {
+          key: 'atoApplication',
+          displayName: 'ATO Application',
+          base64Field: 'atoApplicationBase64',
+          fileNameField: 'atoApplicationFileName'
+        },
+        {
+          key: 'officersList',
+          displayName: 'Officers List',
+          base64Field: 'officersListBase64',
+          fileNameField: 'officersListFileName'
+        },
+        {
+          key: 'gpoa',
+          displayName: 'General Plans of Action (GPOA)',
+          base64Field: 'gpoaBase64',
+          fileNameField: 'gpoaFileName'
+        },
+        {
+          key: 'registrationForm',
+          displayName: 'Registration Form',
+          base64Field: 'registrationFormBase64',
+          fileNameField: 'registrationFormFileName'
+        }
+      ];
+
+      // ✅ Format documents with their status and remarks
+      const formattedDocuments = allDocuments.map(docInfo => {
+        // Check if document exists in the organization data
+        const hasDocument = latestOrg[docInfo.base64Field];
+        
+        // Get review data if exists
+        const review = documentReviews[docInfo.key] || documentReviews[docInfo.displayName] || {};
+        
+        // Determine status
+        let status = 'pending'; // default status
+        if (review.status) {
+          status = review.status;
+        } else if (!hasDocument) {
+          status = 'missing';
+        }
+
+        return {
+          documentType: docInfo.displayName,
+          documentKey: docInfo.key,
+          status: status,
+          remarks: review.remarks || (status === 'pending' ? 'Awaiting review' : 'No remarks provided'),
+          fileName: latestOrg[docInfo.fileNameField] || 'No file uploaded',
+          hasFile: !!hasDocument
+        };
+      });
+
+      return {
+        ...latestOrg,
+        overallRemarks: reviewNotes || "Your application is being reviewed. Please wait for admin feedback.",
+        documentRemarks: formattedDocuments,
+      };
     }
 
-    return null; // no application
+    return null; // no organization found
   } catch (error) {
-    console.error('Error checking pending organization:', error);
+    console.error("Error checking pending organization:", error);
     return null;
   }
 };
+
 
 /**
  * Helper function to download document from base64
@@ -483,4 +552,36 @@ export const acceptApplicant = async (orgId, userEmail) => {
         console.error('Error accepting applicant:', error);
         throw error;
     }
+};
+
+/**
+ * Get formatted document review statuses for mobile UI
+ */
+export const getOrgDocumentStatuses = async (orgId) => {
+  try {
+    const orgData = await getOrganizationById(orgId);
+
+    const documents = [
+      { key: "constitutionByLaws", label: "Constitution & By-Laws" },
+      { key: "atoApplication", label: "ATO Application" },
+      { key: "officersList", label: "Officers List" },
+      { key: "gpoa", label: "General Plans of Action (GPOA)" },
+      { key: "registrationForm", label: "Registration Form" }
+    ];
+
+    return documents.map((doc) => {
+      const status = orgData[`${doc.key}Status`] ?? "pending";
+      const remarks = orgData[`${doc.key}Remarks`] ?? "No remarks yet";
+
+      return {
+        label: doc.label,
+        key: doc.key,
+        status,
+        remarks,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching document statuses:", error);
+    return [];
+  }
 };
