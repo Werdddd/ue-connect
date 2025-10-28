@@ -157,7 +157,9 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserDoc | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-
+  // PAGINATION
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // number of users per page
   const [studentNumber, setStudentNumber] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -208,6 +210,12 @@ const UserManagement = () => {
 
       return matchesSearch && matchesYear && matchesCourse && matchesRSO;
     });
+    // PAGINATED SLICE
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+    const paginatedUsers = filteredUsers.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
 
   const handleUserSelect = (userId: string) => {
     setSelectedUsers((prev) =>
@@ -385,7 +393,7 @@ const UserManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <tr 
                       key={user.id} 
                       className="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -457,9 +465,44 @@ const UserManagement = () => {
             </div>
 
             <div className="bg-white px-6 py-4 border-t border-gray-200">
-              <p className="text-sm text-gray-500">
-                Showing {filteredUsers.length} of {users.length} users
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">
+                  Showing {(currentPage - 1) * itemsPerPage + 1}–
+                  {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
+                </p>
+
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 text-sm rounded ${
+                        pageNum === currentPage
+                          ? 'bg-red-600 text-white'
+                          : 'border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

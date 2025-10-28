@@ -15,6 +15,12 @@ import {
 interface CreateEventModalProps {
   isOpen: boolean;
   onClose: () => void;
+  orgData: {
+    orgId: string;
+    organization: string;
+    department: string;
+    email: string;
+  };
 }
 
 const CreateEventModal: React.FC<CreateEventModalProps> = ({
