@@ -141,6 +141,10 @@ const EventManagement: React.FC = () => {
   const [remarkFor, setRemarkFor] = useState<EventDetails | null>(null);
   const [remarkBusy, setRemarkBusy] = useState(false);
 
+  // PAGINATION STATES
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Number of events to show per page
+
   const [user] = useAuthState(auth);
   const userEmail = user?.email ?? "";
 
@@ -293,6 +297,14 @@ const EventManagement: React.FC = () => {
       return matchesSearch && matchesCategory && matchesStatus && matchesProposal;
     });
   }, [events, searchTerm, filterCategory, filterStatus, filterProposalStatus]);
+
+  const paginatedEvents = useMemo(() => {
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  return filteredEvents.slice(startIndex, endIndex);
+  }, [filteredEvents, currentPage]);
+
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
 
   /* selection (banner still optional) */
   const handleEventSelect = (eventId: string) => {
@@ -701,8 +713,8 @@ const EventManagement: React.FC = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredEvents.map((event) => {
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {paginatedEvents.map((event) => {
                         const start = fmtDT(event.dateTime);
                         const cap = Math.max(event.maxCapacity || 0, 1);
                         const pct = Math.min(Math.round((event.participantCount / cap) * 100), 100);
@@ -799,6 +811,47 @@ const EventManagement: React.FC = () => {
                       })}
                     </tbody>
                   </table>
+                </div>
+                {/* Pagination stub */}
+                <div className="bg-white px-6 py-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-500">
+                      Showing {(currentPage - 1) * itemsPerPage + 1}–
+                      {Math.min(currentPage * itemsPerPage, filteredEvents.length)} of {filteredEvents.length} events
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Previous
+                      </button>
+
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-1 text-sm rounded ${
+                            pageNum === currentPage
+                              ? 'bg-red-600 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </>
             )}
