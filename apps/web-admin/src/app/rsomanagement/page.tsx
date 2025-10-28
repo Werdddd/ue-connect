@@ -79,6 +79,28 @@ const RSOManagement = () => {
   } | null>(null);
 
   useEffect(() => {
+    if (!selectedOrg) return;
+
+    const initialReviews: Record<string, string | null> = {};
+    const initialRemarks: Record<string, string> = {};
+
+    const docs = getDocumentsList(selectedOrg);
+
+    docs.forEach((d) => {
+      const statusField = `${d.key}Status`;
+      const remarksField = `${d.key}Remarks`;
+
+      initialReviews[d.key] = (selectedOrg as any)[statusField] ?? null;
+      initialRemarks[d.key] = (selectedOrg as any)[remarksField] ?? "";
+    });
+
+    setDocumentReviews(initialReviews);
+    setDocumentRemarks(initialRemarks);
+  }, [selectedOrg]);
+
+
+
+  useEffect(() => {
     if (userEmail) {
       setOrgData({
         orgId: "001",
@@ -104,6 +126,8 @@ const RSOManagement = () => {
     };
     fetchRSOs();
   }, []);
+
+  
 
   // Stats
   const stats = useMemo(
@@ -211,79 +235,86 @@ const RSOManagement = () => {
     }
   };
 
-  const handleDocumentReview = (
-    docKey: string,
-    status: "approved" | "rejected" | "update" | null
-  ) => {
-    setDocumentReviews((prev) => ({ ...prev, [docKey]: status }));
-  };
+  const handleDocumentReview = (key: string, status: string) => {
+  setDocumentReviews((prev) => ({
+    ...prev,
+    [key]: status,
+  }));
+};
 
-  const handleDocumentRemarkChange = (docKey: string, remark: string) => {
-    setDocumentRemarks((prev) => ({ ...prev, [docKey]: remark }));
-  };
+const handleDocumentRemarkChange = (key: string, text: string) => {
+  setDocumentRemarks((prev) => ({
+    ...prev,
+    [key]: text,
+  }));
+};
 
   const handleFinalSubmit = async () => {
-    if (!selectedOrg) return alert("Select an organization first.");
-    if (!finalAction) return alert("Please select an action first.");
+  if (!selectedOrg) return alert("Select an organization first.");
+  if (!finalAction) return alert("Please select an action first.");
 
-    setIsSubmitting(true);
-    try {
-      // Map all possible finalAction values to valid Firestore statuses
-      let newStatus:
-        | "approved"
-        | "applied"
-        | "rejected"
-        | "terminated"
-        | "hold" =
-        (selectedOrg.status as
-          | "approved"
-          | "applied"
-          | "rejected"
-          | "terminated"
-          | "hold") || "applied";
+  const docs = getDocumentsList(selectedOrg);
 
-      if (finalAction === "approve") newStatus = "approved";
-      else if (finalAction === "reject") newStatus = "rejected";
-      else if (finalAction === "update") newStatus = "applied";
-      else if (finalAction === "terminated") newStatus = "terminated";
-      else if (finalAction === "hold") newStatus = "hold";
-
-      // For extra actions (terminate, hold), store them in reviewNotes for reference
-      const extraNote =
-        finalAction === "terminated"
-          ? "Organization was terminated."
-          : finalAction === "hold"
-          ? "Organization put on hold."
-          : "";
-
-      await submitOrganizationReview(selectedOrg.id, {
-        status: newStatus,
-        reviewNotes: `${finalRemarks} ${extraNote}`.trim(),
-        documentReviews: {}, // ✅ Fix: required property provided
-      });
-
-      alert(
-        `✅ Organization ${
-          finalAction === "terminated"
-            ? "terminated"
-            : finalAction === "hold"
-            ? "put on hold"
-            : finalAction === "approve"
-            ? "approved"
-            : finalAction === "reject"
-            ? "rejected"
-            : "updated"
-        } successfully.`
-      );
-
-      setShowModal(false);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to submit action. See console for details.");
-    } finally {
-      setIsSubmitting(false);
+  // ✅ Ensure every document has been reviewed
+  for (const d of docs) {
+    if (!documentReviews[d.key]) {
+      return alert(`Please review all documents before submitting.`);
     }
-  };
+  }
+
+  // ✅ Only allow final APPROVE if ALL docs are approved
+  if (
+    finalAction === "approve" &&
+    Object.values(documentReviews).some((s) => s !== "approved")
+  ) {
+    return alert("❗ You can only APPROVE when ALL documents are approved.");
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    // Determine DB status field value
+    let newStatus:
+      | "approved"
+      | "rejected"
+      | "applied"
+      | "terminated"
+      | "hold" = "applied";
+
+    if (finalAction === "approve") newStatus = "approved";
+    if (finalAction === "reject") newStatus = "rejected";
+    if (finalAction === "update") newStatus = "applied";
+    if (finalAction === "hold") newStatus = "hold";
+    if (finalAction === "terminated") newStatus = "terminated";
+
+    // ✅ Prepare document review data
+    const reviewPayload: Record<string, { status: string | null; remarks: string }> = {};
+
+    docs.forEach((d) => {
+      reviewPayload[d.key] = {
+        status: documentReviews[d.key],
+        remarks: documentRemarks[d.key] || "",
+      };
+    });
+
+
+    // ✅ Save to Firestore
+    await submitOrganizationReview(selectedOrg.id, {
+      status: newStatus,
+      reviewNotes: finalRemarks,
+      documentReviews: reviewPayload,
+    });
+
+    alert("✅ Review submitted successfully!");
+    setShowModal(false);
+  } catch (err) {
+    console.error(err);
+    alert("❌ Failed to submit review.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handleRSOSelect = (rsoId: string) => {
     setSelectedRSOs((prev) =>
@@ -820,6 +851,7 @@ const RSOManagement = () => {
 
                 {/* Document Review Section */}
                 <div className="border-t pt-6 mt-6">
+                  
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <FileText className="h-5 w-5 text-red-600" />
                     Document Review
@@ -833,13 +865,41 @@ const RSOManagement = () => {
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">
-                              {doc.label}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {doc.fileName}
-                            </p>
+                              <p className="font-medium text-gray-900 flex items-center gap-2">
+                                {doc.label}
+
+                                {/* SHOW STATUS BADGE */}
+                                {documentReviews[doc.key] && (
+                                  <span
+                                    className={`px-2 py-0.5 text-xs font-semibold rounded-full
+                                    ${
+                                      documentReviews[doc.key] === "approved"
+                                        ? "bg-green-100 text-green-700"
+                                        : documentReviews[doc.key] === "rejected"
+                                        ? "bg-red-100 text-red-700"
+                                        : documentReviews[doc.key] === "update"
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : "bg-gray-100 text-gray-600"
+                                    }`}
+                                  >
+                                    {documentReviews[doc.key] === "approved" && "APPROVED"}
+                                    {documentReviews[doc.key] === "rejected" && "REJECTED"}
+                                    {documentReviews[doc.key] === "update" && "REQUIRES UPDATE"}
+                                  </span>
+                                )}
+                              </p>
+
+                            {/* FILE NAME */}
+                            <p className="text-sm text-gray-500">{doc.fileName}</p>
+
+                            {/* SHOW SAVED REMARKS (read only preview)
+                            {documentRemarks[doc.key] && (
+                              <p className="text-xs text-gray-600 mt-1 italic">
+                                Previous remarks: "{documentRemarks[doc.key]}"
+                              </p>
+                            )} */}
                           </div>
+
 
                           <div className="flex items-center gap-2">
                             <button
@@ -895,6 +955,8 @@ const RSOManagement = () => {
                             </button>
                           </div>
                         </div>
+
+                        
 
                         <textarea
                           placeholder="Add remarks for this document..."
@@ -977,16 +1039,18 @@ const RSOManagement = () => {
                     </h3>
 
                     <div className="flex gap-3 mb-4">
-                      <button
-                        onClick={() => setFinalAction("approve")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "approve"
-                            ? "bg-green-600 text-white border-green-700"
-                            : "border-gray-300 text-gray-700 hover:bg-green-50"
-                        }`}
-                      >
-                        Approve
-                      </button>
+                      {/* ✅ FINAL APPROVE BUTTON GOES HERE */}
+                        <button
+                          onClick={() => setFinalAction("approve")}
+                          disabled={Object.values(documentReviews).some((s) => s !== "approved")}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                            finalAction === "approve"
+                              ? "bg-green-600 text-white border-green-700"
+                              : "border-gray-300 text-gray-700 hover:bg-green-50"
+                          } ${Object.values(documentReviews).some((s) => s !== "approved") && "opacity-40 cursor-not-allowed"}`}
+                        >
+                          Approve Organization
+                        </button>
                       <button
                         onClick={() => setFinalAction("reject")}
                         className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
