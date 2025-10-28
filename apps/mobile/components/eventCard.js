@@ -121,6 +121,52 @@ export default function EventCard({ event }) {
 
         try {
             if (!joined) {
+                // Check course eligibility before allowing join
+                // Try different collection and document ID combinations
+                let userDocRef = doc(firestore, 'users', user.uid);
+                let userDoc = await getDoc(userDocRef);
+                
+                // If not found by uid, try by email
+                if (!userDoc.exists()) {
+                    userDocRef = doc(firestore, 'users', useremail);
+                    userDoc = await getDoc(userDocRef);
+                }
+                
+                // If still not found, try 'Users' collection with uid
+                if (!userDoc.exists()) {
+                    userDocRef = doc(firestore, 'Users', user.uid);
+                    userDoc = await getDoc(userDocRef);
+                }
+                
+                // If still not found, try 'Users' collection with email
+                if (!userDoc.exists()) {
+                    userDocRef = doc(firestore, 'Users', useremail);
+                    userDoc = await getDoc(userDocRef);
+                }
+                
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    const userCourse = userData.Course;
+                    
+                    console.log('User Course:', userCourse);
+                    console.log('Event Eligible Courses:', event.eligibleCourses);
+                    
+                    // Check if event has eligibleCourses constraint
+                    if (event.eligibleCourses && event.eligibleCourses.length > 0) {
+                        if (!userCourse) {
+                            alert('Your course information is not set. Please update your profile.');
+                            return;
+                        }
+                        
+                        if (!event.eligibleCourses.includes(userCourse)) {
+                            alert(`This event is not open to your course (${userCourse}).\n\nOnly the following courses are eligible:\n${event.eligibleCourses.join(', ')}`);
+                            return;
+                        }
+                    }
+                } else {
+                    console.warn('User document not found in any collection');
+                }
+                
                 await applyToEvent(event.id, useremail);
             } else {
                 await removeApplicationFromEvent(event.id, useremail);

@@ -42,6 +42,38 @@ export default function EventPageSAO() {
     const [remark, setRemark] = useState('');
 const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
     const [proposalLink, setProposalLink] = useState('');
+    const [selectedCourses, setSelectedCourses] = useState([]);
+
+    const courses = [
+        { label: 'College of Engineering', value: 'label-engineering', isLabel: true },
+        { label: 'BSCE', value: 'BSCE' },
+        { label: 'BSCpE', value: 'BSCpE' },
+        { label: 'BSEE', value: 'BSEE' },
+        { label: 'BSECE', value: 'BSECE' },
+        { label: 'BSME', value: 'BSME' },
+        { label: 'BSIE', value: 'BSIE' },
+        { label: 'College of Arts and Sciences', value: 'label-cas', isLabel: true },
+        { label: 'BSCS', value: 'BSCS' },
+        { label: 'BSIT', value: 'BSIT' },
+        { label: 'BSBio', value: 'BSBio' },
+        { label: 'BSPsych', value: 'BSPsych' },
+        { label: 'College of Business Administration', value: 'label-cba', isLabel: true },
+        { label: 'BSBA', value: 'BSBA' },
+        { label: 'BSA', value: 'BSA' },
+        { label: 'College of Fine Arts and Design', value: 'label-cfad', isLabel: true },
+        { label: 'BFA', value: 'BFA' },
+        { label: 'BSID', value: 'BSID' },
+    ];
+
+    const toggleCourse = (courseValue) => {
+        setSelectedCourses(prev => {
+            if (prev.includes(courseValue)) {
+                return prev.filter(c => c !== courseValue);
+            } else {
+                return [...prev, courseValue];
+            }
+        });
+    };
     useEffect(() => {
         loadEvents();
     }, []);
@@ -189,6 +221,7 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
             status: eventStatus, 
             proposalLink: selectedProposal?.uri || null,
             proposalName: selectedProposal?.name || null,
+            eligibleCourses: selectedCourses,
         };
 
         try {
@@ -203,6 +236,7 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
             setNewLocation('');
             setNewParticipants('');
             setStatus('');
+            setSelectedCourses([]);
         } catch (error) {
             console.error('Error adding event:', error);
         }
@@ -401,6 +435,42 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
                                                 value={newParticipants}
                                                 onChangeText={setNewParticipants}
                                             />
+                                            
+                                            <Text style={styles.label}>Eligible Courses *</Text>
+                                            <Text style={styles.sectionSubtitle}>
+                                                Select courses that can join this event
+                                            </Text>
+                                            <View style={styles.coursesContainer}>
+                                                {courses.map((course) => {
+                                                    if (course.isLabel) {
+                                                        return (
+                                                            <Text key={course.value} style={styles.courseLabel}>
+                                                                {course.label}
+                                                            </Text>
+                                                        );
+                                                    }
+                                                    
+                                                    const isSelected = selectedCourses.includes(course.value);
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={course.value}
+                                                            style={[
+                                                                styles.courseButton,
+                                                                isSelected && styles.courseButtonActive
+                                                            ]}
+                                                            onPress={() => toggleCourse(course.value)}
+                                                        >
+                                                            <Text style={[
+                                                                styles.courseButtonText,
+                                                                isSelected && styles.courseButtonTextActive
+                                                            ]}>
+                                                                {course.label}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                            
                                             <View style={styles.bannerFileRow}>
                                                 <View style={styles.uploadSection}>
                                                     <Text style={styles.label}>Event Banner</Text>
@@ -506,7 +576,7 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
                                                     // Clear the date and time inputs as well
                                                     setNewDate('');
                                                     setNewTime('');
-                                                    
+                                                    setSelectedCourses([]);
                                                 }}
                                             >
                                                 <Text style={styles.buttonText}>Cancel</Text>
@@ -716,7 +786,49 @@ const styles = StyleSheet.create({
         fontSize: 24,
         color: '#000',
         fontStyle: 'italic',
-    }
+    },
+
+    sectionSubtitle: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 10,
+        fontStyle: 'italic',
+    },
+    coursesContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 15,
+    },
+    courseLabel: {
+        width: '100%',
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#E50914',
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    courseButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        backgroundColor: '#fff',
+        marginBottom: 8,
+    },
+    courseButtonActive: {
+        backgroundColor: '#E50914',
+        borderColor: '#E50914',
+    },
+    courseButtonText: {
+        fontSize: 13,
+        color: '#333',
+    },
+    courseButtonTextActive: {
+        color: '#fff',
+        fontWeight: '500',
+    },
 
 
 });

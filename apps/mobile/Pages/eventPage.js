@@ -93,7 +93,8 @@ export default function Event() {
                                 description: event.description,
                                 participants: event.participants,
                                 location: event.location,
-                                status: event.status
+                                status: event.status,
+                                eligibleCourses: event.eligibleCourses || []
                             }}
                             onApprove={() => openActionModal(event.id, 'Approved')}
                             onReject={() => openActionModal(event.id, 'Rejected')}
