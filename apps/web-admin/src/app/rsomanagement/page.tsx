@@ -334,8 +334,32 @@ const RSOManagement = () => {
         documentReviews: reviewPayload,
       });
 
-      alert("✅ Review submitted successfully!");
-      setShowModal(false);
+      // --- NEW LOGIC FOR APPROVAL ---
+      if (newStatus === "approved") {
+        // Suggest an RSO-specific email and a temporary password
+        const suggestedEmail = `${selectedOrg.acronym.toLowerCase()}@rso.admin`;
+        const suggestedPassword = Math.random().toString(36).slice(-8); // Generate an 8-char random password
+
+        setOrgEmail(suggestedEmail);
+        setOrgPassword(suggestedPassword);
+
+        alert(`✅ Organization ${selectedOrg.orgName} Approved! Now, create the admin account.`);
+        setShowModal(false); // Close review modal
+        setShowOrgAccountModal(true); // Open account creation modal
+
+        // Note: Reload RSOs to update status in the main table
+        const updatedOrgs = await getOrganizations();
+        setRsos(updatedOrgs);
+
+      } else {
+        alert(`✅ Review submitted successfully! Status set to ${newStatus}.`);
+        setShowModal(false);
+        // Note: Reload RSOs to update status in the main table
+        const updatedOrgs = await getOrganizations();
+        setRsos(updatedOrgs);
+      }
+      // --- END NEW LOGIC ---
+
     } catch (err) {
       console.error(err);
       alert("❌ Failed to submit review.");
@@ -702,6 +726,8 @@ const RSOManagement = () => {
 
               <button
                 onClick={async () => {
+                  if (!selectedOrg) return alert("No organization selected."); // Safety check
+
                   if (!orgEmail || !orgPassword)
                     return alert("Please fill all fields.");
 
@@ -712,24 +738,28 @@ const RSOManagement = () => {
 
                   setLoadingCreate(true);
                   try {
-                    // ✅ Use org name and acronym instead of president’s name
-                    const firstName = selectedOrg?.orgName || "Organization";
-                    const lastName = selectedOrg?.acronym || "";
+                    // ✅ Use org name and acronym
+                    const firstName = selectedOrg.orgName; // Use selectedOrg directly
+                    const lastName = selectedOrg.acronym; // Use selectedOrg directly
 
                     const result = await autoCreateUser(orgEmail, orgPassword, {
                       firstName,
                       lastName,
                       role: "admin",
-                      organizationId: selectedOrg?.id,
+                      organizationId: selectedOrg.id,
                     });
 
                     if (result.success) {
                       alert(
-                        `✅ Organization account created for ${selectedOrg?.orgName}`
+                        `✅ Organization admin account created for ${selectedOrg.orgName} (Email: ${orgEmail}, Password: ${orgPassword})`
                       );
                       setShowOrgAccountModal(false);
+                      // Important: Reset email/password state after successful creation
+                      setOrgEmail("");
+                      setOrgPassword("");
+
                     } else {
-                      alert(`⚠️ Failed: ${result.error}`);
+                      alert(`⚠️ Failed to create user: ${result.error}`);
                     }
                   } catch (err) {
                     console.error(err);

@@ -343,7 +343,8 @@ export const autoCreateUser = async (
       uid,
       email,
       organizationId: details.organizationId || null,
-      role: details.role || "student",
+      role: details.role || "admin",
+      is_active: true, 
       createdAt: serverTimestamp(),
     });
 

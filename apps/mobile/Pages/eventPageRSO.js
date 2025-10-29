@@ -14,7 +14,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { getAuth } from "firebase/auth"; // if using Firebase Auth
+import { getAuth } from "firebase/auth"; 
 import EventCalendar from "../components/calendar";
 import DropDownPicker from 'react-native-dropdown-picker';
 import { firestore } from '../Firebase';
@@ -597,7 +597,7 @@ export default function EventPageRSO() {
                         style={styles.floatingButton}
                         onPress={() => setIsModalVisible(true)}
                     >
-                        <Text style={styles.floatingButtonText}>Create Event2</Text>
+                        <Text style={styles.floatingButtonText}>Create Event</Text>
                     </TouchableOpacity>
 
                     <View style={styles.titleContainer}>
