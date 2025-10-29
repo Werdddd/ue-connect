@@ -31,6 +31,7 @@ import {
   DocumentReviews,
   submitOrganizationReview,
   downloadDocumentFromBase64,
+  deleteOrganization,
 } from "../../services/organizations";
 import { firestore, auth } from "@/Firebase";
 import RegisterOrganizationModal from "../components/modals/RegisterOrganizationModal";
@@ -140,6 +141,36 @@ const RSOManagement = () => {
     [rsos]
   );
 
+  const handleDeleteOrg = async () => {
+    if (!selectedOrg) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete the organization "${selectedOrg.orgName}"? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+
+      const result = await deleteOrganization(selectedOrg.id);
+
+      if (result.success) {
+        // Optimistically update UI
+        setRsos((prevRsos) => prevRsos.filter((r) => r.id !== selectedOrg.id));
+        alert(`✅ Organization "${selectedOrg.orgName}" deleted successfully.`);
+        setShowModal(false);
+        setSelectedOrg(null);
+      } else {
+        alert(`❌ Failed to delete organization: ${result.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ An unexpected error occurred during deletion.");
+    } finally {
+      setLoading(false);
+    }
+  };
   // Filter RSOs based on search and filters
   const filteredRSOs = rsos.filter((rso) => {
     const matchesSearch =
@@ -303,8 +334,32 @@ const RSOManagement = () => {
         documentReviews: reviewPayload,
       });
 
-      alert("✅ Review submitted successfully!");
-      setShowModal(false);
+      // --- NEW LOGIC FOR APPROVAL ---
+      if (newStatus === "approved") {
+        // Suggest an RSO-specific email and a temporary password
+        const suggestedEmail = `${selectedOrg.acronym.toLowerCase()}@rso.admin`;
+        const suggestedPassword = Math.random().toString(36).slice(-8); // Generate an 8-char random password
+
+        setOrgEmail(suggestedEmail);
+        setOrgPassword(suggestedPassword);
+
+        alert(`✅ Organization ${selectedOrg.orgName} Approved! Now, create the admin account.`);
+        setShowModal(false); // Close review modal
+        setShowOrgAccountModal(true); // Open account creation modal
+
+        // Note: Reload RSOs to update status in the main table
+        const updatedOrgs = await getOrganizations();
+        setRsos(updatedOrgs);
+
+      } else {
+        alert(`✅ Review submitted successfully! Status set to ${newStatus}.`);
+        setShowModal(false);
+        // Note: Reload RSOs to update status in the main table
+        const updatedOrgs = await getOrganizations();
+        setRsos(updatedOrgs);
+      }
+      // --- END NEW LOGIC ---
+
     } catch (err) {
       console.error(err);
       alert("❌ Failed to submit review.");
@@ -671,6 +726,8 @@ const RSOManagement = () => {
 
               <button
                 onClick={async () => {
+                  if (!selectedOrg) return alert("No organization selected."); // Safety check
+
                   if (!orgEmail || !orgPassword)
                     return alert("Please fill all fields.");
 
@@ -681,24 +738,28 @@ const RSOManagement = () => {
 
                   setLoadingCreate(true);
                   try {
-                    // ✅ Use org name and acronym instead of president’s name
-                    const firstName = selectedOrg?.orgName || "Organization";
-                    const lastName = selectedOrg?.acronym || "";
+                    // ✅ Use org name and acronym
+                    const firstName = selectedOrg.orgName; // Use selectedOrg directly
+                    const lastName = selectedOrg.acronym; // Use selectedOrg directly
 
                     const result = await autoCreateUser(orgEmail, orgPassword, {
                       firstName,
                       lastName,
                       role: "admin",
-                      organizationId: selectedOrg?.id,
+                      organizationId: selectedOrg.id,
                     });
 
                     if (result.success) {
                       alert(
-                        `✅ Organization account created for ${selectedOrg?.orgName}`
+                        `✅ Organization admin account created for ${selectedOrg.orgName} (Email: ${orgEmail}, Password: ${orgPassword})`
                       );
                       setShowOrgAccountModal(false);
+                      // Important: Reset email/password state after successful creation
+                      setOrgEmail("");
+                      setOrgPassword("");
+
                     } else {
-                      alert(`⚠️ Failed: ${result.error}`);
+                      alert(`⚠️ Failed to create user: ${result.error}`);
                     }
                   } catch (err) {
                     console.error(err);
@@ -729,6 +790,20 @@ const RSOManagement = () => {
           >
             {/* Header */}
             <div className="bg-red-600 text-white px-6 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-2"> {/* <-- Add a new wrapper div for buttons */}
+                {/* NEW DELETE BUTTON GOES HERE */}
+                <button
+                  className="text-white hover:bg-white/20 rounded-lg p-1.5 transition"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent modal closing from propogating
+                    handleDeleteOrg();
+                  }}
+                  title="Delete Organization"
+                >
+                  <Trash2 className="h-5 w-5 text-white" />
+                </button>
+              </div>
+
               <div className="flex items-center gap-3">
                 {selectedOrg.logoBase64 && (
                   <img
@@ -784,9 +859,9 @@ const RSOManagement = () => {
                       value={
                         selectedOrg.registrationType
                           ? selectedOrg.registrationType
-                              .charAt(0)
-                              .toUpperCase() +
-                            selectedOrg.registrationType.slice(1)
+                            .charAt(0)
+                            .toUpperCase() +
+                          selectedOrg.registrationType.slice(1)
                           : "N/A"
                       }
                     />
@@ -868,15 +943,14 @@ const RSOManagement = () => {
                               {documentReviews[doc.key] && (
                                 <span
                                   className={`px-2 py-0.5 text-xs font-semibold rounded-full
-                                    ${
-                                      documentReviews[doc.key] === "approved"
-                                        ? "bg-green-100 text-green-700"
-                                        : documentReviews[doc.key] ===
-                                          "rejected"
+                                    ${documentReviews[doc.key] === "approved"
+                                      ? "bg-green-100 text-green-700"
+                                      : documentReviews[doc.key] ===
+                                        "rejected"
                                         ? "bg-red-100 text-red-700"
                                         : documentReviews[doc.key] === "update"
-                                        ? "bg-yellow-100 text-yellow-700"
-                                        : "bg-gray-100 text-gray-600"
+                                          ? "bg-yellow-100 text-yellow-700"
+                                          : "bg-gray-100 text-gray-600"
                                     }`}
                                 >
                                   {documentReviews[doc.key] === "approved" &&
@@ -917,11 +991,10 @@ const RSOManagement = () => {
                               onClick={() =>
                                 handleDocumentReview(doc.key, "approved")
                               }
-                              className={`p-2 rounded-lg transition ${
-                                documentReviews[doc.key] === "approved"
-                                  ? "bg-green-100 text-green-600"
-                                  : "text-gray-400 hover:bg-green-50 hover:text-green-600"
-                              }`}
+                              className={`p-2 rounded-lg transition ${documentReviews[doc.key] === "approved"
+                                ? "bg-green-100 text-green-600"
+                                : "text-gray-400 hover:bg-green-50 hover:text-green-600"
+                                }`}
                               title="Approve"
                             >
                               <Check className="h-4 w-4" />
@@ -931,11 +1004,10 @@ const RSOManagement = () => {
                               onClick={() =>
                                 handleDocumentReview(doc.key, "rejected")
                               }
-                              className={`p-2 rounded-lg transition ${
-                                documentReviews[doc.key] === "rejected"
-                                  ? "bg-red-100 text-red-600"
-                                  : "text-gray-400 hover:bg-red-50 hover:text-red-600"
-                              }`}
+                              className={`p-2 rounded-lg transition ${documentReviews[doc.key] === "rejected"
+                                ? "bg-red-100 text-red-600"
+                                : "text-gray-400 hover:bg-red-50 hover:text-red-600"
+                                }`}
                               title="Reject"
                             >
                               <X className="h-4 w-4" />
@@ -945,11 +1017,10 @@ const RSOManagement = () => {
                               onClick={() =>
                                 handleDocumentReview(doc.key, "update")
                               }
-                              className={`p-2 rounded-lg transition ${
-                                documentReviews[doc.key] === "update"
-                                  ? "bg-blue-100 text-blue-600"
-                                  : "text-gray-400 hover:bg-blue-50 hover:text-blue-600"
-                              }`}
+                              className={`p-2 rounded-lg transition ${documentReviews[doc.key] === "update"
+                                ? "bg-blue-100 text-blue-600"
+                                : "text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                                }`}
                               title="Request Update"
                             >
                               <AlertTriangle className="h-4 w-4" />
@@ -973,113 +1044,108 @@ const RSOManagement = () => {
 
                 {/* Conditional Section — depends on status */}
                 {selectedOrg.status ===
-                "terminated" ? null : selectedOrg.status === "approved" ? (
-                  // ✅ Manage Approved Organization Section (unchanged)
-                  <div className="border-t pt-6 mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-green-600" />
-                      Manage Approved Organization
-                    </h3>
+                  "terminated" ? null : selectedOrg.status === "approved" ? (
+                    // ✅ Manage Approved Organization Section (unchanged)
+                    <div className="border-t pt-6 mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-green-600" />
+                        Manage Approved Organization
+                      </h3>
 
-                    <div className="flex gap-3 mb-4">
-                      <button
-                        onClick={() => setFinalAction("hold")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "hold"
+                      <div className="flex gap-3 mb-4">
+                        <button
+                          onClick={() => setFinalAction("hold")}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "hold"
                             ? "bg-yellow-500 text-white border-yellow-600"
                             : "border-gray-300 text-gray-700 hover:bg-yellow-50"
-                        }`}
-                      >
-                        Place On Hold
-                      </button>
+                            }`}
+                        >
+                          Place On Hold
+                        </button>
 
-                      <button
-                        onClick={() => setFinalAction("terminated")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "terminated"
+                        <button
+                          onClick={() => setFinalAction("terminated")}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "terminated"
                             ? "bg-red-600 text-white border-red-700"
                             : "border-gray-300 text-gray-700 hover:bg-red-50"
-                        }`}
+                            }`}
+                        >
+                          Terminate Organization
+                        </button>
+                      </div>
+
+                      <textarea
+                        value={finalRemarks}
+                        onChange={(e) => setFinalRemarks(e.target.value)}
+                        rows={3}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
+                      />
+
+                      <button
+                        onClick={handleFinalSubmit}
+                        disabled={isSubmitting || !finalAction}
+                        className="w-full mt-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                       >
-                        Terminate Organization
+                        {isSubmitting ? "Submitting..." : "Submit Action"}
                       </button>
                     </div>
+                  ) : selectedOrg.status === "hold" ? (
+                    // ✅ NEW SECTION FOR HOLD STATUS
+                    <div className="border-t pt-6 mt-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-orange-600" />
+                        Organization is On Hold
+                      </h3>
 
-                    <textarea
-                      value={finalRemarks}
-                      onChange={(e) => setFinalRemarks(e.target.value)}
-                      rows={3}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
-                    />
-
-                    <button
-                      onClick={handleFinalSubmit}
-                      disabled={isSubmitting || !finalAction}
-                      className="w-full mt-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                    >
-                      {isSubmitting ? "Submitting..." : "Submit Action"}
-                    </button>
-                  </div>
-                ) : selectedOrg.status === "hold" ? (
-                  // ✅ NEW SECTION FOR HOLD STATUS
-                  <div className="border-t pt-6 mt-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-orange-600" />
-                      Organization is On Hold
-                    </h3>
-
-                    <div className="flex gap-3 mb-4">
-                      <button
-                        onClick={() => setFinalAction("approve")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "approve"
+                      <div className="flex gap-3 mb-4">
+                        <button
+                          onClick={() => setFinalAction("approve")}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "approve"
                             ? "bg-green-600 text-white border-green-700"
                             : "border-gray-300 text-gray-700 hover:bg-green-50"
-                        }`}
-                      >
-                        Lift Hold Status
-                      </button>
+                            }`}
+                        >
+                          Lift Hold Status
+                        </button>
 
-                      <button
-                        onClick={() => setFinalAction("terminated")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "terminated"
+                        <button
+                          onClick={() => setFinalAction("terminated")}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "terminated"
                             ? "bg-red-600 text-white border-red-700"
                             : "border-gray-300 text-gray-700 hover:bg-red-50"
-                        }`}
-                      >
-                        Terminate
-                      </button>
+                            }`}
+                        >
+                          Terminate
+                        </button>
 
-                      <button
-                        onClick={() => setFinalAction("update")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "update"
+                        <button
+                          onClick={() => setFinalAction("update")}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "update"
                             ? "bg-yellow-500 text-white border-yellow-600"
                             : "border-gray-300 text-gray-700 hover:bg-yellow-50"
-                        }`}
+                            }`}
+                        >
+                          Request Update
+                        </button>
+                      </div>
+
+                      <textarea
+                        value={finalRemarks}
+                        onChange={(e) => setFinalRemarks(e.target.value)}
+                        rows={3}
+                        placeholder="Enter remarks..."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
+                      />
+
+                      <button
+                        onClick={handleFinalSubmit}
+                        disabled={isSubmitting || !finalAction}
+                        className="w-full mt-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                       >
-                        Request Update
+                        {isSubmitting ? "Submitting..." : "Submit Decision"}
                       </button>
                     </div>
-
-                    <textarea
-                      value={finalRemarks}
-                      onChange={(e) => setFinalRemarks(e.target.value)}
-                      rows={3}
-                      placeholder="Enter remarks..."
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
-                    />
-
-                    <button
-                      onClick={handleFinalSubmit}
-                      disabled={isSubmitting || !finalAction}
-                      className="w-full mt-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                    >
-                      {isSubmitting ? "Submitting..." : "Submit Decision"}
-                    </button>
-                  </div>
-                ) : (
+                  ) : (
                   // 🧾 Original Final Decision Section for non-approved orgs
                   <div className="border-t pt-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1094,35 +1160,31 @@ const RSOManagement = () => {
                         disabled={Object.values(documentReviews).some(
                           (s) => s !== "approved"
                         )}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "approve"
-                            ? "bg-green-600 text-white border-green-700"
-                            : "border-gray-300 text-gray-700 hover:bg-green-50"
-                        } ${
-                          Object.values(documentReviews).some(
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "approve"
+                          ? "bg-green-600 text-white border-green-700"
+                          : "border-gray-300 text-gray-700 hover:bg-green-50"
+                          } ${Object.values(documentReviews).some(
                             (s) => s !== "approved"
                           ) && "opacity-40 cursor-not-allowed"
-                        }`}
+                          }`}
                       >
                         Approve Organization
                       </button>
                       <button
                         onClick={() => setFinalAction("reject")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "reject"
-                            ? "bg-red-600 text-white border-red-700"
-                            : "border-gray-300 text-gray-700 hover:bg-red-50"
-                        }`}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "reject"
+                          ? "bg-red-600 text-white border-red-700"
+                          : "border-gray-300 text-gray-700 hover:bg-red-50"
+                          }`}
                       >
                         Reject
                       </button>
                       <button
                         onClick={() => setFinalAction("update")}
-                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                          finalAction === "update"
-                            ? "bg-yellow-500 text-white border-yellow-600"
-                            : "border-gray-300 text-gray-700 hover:bg-yellow-50"
-                        }`}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "update"
+                          ? "bg-yellow-500 text-white border-yellow-600"
+                          : "border-gray-300 text-gray-700 hover:bg-yellow-50"
+                          }`}
                       >
                         Request Update
                       </button>
@@ -1144,11 +1206,10 @@ const RSOManagement = () => {
                     <button
                       onClick={handleFinalSubmit}
                       disabled={isSubmitting || !finalAction}
-                      className={`w-full py-2 rounded-lg font-medium transition ${
-                        isSubmitting || !finalAction
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-red-600 text-white hover:bg-red-700"
-                      }`}
+                      className={`w-full py-2 rounded-lg font-medium transition ${isSubmitting || !finalAction
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-red-600 text-white hover:bg-red-700"
+                        }`}
                     >
                       {isSubmitting ? "Submitting..." : "Submit Decision"}
                     </button>
@@ -1171,30 +1232,30 @@ const RSOManagement = () => {
                 {(selectedOrg.submittedAt ||
                   selectedOrg.createdAt ||
                   selectedOrg.updatedAt) && (
-                  <div className="border-t pt-4">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      {selectedOrg.submittedAt && (
-                        <span>
-                          Submitted:{" "}
-                          {new Date(
-                            selectedOrg.submittedAt.seconds * 1000
-                          ).toLocaleDateString()}
-                        </span>
-                      )}
-                      {selectedOrg.updatedAt && (
-                        <>
-                          <span>•</span>
+                    <div className="border-t pt-4">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        {selectedOrg.submittedAt && (
                           <span>
-                            Updated:{" "}
+                            Submitted:{" "}
                             {new Date(
-                              selectedOrg.updatedAt.seconds * 1000
+                              selectedOrg.submittedAt.seconds * 1000
                             ).toLocaleDateString()}
                           </span>
-                        </>
-                      )}
+                        )}
+                        {selectedOrg.updatedAt && (
+                          <>
+                            <span>•</span>
+                            <span>
+                              Updated:{" "}
+                              {new Date(
+                                selectedOrg.updatedAt.seconds * 1000
+                              ).toLocaleDateString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </div>

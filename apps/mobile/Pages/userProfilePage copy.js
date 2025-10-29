@@ -35,8 +35,8 @@ export default function UserProfilePage() {
                                 <Image source={{ uri: 'https://www.example.com/user-profile-pic.jpg' }} style={styles.userProfileImage} />
                                 <Text style={styles.userName}>{name || 'Your Name'}</Text>
                                 <View style={styles.infoDetailRow}>
-                                    <Text style={styles.userYear}>{year || 'Your Year'}</Text>
-                                    <Text style={styles.userCourse}>{course || 'Your Course'}</Text>
+                                    <Text style={styles.userYear}>{year || ''}</Text>
+                                    <Text style={styles.userCourse}>{course || ''}</Text>
                                 </View>
                                 
                                 <View style={styles.buttonRow}>

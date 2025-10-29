@@ -4,6 +4,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   query,
   where,
@@ -77,6 +78,20 @@ export type Organization = {
   
   // Document-level reviews
   documentReviews?: DocumentReviews;
+};
+
+export const deleteOrganization = async (
+  orgId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const docRef = doc(firestore, "organizations", orgId);
+    await deleteDoc(docRef);
+    console.log("✅ Organization deleted successfully:", orgId);
+    return { success: true };
+  } catch (error: any) {
+    console.error("❌ Error deleting organization:", error);
+    return { success: false, error: error.message };
+  }
 };
 
 export async function getTotalOrganizations(): Promise<number> {
@@ -328,7 +343,8 @@ export const autoCreateUser = async (
       uid,
       email,
       organizationId: details.organizationId || null,
-      role: details.role || "student",
+      role: details.role || "admin",
+      is_active: true, 
       createdAt: serverTimestamp(),
     });
 
