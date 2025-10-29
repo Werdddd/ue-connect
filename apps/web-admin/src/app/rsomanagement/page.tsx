@@ -98,8 +98,6 @@ const RSOManagement = () => {
     setDocumentRemarks(initialRemarks);
   }, [selectedOrg]);
 
-
-
   useEffect(() => {
     if (userEmail) {
       setOrgData({
@@ -126,8 +124,6 @@ const RSOManagement = () => {
     };
     fetchRSOs();
   }, []);
-
-  
 
   // Stats
   const stats = useMemo(
@@ -236,85 +232,86 @@ const RSOManagement = () => {
   };
 
   const handleDocumentReview = (key: string, status: string) => {
-  setDocumentReviews((prev) => ({
-    ...prev,
-    [key]: status,
-  }));
-};
+    setDocumentReviews((prev) => ({
+      ...prev,
+      [key]: status,
+    }));
+  };
 
-const handleDocumentRemarkChange = (key: string, text: string) => {
-  setDocumentRemarks((prev) => ({
-    ...prev,
-    [key]: text,
-  }));
-};
+  const handleDocumentRemarkChange = (key: string, text: string) => {
+    setDocumentRemarks((prev) => ({
+      ...prev,
+      [key]: text,
+    }));
+  };
 
   const handleFinalSubmit = async () => {
-  if (!selectedOrg) return alert("Select an organization first.");
-  if (!finalAction) return alert("Please select an action first.");
+    if (!selectedOrg) return alert("Select an organization first.");
+    if (!finalAction) return alert("Please select an action first.");
 
-  const docs = getDocumentsList(selectedOrg);
+    const docs = getDocumentsList(selectedOrg);
 
-  // ✅ Ensure every document has been reviewed
-  for (const d of docs) {
-    if (!documentReviews[d.key]) {
-      return alert(`Please review all documents before submitting.`);
+    // ✅ Ensure every document has been reviewed
+    for (const d of docs) {
+      if (!documentReviews[d.key]) {
+        return alert(`Please review all documents before submitting.`);
+      }
     }
-  }
 
-  // ✅ Only allow final APPROVE if ALL docs are approved
-  if (
-    finalAction === "approve" &&
-    Object.values(documentReviews).some((s) => s !== "approved")
-  ) {
-    return alert("❗ You can only APPROVE when ALL documents are approved.");
-  }
+    // ✅ Only allow final APPROVE if ALL docs are approved
+    if (
+      finalAction === "approve" &&
+      Object.values(documentReviews).some((s) => s !== "approved")
+    ) {
+      return alert("❗ You can only APPROVE when ALL documents are approved.");
+    }
 
-  setIsSubmitting(true);
+    setIsSubmitting(true);
 
-  try {
-    // Determine DB status field value
-    let newStatus:
-      | "approved"
-      | "rejected"
-      | "applied"
-      | "terminated"
-      | "hold" = "applied";
+    try {
+      // Determine DB status field value
+      let newStatus:
+        | "approved"
+        | "rejected"
+        | "applied"
+        | "terminated"
+        | "hold" = "applied";
 
-    if (finalAction === "approve") newStatus = "approved";
-    if (finalAction === "reject") newStatus = "rejected";
-    if (finalAction === "update") newStatus = "applied";
-    if (finalAction === "hold") newStatus = "hold";
-    if (finalAction === "terminated") newStatus = "terminated";
+      if (finalAction === "approve") newStatus = "approved";
+      if (finalAction === "reject") newStatus = "rejected";
+      if (finalAction === "update") newStatus = "applied";
+      if (finalAction === "hold") newStatus = "hold";
+      if (finalAction === "terminated") newStatus = "terminated";
 
-    // ✅ Prepare document review data
-    const reviewPayload: Record<string, { status: string | null; remarks: string }> = {};
+      // ✅ Prepare document review data
+      const reviewPayload: Record<
+        string,
+        { status: string | null; remarks: string }
+      > = {};
 
-    docs.forEach((d) => {
-      reviewPayload[d.key] = {
-        status: documentReviews[d.key],
-        remarks: documentRemarks[d.key] || "",
-      };
-    });
+      docs.forEach((d) => {
+        reviewPayload[d.key] = {
+          status: documentReviews[d.key],
+          remarks: documentRemarks[d.key] || "",
+        };
+      });
 
+      // ✅ Save to Firestore
+      await submitOrganizationReview(selectedOrg.id, {
+        status: newStatus,
+        reviewNotes: finalRemarks,
+        documentReviews: reviewPayload,
+      });
 
-    // ✅ Save to Firestore
-    await submitOrganizationReview(selectedOrg.id, {
-      status: newStatus,
-      reviewNotes: finalRemarks,
-      documentReviews: reviewPayload,
-    });
-
-    alert("✅ Review submitted successfully!");
-    setShowModal(false);
-  } catch (err) {
-    console.error(err);
-    alert("❌ Failed to submit review.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+      alert("✅ Review submitted successfully!");
+      setShowModal(false);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to submit review.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleRSOSelect = (rsoId: string) => {
     setSelectedRSOs((prev) =>
@@ -851,7 +848,6 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
 
                 {/* Document Review Section */}
                 <div className="border-t pt-6 mt-6">
-                  
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <FileText className="h-5 w-5 text-red-600" />
                     Document Review
@@ -865,32 +861,38 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                              <p className="font-medium text-gray-900 flex items-center gap-2">
-                                {doc.label}
+                            <p className="font-medium text-gray-900 flex items-center gap-2">
+                              {doc.label}
 
-                                {/* SHOW STATUS BADGE */}
-                                {documentReviews[doc.key] && (
-                                  <span
-                                    className={`px-2 py-0.5 text-xs font-semibold rounded-full
+                              {/* SHOW STATUS BADGE */}
+                              {documentReviews[doc.key] && (
+                                <span
+                                  className={`px-2 py-0.5 text-xs font-semibold rounded-full
                                     ${
                                       documentReviews[doc.key] === "approved"
                                         ? "bg-green-100 text-green-700"
-                                        : documentReviews[doc.key] === "rejected"
+                                        : documentReviews[doc.key] ===
+                                          "rejected"
                                         ? "bg-red-100 text-red-700"
                                         : documentReviews[doc.key] === "update"
                                         ? "bg-yellow-100 text-yellow-700"
                                         : "bg-gray-100 text-gray-600"
                                     }`}
-                                  >
-                                    {documentReviews[doc.key] === "approved" && "APPROVED"}
-                                    {documentReviews[doc.key] === "rejected" && "REJECTED"}
-                                    {documentReviews[doc.key] === "update" && "REQUIRES UPDATE"}
-                                  </span>
-                                )}
-                              </p>
+                                >
+                                  {documentReviews[doc.key] === "approved" &&
+                                    "APPROVED"}
+                                  {documentReviews[doc.key] === "rejected" &&
+                                    "REJECTED"}
+                                  {documentReviews[doc.key] === "update" &&
+                                    "REQUIRES UPDATE"}
+                                </span>
+                              )}
+                            </p>
 
                             {/* FILE NAME */}
-                            <p className="text-sm text-gray-500">{doc.fileName}</p>
+                            <p className="text-sm text-gray-500">
+                              {doc.fileName}
+                            </p>
 
                             {/* SHOW SAVED REMARKS (read only preview)
                             {documentRemarks[doc.key] && (
@@ -899,7 +901,6 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
                               </p>
                             )} */}
                           </div>
-
 
                           <div className="flex items-center gap-2">
                             <button
@@ -956,8 +957,6 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
                           </div>
                         </div>
 
-                        
-
                         <textarea
                           placeholder="Add remarks for this document..."
                           value={documentRemarks[doc.key] || ""}
@@ -973,8 +972,8 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
                 </div>
 
                 {/* Conditional Section — depends on status */}
-                {selectedOrg.status === "terminated" ? null : 
-                  selectedOrg.status === "approved" ? (
+                {selectedOrg.status ===
+                "terminated" ? null : selectedOrg.status === "approved" ? (
                   // ✅ Manage Approved Organization Section (unchanged)
                   <div className="border-t pt-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -1090,17 +1089,23 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
 
                     <div className="flex gap-3 mb-4">
                       {/* ✅ FINAL APPROVE BUTTON GOES HERE */}
-                        <button
-                          onClick={() => setFinalAction("approve")}
-                          disabled={Object.values(documentReviews).some((s) => s !== "approved")}
-                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
-                            finalAction === "approve"
-                              ? "bg-green-600 text-white border-green-700"
-                              : "border-gray-300 text-gray-700 hover:bg-green-50"
-                          } ${Object.values(documentReviews).some((s) => s !== "approved") && "opacity-40 cursor-not-allowed"}`}
-                        >
-                          Approve Organization
-                        </button>
+                      <button
+                        onClick={() => setFinalAction("approve")}
+                        disabled={Object.values(documentReviews).some(
+                          (s) => s !== "approved"
+                        )}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                          finalAction === "approve"
+                            ? "bg-green-600 text-white border-green-700"
+                            : "border-gray-300 text-gray-700 hover:bg-green-50"
+                        } ${
+                          Object.values(documentReviews).some(
+                            (s) => s !== "approved"
+                          ) && "opacity-40 cursor-not-allowed"
+                        }`}
+                      >
+                        Approve Organization
+                      </button>
                       <button
                         onClick={() => setFinalAction("reject")}
                         className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
