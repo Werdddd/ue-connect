@@ -104,6 +104,7 @@ const PostCard = ({
                 onPress={() => onDeletePost(post.id)}
                 style={styles.optionButton}
               >
+                <Ionicons name="trash-outline" size={18} color="#E50914" />
                 <Text style={styles.optionText}>Delete Post</Text>
               </TouchableOpacity>
             </View>
@@ -502,17 +503,19 @@ const styles = StyleSheet.create({
   },
 
   optionButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '30%',
-    marginBottom: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#fff',
   },
 
   optionText: {
-    marginTop: 5,
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#333',
+    fontSize: 14,
+    color: '#E50914',
+    fontWeight: '500',
+    marginLeft: 8,
   },
 
   discardModalOverlay: {
@@ -1167,5 +1170,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     color: '#E50914',
+  },
+  optionsMenu: {
+    position: 'absolute',
+    top: 40,
+    right: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 1000,
+    minWidth: 120,
   },
 });

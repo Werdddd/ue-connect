@@ -24,7 +24,10 @@ const EventCalendar = () => {
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           //console.log(data.date);
-          if (data.date) events.push({ id: doc.id, ...data });
+          // Only include events with status "Finished" or "Approved"
+          if (data.date && (data.status === "Finished" || data.status === "Approved")) {
+            events.push({ id: doc.id, ...data });
+          }
         });
 
         const eventMap = {};

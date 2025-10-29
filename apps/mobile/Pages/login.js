@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { loginUser } from '../Backend/login';
 import { Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { firestore } from '../Firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function Login() {
   const [studentNumber, setStudentNumber] = useState('');
@@ -35,18 +37,61 @@ export default function Login() {
 
     setLoading(true);
 
-    const { success, user, error } = await loginUser({ email, password });
+    try {
+      // Verify email in ueDB collection
+      const ueDBRef = collection(firestore, 'ueDB');
+      const q = query(ueDBRef, where('email', '==', email));
+      const querySnapshot = await getDocs(q);
 
-    setLoading(false);
+      // Check if email exists in the collection
+      if (querySnapshot.empty) {
+        setLoading(false);
+        Alert.alert(
+          'Email Not Found',
+          'This email is not registered in the UE database. Please contact your administrator.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-    if (success) {
-      navigation.navigate('Home');
-    } else {
-      console.error("Error logging in: ", error);
+      // Get the first matching document
+      const ueDBDoc = querySnapshot.docs[0];
+      const ueDBData = ueDBDoc.data();
+      const isActiveField = ueDBData.is_active;
+
+      // Check if account is active
+      if (isActiveField !== true) {
+        setLoading(false);
+        Alert.alert(
+          'Account Inactive',
+          'Your account is not active. Please contact your administrator to activate your account.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Proceed with login if verification passes
+      const { success, user, error } = await loginUser({ email, password });
+
+      setLoading(false);
+
+      if (success) {
+        navigation.navigate('Home');
+      } else {
+        console.error("Error logging in: ", error);
+        Alert.alert(
+          'Login Error',
+          error.message || 'Something went wrong. Please try again.',
+          [{ text: 'I Understand' }]
+        );
+      }
+    } catch (error) {
+      setLoading(false);
+      console.error('Error during email verification:', error);
       Alert.alert(
-        'Login Error',
-        error.message || 'Something went wrong. Please try again.',
-        [{ text: 'I Understand' }]
+        'Verification Error',
+        'An error occurred while verifying your email. Please try again.',
+        [{ text: 'OK' }]
       );
     }
   };
