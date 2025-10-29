@@ -306,13 +306,13 @@ export const autoCreateUser = async (
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const uid = userCredential.user.uid;
 
-    // 2️⃣ Use email as Firestore document ID
-    const emailDocId = email.toLowerCase(); // normalize email for consistency
-    const userDoc = doc(firestore, "Users", emailDocId);
+    // 2️⃣ Use email as document ID in Users collection
+    const emailDocId = email.toLowerCase();
+    const userDocRef = doc(firestore, "Users", emailDocId);
 
-    // 3️⃣ Store user info in Firestore (orgName will appear as firstName)
-    await setDoc(userDoc, {
-      uid, // still store actual Firebase UID
+    // 3️⃣ Create User Document
+    await setDoc(userDocRef, {
+      uid,
       email,
       firstName: details.firstName || "",
       lastName: details.lastName || "",
@@ -322,7 +322,17 @@ export const autoCreateUser = async (
       updatedAt: serverTimestamp(),
     });
 
-    console.log("✅ User auto-created (email as doc ID):", emailDocId);
+    // 4️⃣ ALSO Create a document in ueDB collection
+    const ueDBDocRef = doc(firestore, "ueDB", uid); // use uid as ID (recommended)
+    await setDoc(ueDBDocRef, {
+      uid,
+      email,
+      organizationId: details.organizationId || null,
+      role: details.role || "student",
+      createdAt: serverTimestamp(),
+    });
+
+    console.log("✅ User created in Users & ueDB:", emailDocId, uid);
 
     return { success: true, uid };
   } catch (error: any) {
@@ -330,3 +340,4 @@ export const autoCreateUser = async (
     return { success: false, error: error.message };
   }
 };
+

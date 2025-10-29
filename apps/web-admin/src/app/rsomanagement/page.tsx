@@ -973,8 +973,9 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
                 </div>
 
                 {/* Conditional Section — depends on status */}
-                {selectedOrg.status === "approved" ? (
-                  // ✅ Manage Approved Organization Section
+                {selectedOrg.status === "terminated" ? null : 
+                  selectedOrg.status === "approved" ? (
+                  // ✅ Manage Approved Organization Section (unchanged)
                   <div className="border-t pt-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Shield className="h-5 w-5 text-green-600" />
@@ -990,7 +991,7 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
                             : "border-gray-300 text-gray-700 hover:bg-yellow-50"
                         }`}
                       >
-                        Hold Organization
+                        Place On Hold
                       </button>
 
                       <button
@@ -1005,29 +1006,78 @@ const handleDocumentRemarkChange = (key: string, text: string) => {
                       </button>
                     </div>
 
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Remarks
-                      </label>
-                      <textarea
-                        value={finalRemarks}
-                        onChange={(e) => setFinalRemarks(e.target.value)}
-                        rows={3}
-                        placeholder="Enter your remarks..."
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
-                      />
-                    </div>
+                    <textarea
+                      value={finalRemarks}
+                      onChange={(e) => setFinalRemarks(e.target.value)}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
+                    />
 
                     <button
                       onClick={handleFinalSubmit}
                       disabled={isSubmitting || !finalAction}
-                      className={`w-full py-2 rounded-lg font-medium transition ${
-                        isSubmitting || !finalAction
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-red-600 text-white hover:bg-red-700"
-                      }`}
+                      className="w-full mt-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                     >
                       {isSubmitting ? "Submitting..." : "Submit Action"}
+                    </button>
+                  </div>
+                ) : selectedOrg.status === "hold" ? (
+                  // ✅ NEW SECTION FOR HOLD STATUS
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-orange-600" />
+                      Organization is On Hold
+                    </h3>
+
+                    <div className="flex gap-3 mb-4">
+                      <button
+                        onClick={() => setFinalAction("approve")}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                          finalAction === "approve"
+                            ? "bg-green-600 text-white border-green-700"
+                            : "border-gray-300 text-gray-700 hover:bg-green-50"
+                        }`}
+                      >
+                        Lift Hold Status
+                      </button>
+
+                      <button
+                        onClick={() => setFinalAction("terminated")}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                          finalAction === "terminated"
+                            ? "bg-red-600 text-white border-red-700"
+                            : "border-gray-300 text-gray-700 hover:bg-red-50"
+                        }`}
+                      >
+                        Terminate
+                      </button>
+
+                      <button
+                        onClick={() => setFinalAction("update")}
+                        className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                          finalAction === "update"
+                            ? "bg-yellow-500 text-white border-yellow-600"
+                            : "border-gray-300 text-gray-700 hover:bg-yellow-50"
+                        }`}
+                      >
+                        Request Update
+                      </button>
+                    </div>
+
+                    <textarea
+                      value={finalRemarks}
+                      onChange={(e) => setFinalRemarks(e.target.value)}
+                      rows={3}
+                      placeholder="Enter remarks..."
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500"
+                    />
+
+                    <button
+                      onClick={handleFinalSubmit}
+                      disabled={isSubmitting || !finalAction}
+                      className="w-full mt-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Decision"}
                     </button>
                   </div>
                 ) : (
