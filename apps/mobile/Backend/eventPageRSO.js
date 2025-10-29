@@ -158,27 +158,31 @@ function findAvailableSlotsForDay(day, eventsForDay) {
 
   let currentTime = dayStart;
 
-  // 2. Find gaps between the start of the day and the first event
-  if (bookedSlots.length > 0) {
+  // 2. If no events booked, the entire day is available
+  if (bookedSlots.length === 0) {
+    const fullDayGap = differenceInMinutes(dayEnd, dayStart);
+    generateSuggestionsForGap(dayStart, fullDayGap, availableSlots);
+  } else {
+    // 3. Find gaps between the start of the day and the first event
     const firstEvent = bookedSlots[0];
     const gapInMinutes = differenceInMinutes(firstEvent.start, currentTime);
     generateSuggestionsForGap(currentTime, gapInMinutes, availableSlots);
     currentTime = firstEvent.end;
+
+    // 4. Find gaps between consecutive events
+    for (let i = 1; i < bookedSlots.length; i++) {
+      const prevEvent = bookedSlots[i - 1];
+      const currentEvent = bookedSlots[i];
+      const gapInMinutes = differenceInMinutes(currentEvent.start, prevEvent.end);
+
+      generateSuggestionsForGap(prevEvent.end, gapInMinutes, availableSlots);
+      currentTime = currentEvent.end;
+    }
+
+    // 5. Find gap between the last event and the end of the day
+    const finalGapInMinutes = differenceInMinutes(dayEnd, currentTime);
+    generateSuggestionsForGap(currentTime, finalGapInMinutes, availableSlots);
   }
-
-  // 3. Find gaps between consecutive events
-  for (let i = 1; i < bookedSlots.length; i++) {
-    const prevEvent = bookedSlots[i - 1];
-    const currentEvent = bookedSlots[i];
-    const gapInMinutes = differenceInMinutes(currentEvent.start, prevEvent.end);
-
-    generateSuggestionsForGap(prevEvent.end, gapInMinutes, availableSlots);
-    currentTime = currentEvent.end;
-  }
-
-  // 4. Find gap between the last event and the end of the day
-  const finalGapInMinutes = differenceInMinutes(dayEnd, currentTime);
-  generateSuggestionsForGap(currentTime, finalGapInMinutes, availableSlots);
 
   return availableSlots;
 }
@@ -237,7 +241,9 @@ export async function getSuggestedDateTime(location, targetDate) {
 
       if (!blackoutDates.includes(formattedDate)) {
         const eventsForDay = allEvents.filter(event =>
-          normalizeLocation(event.location) === targetLocation && event.date === formattedDate
+          normalizeLocation(event.location) === targetLocation && 
+          event.date === formattedDate &&
+          (event.status === 'Applied' || event.status === 'Approved')
         );
         const availableSlots = findAvailableSlotsForDay(date, eventsForDay);
         if (availableSlots.length > 0) {
@@ -255,7 +261,9 @@ export async function getSuggestedDateTime(location, targetDate) {
         if (blackoutDates.includes(formattedDate)) continue;
 
         const eventsForDay = allEvents.filter(event =>
-          normalizeLocation(event.location) === targetLocation && event.date === formattedDate
+          normalizeLocation(event.location) === targetLocation && 
+          event.date === formattedDate &&
+          (event.status === 'Applied' || event.status === 'Approved')
         );
 
         const availableSlots = findAvailableSlotsForDay(currentDate, eventsForDay);
@@ -268,6 +276,7 @@ export async function getSuggestedDateTime(location, targetDate) {
       }
     }
 
+    console.log("📅 Suggestions generated:", suggestions);
     return { suggestedTimes: suggestions };
 
   } catch (error) {

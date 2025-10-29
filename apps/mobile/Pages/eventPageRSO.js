@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     View, Text, TouchableOpacity, SafeAreaView,
     KeyboardAvoidingView, Platform, ScrollView, StyleSheet,
-    Modal, TextInput, Image, Linking, Switch
+    Modal, TextInput, Image, Linking, Switch, ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/header';
@@ -244,8 +244,11 @@ export default function EventPageRSO() {
             return;
         }
 
+        setIsAddingEvent(true);
+
         const participants = parseInt(newParticipants, 10);
         if (isNaN(participants)) {
+            setIsAddingEvent(false);
             alert('Please enter a valid number for participants!');
             return;
         }
@@ -377,6 +380,7 @@ export default function EventPageRSO() {
                 `  • "${event.title}" at ${event.time} (${event.status})`
             ).join('\n');
 
+            setIsAddingEvent(false);
             alert(
                 `⚠️ LOCATION CONFLICT DETECTED\n\n` +
                 `The location "${newLocation}" is already booked on ${newDate}.\n\n` +
@@ -432,6 +436,8 @@ export default function EventPageRSO() {
         } catch (error) {
             console.error('Error adding event:', error);
             alert('Failed to create event. Please try again.');
+        } finally {
+            setIsAddingEvent(false);
         }
     };
 
@@ -454,6 +460,7 @@ export default function EventPageRSO() {
         : events.filter(event => event.org === selectedOrg);
 
     const [suggestedDateTime, setSuggestedDateTime] = useState(null);
+    const [isAddingEvent, setIsAddingEvent] = useState(false);
 
     useEffect(() => {
         const fetchSuggestion = async () => {
@@ -462,7 +469,9 @@ export default function EventPageRSO() {
                 // Pass both location and date to the backend.
                 // - If 'newDate' is empty, the backend finds the soonest available day.
                 // - If 'newDate' has a value, the backend finds slots for that specific day.
+                console.log("🔍 Fetching suggestions for:", newLocation, newDate);
                 const suggestion = await getSuggestedDateTime(newLocation, newDate);
+                console.log("✅ Received suggestions:", suggestion);
                 setSuggestedDateTime(suggestion);
             } else {
                 // If the location is cleared, also clear the suggestions.
@@ -910,10 +919,15 @@ export default function EventPageRSO() {
                                             <Text style={styles.buttonText}>Cancel</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity
-                                            style={styles.addButton}
+                                            style={[styles.addButton, isAddingEvent && styles.disabledButton]}
                                             onPress={isEditMode ? handleUpdateEvent : handleAddEvent}
+                                            disabled={isAddingEvent}
                                         >
-                                            <Text style={styles.buttonText}>{isEditMode ? 'Update Event' : 'Add Event'}</Text>
+                                            {isAddingEvent ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <Text style={styles.buttonText}>{isEditMode ? 'Update Event' : 'Add Event'}</Text>
+                                            )}
                                         </TouchableOpacity>
                                     </View>
                                 </View>
@@ -1424,6 +1438,9 @@ const styles = StyleSheet.create({
     courseButtonTextActive: {
         color: '#fff',
         fontWeight: '500',
+    },
+    disabledButton: {
+        opacity: 0.6,
     },
 
 });
