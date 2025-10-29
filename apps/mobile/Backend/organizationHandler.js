@@ -585,3 +585,47 @@ export const getOrgDocumentStatuses = async (orgId) => {
     return [];
   }
 };
+export const updateOrganizationDocuments = async (orgId, reuploadDocuments) => {
+  try {
+    if (!orgId || typeof reuploadDocuments !== "object") {
+      throw new Error("Invalid parameters passed to updateOrganizationDocuments");
+    }
+
+    const orgRef = doc(firestore, "organizations", orgId);
+    const orgSnap = await getDoc(orgRef);
+
+    if (!orgSnap.exists()) {
+      throw new Error("Organization not found");
+    }
+
+    const orgData = orgSnap.data();
+
+    for (const [docKey, file] of Object.entries(reuploadDocuments)) {
+      if (!file || !file.uri) continue;
+
+      console.log(`📄 Reuploading ${docKey}...`);
+      const processed = await processDocument(file, docKey);
+
+      // ✅ Build update data for just one doc
+      const singleUpdate = {
+        [`${docKey}Base64`]: processed.base64,
+        [`${docKey}FileName`]: processed.fileName,
+        [`${docKey}FileSize`]: processed.fileSize,
+        [`${docKey}Status`]: "pending",
+        [`${docKey}Remarks`]: null,
+        status: "applied", // for re-review
+        updatedAt: serverTimestamp(),
+      };
+
+      // ✅ Update each doc separately to stay under the 1 MB write limit
+      await updateDoc(orgRef, singleUpdate);
+      console.log(`✅ Updated ${docKey} successfully`);
+    }
+
+    return { success: true };
+
+  } catch (error) {
+    console.error("❌ Error updating documents:", error);
+    throw error;
+  }
+};
