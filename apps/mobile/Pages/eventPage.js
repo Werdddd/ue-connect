@@ -30,7 +30,17 @@ export default function Event() {
                 return status === 'approved' || status === 'finished';
             });
 
-            setEvents(visibleEvents);
+            // Sort events: Approved first (active events), then Finished
+            const sortedEvents = visibleEvents.sort((a, b) => {
+                const statusA = a.status?.toLowerCase();
+                const statusB = b.status?.toLowerCase();
+                
+                if (statusA === 'approved' && statusB === 'finished') return -1;
+                if (statusA === 'finished' && statusB === 'approved') return 1;
+                return 0;
+            });
+
+            setEvents(sortedEvents);
         } catch (error) {
             console.error('Failed to load events:', error);
         }
