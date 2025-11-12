@@ -857,10 +857,48 @@ export default function EventPageRSO() {
                     onChangeText={setNewParticipants}
                   />
 
-                  <Text style={styles.label}>Eligible Courses *</Text>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>Eligible Courses *</Text>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.selectAllButton,
+                        selectedCourses.length ===
+                          courses.filter((c) => !c.isLabel).length &&
+                          styles.selectAllButtonActive,
+                      ]}
+                      onPress={() => {
+                        const allCourseValues = courses
+                          .filter((course) => !course.isLabel)
+                          .map((course) => course.value);
+
+                        if (selectedCourses.length === allCourseValues.length) {
+                          setSelectedCourses([]); // Deselect all
+                        } else {
+                          setSelectedCourses(allCourseValues); // Select all
+                        }
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.selectAllText,
+                          selectedCourses.length ===
+                            courses.filter((c) => !c.isLabel).length &&
+                            styles.selectAllTextActive,
+                        ]}
+                      >
+                        {selectedCourses.length ===
+                        courses.filter((c) => !c.isLabel).length
+                          ? "Deselect All"
+                          : "Select All"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
                   <Text style={styles.sectionSubtitle}>
                     Select courses that can join this event
                   </Text>
+
                   <View style={styles.coursesContainer}>
                     {courses.map((course) => {
                       if (course.isLabel) {
@@ -1567,5 +1605,33 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    marginTop: 10,
+  },
+
+  selectAllButton: {
+    backgroundColor: "#f0f0f0",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+
+  selectAllButtonActive: {
+    backgroundColor: "#007bff",
+  },
+
+  selectAllText: {
+    color: "#333",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
+  selectAllTextActive: {
+    color: "#fff",
   },
 });
