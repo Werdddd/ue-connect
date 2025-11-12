@@ -17,10 +17,12 @@ export default function OrganizationPageRSO() {
     const [officerUsers, setOfficerUsers] = useState([]);
     const [showPositionModal, setShowPositionModal] = useState(false);
     const [showRemarkModal, setShowRemarkModal] = useState(false);
+    const [showMembershipRenewalModal, setShowMembershipRenewalModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [positionInput, setPositionInput] = useState('');
     const [remarkInput, setRemarkInput] = useState('');
     const [remarkAction, setRemarkAction] = useState(''); // 'deny', 'remove_member', 'remove_officer'
+    const [membershipRenewalMessage, setMembershipRenewalMessage] = useState('It\'s time to renew your membership! Please complete your renewal to continue enjoying the benefits of our organization.');
 
     useEffect(() => {
         fetchUsers();
@@ -256,6 +258,40 @@ export default function OrganizationPageRSO() {
         }
     };
 
+    const handleSendMembershipRenewalNotification = async () => {
+        if (!membershipRenewalMessage.trim()) {
+            Alert.alert('Error', 'Please enter a message for the notification.');
+            return;
+        }
+
+        try {
+            // Send notification to all members
+            const allRecipients = [...memberUsers, ...officerUsers];
+            
+            if (allRecipients.length === 0) {
+                Alert.alert('No Members', 'There are no members to send notifications to.');
+                return;
+            }
+
+            let successCount = 0;
+            for (const member of allRecipients) {
+                await sendNotification(
+                    member.email,
+                    membershipRenewalMessage.trim(),
+                    'event'
+                );
+                successCount++;
+            }
+
+            Alert.alert('Success', `Membership renewal notification sent to ${successCount} member(s)!`);
+            setShowMembershipRenewalModal(false);
+            setMembershipRenewalMessage('It\'s time to renew your membership! Please complete your renewal to continue enjoying the benefits of our organization.');
+        } catch (error) {
+            console.error('Error sending membership renewal notification:', error);
+            Alert.alert('Error', 'Failed to send notification. Please try again.');
+        }
+    };
+
     const handleAssignOfficer = (user) => {
         setSelectedUser(user);
         setPositionInput('');
@@ -432,7 +468,15 @@ export default function OrganizationPageRSO() {
                     >
                         {/* Organization Header */}
                         <View style={styles.orgHeader}>
-                            <Text style={styles.orgName}>{orgName}</Text>
+                            <View style={styles.orgHeaderTop}>
+                                <Text style={styles.orgName}>{orgName}</Text>
+                                <TouchableOpacity 
+                                    style={styles.renewalButton}
+                                    onPress={() => setShowMembershipRenewalModal(true)}
+                                >
+                                    <Text style={styles.renewalButtonText}>📢</Text>
+                                </TouchableOpacity>
+                            </View>
                             <View style={styles.statsContainer}>
                                 <View style={styles.statBox}>
                                     <Text style={styles.statNumber}>{officerUsers.length}</Text>
@@ -600,6 +644,54 @@ export default function OrganizationPageRSO() {
                         </View>
                     </TouchableWithoutFeedback>
                 </Modal>
+
+                {/* Membership Renewal Modal */}
+                <Modal
+                    visible={showMembershipRenewalModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowMembershipRenewalModal(false)}
+                >
+                    <TouchableWithoutFeedback onPress={() => setShowMembershipRenewalModal(false)}>
+                        <View style={styles.modalOverlay}>
+                            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                                <View style={styles.modalContent}>
+                                    <Text style={styles.modalTitle}>Send Announcement</Text>
+                                    <Text style={styles.modalSubtitle}>
+                                        Customize your message for {memberUsers.length + officerUsers.length} recipient(s) (Members & Officers)
+                                    </Text>
+                                    
+                                    <TextInput
+                                        style={[styles.positionInput, styles.remarkInput]}
+                                        placeholder="Enter your renewal message..."
+                                        value={membershipRenewalMessage}
+                                        onChangeText={setMembershipRenewalMessage}
+                                        multiline
+                                        numberOfLines={5}
+                                        textAlignVertical="top"
+                                        autoFocus
+                                    />
+
+                                    <View style={styles.modalButtons}>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.cancelBtn]}
+                                            onPress={() => setShowMembershipRenewalModal(false)}
+                                        >
+                                            <Text style={styles.modalBtnText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.confirmBtn, !membershipRenewalMessage.trim() && styles.disabledBtn]}
+                                            onPress={handleSendMembershipRenewalNotification}
+                                            disabled={!membershipRenewalMessage.trim()}
+                                        >
+                                            <Text style={styles.modalBtnText}>Send</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -635,11 +727,30 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
+    orgHeaderTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
     orgName: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#1a1a1a',
-        marginBottom: 16,
+        flex: 1,
+    },
+    renewalButton: {
+        backgroundColor: 'transparent',
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    renewalButtonText: {
+        color: '#666',
+        fontSize: 20,
+        fontWeight: 'normal',
     },
     statsContainer: {
         flexDirection: 'row',
