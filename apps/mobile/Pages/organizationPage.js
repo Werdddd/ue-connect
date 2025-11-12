@@ -23,6 +23,8 @@ import { useEffect } from "react";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as DocumentPicker from "expo-document-picker";
 import { updateOrganizationDocuments } from "../Backend/organizationHandler";
+import { auth, firestore } from "../Firebase";
+import { getDoc, doc } from "firebase/firestore";
 
 export default function OrganizationPage() {
   useEffect(() => {
@@ -38,6 +40,24 @@ export default function OrganizationPage() {
     fetchOrganizations();
   }, []);
 
+  useEffect(() => {
+    const loadCurrentUserProfile = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user?.email) return;
+        const userRef = doc(firestore, "Users", user.email);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          setCurrentUserProfile(userSnap.data());
+        }
+      } catch (error) {
+        console.error("Error fetching current user profile:", error);
+      }
+    };
+
+    loadCurrentUserProfile();
+  }, []);
+
   const navigation = useNavigation();
   const [scrollY, setScrollY] = useState(0);
   const [organizations, setOrganizations] = useState([]);
@@ -45,6 +65,8 @@ export default function OrganizationPage() {
   const [showRequirementsModal, setShowRequirementsModal] = useState(false);
   const [showReaccreditationModal, setShowReaccreditationModal] =
     useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [recommendedOrganizations, setRecommendedOrganizations] = useState([]);
 
   const documentStatusList = [
     { key: "constitutionByLaws", label: "Constitution & By-Laws" },
@@ -153,6 +175,75 @@ export default function OrganizationPage() {
     navigation.navigate("ReaccreditOrganization");
   };
 
+  const normalizeValue = (value) =>
+    typeof value === "string" ? value.trim().toLowerCase() : "";
+
+  useEffect(() => {
+    if (!currentUserProfile || organizations.length === 0) {
+      setRecommendedOrganizations([]);
+      return;
+    }
+
+    const userCourse = normalizeValue(
+      currentUserProfile.Course || currentUserProfile.course
+    );
+    const userDepartment = normalizeValue(
+      currentUserProfile.department || currentUserProfile.Department
+    );
+    const userInterests = Array.isArray(currentUserProfile.interests)
+      ? currentUserProfile.interests
+          .map((interest) => normalizeValue(interest))
+          .filter(Boolean)
+      : [];
+
+    const scoredOrganizations = organizations
+      .filter((org) => org.status === "approved")
+      .map((org) => {
+        let score = 0;
+
+        const canJoin = Array.isArray(org.canJoin) ? org.canJoin : [];
+        if (canJoin.length > 0) {
+          const matchesCourse =
+            userCourse &&
+            canJoin.some(
+              (course) => normalizeValue(course) === userCourse
+            );
+          if (matchesCourse) {
+            score += 4;
+          } else if (userCourse) {
+            return null;
+          }
+        }
+
+        const orgDepartment = normalizeValue(org.department || org.college);
+        if (orgDepartment && userDepartment && orgDepartment === userDepartment) {
+          score += 2;
+        }
+
+        const orgTags = Array.isArray(org.tags)
+          ? org.tags.map((tag) => normalizeValue(tag)).filter(Boolean)
+          : [];
+        if (orgTags.length && userInterests.length) {
+          const overlap = orgTags.filter((tag) => userInterests.includes(tag));
+          score += overlap.length;
+        }
+
+        const followerCount = Array.isArray(org.followers)
+          ? org.followers.length
+          : 0;
+        score += Math.min(followerCount, 50) * 0.02;
+
+        return { org, score };
+      })
+      .filter(Boolean)
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((item) => item.org);
+
+    setRecommendedOrganizations(scoredOrganizations);
+  }, [organizations, currentUserProfile]);
+
   const [pendingOrg, setPendingOrg] = useState(null);
   const [reuploadDocuments, setReuploadDocuments] = useState({});
 
@@ -233,6 +324,24 @@ export default function OrganizationPage() {
             <Text style={styles.titleText}>{getOrganizationTitle()}</Text>
             <View style={styles.underline} />
           </View>
+
+        {recommendedOrganizations.length > 0 && (
+          <View style={styles.recommendedSection}>
+            <View style={styles.recommendedHeader}>
+              <Ionicons name="star" size={18} color="#E50914" />
+              <Text style={styles.recommendedTitle}>Recommended For You</Text>
+            </View>
+            {recommendedOrganizations.map((org) => (
+              <OrganizationCard
+                key={`recommended-${org.id}`}
+                orgName={org.orgName}
+                memberCount={Array.isArray(org.members) ? org.members.length : 0}
+                shortdesc={org.shortdesc}
+                logo={org.logoBase64 || null}
+              />
+            ))}
+          </View>
+        )}
 
           {organizations
             .filter(
@@ -674,6 +783,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#E50914",
     textAlign: "center",
+  },
+  recommendedSection: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  recommendedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  recommendedTitle: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#E50914",
   },
   underline: {
     alignSelf: "center",
