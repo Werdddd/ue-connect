@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Keyboard, TouchableWithoutFeedback, Platform, ActivityIndicator, } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { loginUser } from '../Backend/login';
+import { loginUser, sendPasswordReset } from '../Backend/login';
 import { Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { firestore } from '../Firebase';
@@ -14,6 +14,44 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
+
+  const handleForgotPassword = async () => {
+    const ueEmailRegex = /^[a-zA-Z0-9._%+-]+@ue\.edu\.ph$/;
+
+    if (!email || !email.match(ueEmailRegex)) {
+      Alert.alert(
+        'Invalid Email',
+        'Please enter your valid UE email address in the email field to receive the password reset link.'
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { success, error } = await sendPasswordReset(email);
+      setLoading(false);
+
+      if (success) {
+        Alert.alert(
+          'Password Reset Sent',
+          `A password reset link has been successfully sent to ${email}. Please check your inbox and spam folder.`
+        );
+      } else {
+        // Handle errors like 'auth/user-not-found'
+        const errorMessage = error.code === 'auth/user-not-found'
+          ? 'The email address is not registered. Please check the email and try again.'
+          : error.message || 'Failed to send password reset email. Please try again.';
+
+        Alert.alert('Reset Error', errorMessage);
+      }
+
+    } catch (error) {
+      setLoading(false);
+      console.error('Error in handleForgotPassword:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+    }
+  };
 
   const handleLogin = async () => {
     const studentNumberRegex = /^[0-9]{11}$/;
@@ -153,7 +191,7 @@ export default function Login() {
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity onPress={() => console.log('Forgot Password pressed')}>
+              <TouchableOpacity onPress={handleForgotPassword}>
                 <Text style={styles.forgotPassword}>Forgot Password?</Text>
               </TouchableOpacity>
 
