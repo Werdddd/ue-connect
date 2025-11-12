@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, Linking, Alert, TextInput } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
@@ -30,7 +30,11 @@ export default function OrgProfilePage() {
 
     const [isMember, setIsMember] = useState(false);
     const [isFollower, setFollowing] = useState(false);
-    const [isLeader, setLeader] = useState(false)
+    const [isLeader, setLeader] = useState(false);
+    const [showRenewalModal, setShowRenewalModal] = useState(false);
+    const [renewalMessage, setRenewalMessage] = useState('');
+    const [hasRenewalApproval, setHasRenewalApproval] = useState(false);
+    const [hasPendingRenewal, setHasPendingRenewal] = useState(false);
 
 
     // const orgName = 'ACSS';
@@ -116,6 +120,46 @@ setIsApplied((data.applicants || []).includes(userEmail));
         };
         followCheck();
     }, [orgName, userEmail]);
+
+    useEffect(() => {
+        const checkRenewalStatus = async () => {
+            if (!isMember) {
+                setHasRenewalApproval(false);
+                setHasPendingRenewal(false);
+                return;
+            }
+
+            try {
+                const userDocRef = doc(firestore, 'Users', userEmail);
+                const userSnap = await getDoc(userDocRef);
+                
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    const renewalApprovals = userData.renewalApprovals || {};
+                    const renewalRequests = userData.renewalRequests || {};
+                    
+                    // Check if user has renewal approval for this organization
+                    const hasApproval = renewalApprovals[orgName] == true;
+                    setHasRenewalApproval(hasApproval);
+                    
+                    // Check if user has a pending renewal request
+                    const hasPending = renewalRequests[orgName] && renewalRequests[orgName].status === 'pending';
+                    setHasPendingRenewal(hasPending);
+                    
+                    console.log(`Renewal Status for ${orgName}:`, { hasApproval, hasPending });
+                } else {
+                    setHasRenewalApproval(false);
+                    setHasPendingRenewal(false);
+                }
+            } catch (error) {
+                console.error('Error checking renewal status:', error);
+                setHasRenewalApproval(false);
+                setHasPendingRenewal(false);
+            }
+        };
+        
+        checkRenewalStatus();
+    }, [orgName, userEmail, isMember]);
 
     const toggleFollow = async (orgName, userEmail) => {
         try {
@@ -229,6 +273,44 @@ setIsApplied((data.applicants || []).includes(userEmail));
     }
 };
 
+const handleSubmitRenewalRequest = async () => {
+    if (!renewalMessage.trim()) {
+        Alert.alert('Error', 'Please enter a message for your renewal request.');
+        return;
+    }
+
+    try {
+        const userDocRef = doc(firestore, 'Users', userEmail);
+        const userSnap = await getDoc(userDocRef);
+
+        if (!userSnap.exists()) {
+            Alert.alert('Error', 'User profile not found.');
+            return;
+        }
+
+        const userData = userSnap.data();
+        const renewalRequests = userData.renewalRequests || {};
+
+        // Add renewal request for this organization
+        renewalRequests[orgName] = {
+            status: 'pending',
+            message: renewalMessage.trim(),
+            requestedAt: new Date().toISOString(),
+        };
+
+        await updateDoc(userDocRef, {
+            renewalRequests: renewalRequests,
+        });
+
+        setShowRenewalModal(false);
+        setRenewalMessage('');
+        Alert.alert('Success', 'Your renewal request has been submitted! The organization will review it shortly.');
+    } catch (error) {
+        console.error('Error submitting renewal request:', error);
+        Alert.alert('Error', 'Failed to submit renewal request. Please try again.');
+    }
+};
+
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <SafeAreaView style={styles.safeArea}>
@@ -267,6 +349,19 @@ setIsApplied((data.applicants || []).includes(userEmail));
                                     <Text style={styles.messageButtonText}>Message</Text>
                                 </TouchableOpacity>
                             </View>
+                            {isMember && !hasRenewalApproval && !hasPendingRenewal && (
+                                <TouchableOpacity 
+                                    style={styles.subtleRenewalButton}
+                                    onPress={() => setShowRenewalModal(true)}
+                                >
+                                    <Text style={styles.subtleRenewalButtonText}>Renew Membership</Text>
+                                </TouchableOpacity>
+                            )}
+                            {isMember && hasPendingRenewal && (
+                                <View style={styles.subtleRenewalButton}>
+                                    <Text style={styles.pendingRenewalText}>⏳ Renewal Pending</Text>
+                                </View>
+                            )}
                             {isLeader && (
                             <View style={styles.switchContainer}>
                                 <TouchableOpacity style={styles.switchAccountButton} onPress={switchAccount}>
@@ -313,6 +408,50 @@ setIsApplied((data.applicants || []).includes(userEmail));
                         </ScrollView>
                         <BottomNavBar />
                     </View>
+
+                    {/* Renewal Request Modal */}
+                    {showRenewalModal && (
+                        <TouchableWithoutFeedback onPress={() => setShowRenewalModal(false)}>
+                            <View style={styles.modalOverlay}>
+                                <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                                    <View style={styles.modalContent}>
+                                        <Text style={styles.modalTitle}>Renew Membership</Text>
+                                        <Text style={styles.modalSubtitle}>
+                                            Submit a renewal request to {name}
+                                        </Text>
+                                        
+                                        <TextInput
+                                            style={[styles.renewalInput, styles.renewalTextArea]}
+                                            placeholder="Why do you want to renew your membership? (Optional)"
+                                            value={renewalMessage}
+                                            onChangeText={setRenewalMessage}
+                                            multiline
+                                            numberOfLines={5}
+                                            textAlignVertical="top"
+                                        />
+
+                                        <View style={styles.renewalModalButtons}>
+                                            <TouchableOpacity
+                                                style={[styles.renewalModalBtn, styles.renewalCancelBtn]}
+                                                onPress={() => {
+                                                    setShowRenewalModal(false);
+                                                    setRenewalMessage('');
+                                                }}
+                                            >
+                                                <Text style={styles.renewalModalBtnText}>Cancel</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.renewalModalBtn, styles.renewalSubmitBtn]}
+                                                onPress={handleSubmitRenewalRequest}
+                                            >
+                                                <Text style={styles.renewalModalBtnText}>Submit Request</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </TouchableWithoutFeedback>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    )}
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </TouchableWithoutFeedback>
@@ -468,4 +607,93 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 14,
       },
+    subtleRenewalButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 12,
+        alignItems: 'center',
+        borderRadius: 8,
+        backgroundColor: 'transparent',
+    },
+    subtleRenewalButtonText: {
+        color: '#1E88E5',
+        fontWeight: '500',
+        textAlign: 'center',
+        fontSize: 14,
+    },
+    pendingRenewalText: {
+        color: '#FF9800',
+        fontWeight: '500',
+        textAlign: 'center',
+        fontSize: 14,
+    },
+    modalOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 24,
+        width: '85%',
+        maxWidth: 400,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#1a1a1a',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    modalSubtitle: {
+        fontSize: 16,
+        color: '#666',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    renewalInput: {
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        borderRadius: 12,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: 20,
+        backgroundColor: '#f8f9fa',
+    },
+    renewalTextArea: {
+        minHeight: 100,
+        paddingTop: 12,
+    },
+    renewalModalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 16,
+    },
+    renewalModalBtn: {
+        flex: 1,
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 50,
+    },
+    renewalCancelBtn: {
+        backgroundColor: '#ff0000',
+    },
+    renewalSubmitBtn: {
+        backgroundColor: '#34A853',
+    },
+    renewalModalBtnText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#fff',
+        textAlign: 'center',
+    },
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, TouchableOpacity, Image, Modal, TextInput, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { collection, query, where, getDocs, doc, updateDoc, arrayRemove, arrayUnion, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, arrayRemove, arrayUnion, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { firestore } from '../Firebase';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
@@ -15,6 +15,7 @@ export default function OrganizationPageRSO() {
     const [appliedUsers, setAppliedUsers] = useState([]);
     const [memberUsers, setMemberUsers] = useState([]);
     const [officerUsers, setOfficerUsers] = useState([]);
+    const [renewalRequests, setRenewalRequests] = useState([]);
     const [showPositionModal, setShowPositionModal] = useState(false);
     const [showRemarkModal, setShowRemarkModal] = useState(false);
     const [showMembershipRenewalModal, setShowMembershipRenewalModal] = useState(false);
@@ -71,6 +72,28 @@ export default function OrganizationPageRSO() {
                 setAppliedUsers(appliedList);
                 setMemberUsers(memberList);
                 setOfficerUsers(officerList);
+
+                // Fetch renewal requests
+                const renewalList = [];
+                
+                for (const userDoc of usersSnapshot.docs) {
+                    const userData = userDoc.data();
+                    const renewalRequests = userData.renewalRequests || {};
+                    
+                    if (renewalRequests[orgName] && renewalRequests[orgName].status === 'pending') {
+                        const userInfo = allUsers.find(u => u.email === userData.email);
+                        renewalList.push({
+                            email: userData.email,
+                            firstName: userData.firstName,
+                            lastName: userData.lastName,
+                            message: renewalRequests[orgName].message,
+                            requestedAt: renewalRequests[orgName].requestedAt,
+                            ...userInfo
+                        });
+                    }
+                }
+                
+                setRenewalRequests(renewalList);
             }
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -321,24 +344,49 @@ export default function OrganizationPageRSO() {
             if (!orgSnapshot.empty) {
                 const orgRef = orgSnapshot.docs[0].ref;
 
-                // Send notification to all members before removal
-                let notificationCount = 0;
+                // Filter out members with renewal approval
+                const membersToRemove = [];
+                const membersToKeep = [];
+
                 for (const member of memberUsers) {
+                    try {
+                        const userRef = doc(firestore, 'Users', member.email);
+                        const userSnap = await getDoc(userRef);
+                        
+                        if (userSnap.exists()) {
+                            const userData = userSnap.data();
+                            const renewalApprovals = userData.renewalApprovals || {};
+                            
+                            if (renewalApprovals[orgName] === true) {
+                                membersToKeep.push(member.email);
+                            } else {
+                                membersToRemove.push(member);
+                            }
+                        } else {
+                            membersToRemove.push(member);
+                        }
+                    } catch (error) {
+                        console.error(`Error checking renewal status for ${member.email}:`, error);
+                        membersToRemove.push(member);
+                    }
+                }
+
+                // Send notification to members being removed
+                for (const member of membersToRemove) {
                     await sendNotification(
                         member.email,
                         removeAllMessage.trim(),
                         'event'
                     );
-                    notificationCount++;
                 }
 
-                // Remove all members from organization
+                // Update organization members list (keep those with renewal approval)
                 await updateDoc(orgRef, {
-                    members: []
+                    members: membersToKeep
                 });
 
-                // Remove organization from each member's orgs array
-                for (const member of memberUsers) {
+                // Remove organization from each removed member's orgs array
+                for (const member of membersToRemove) {
                     try {
                         const userRef = doc(firestore, 'Users', member.email);
                         await updateDoc(userRef, {
@@ -349,7 +397,36 @@ export default function OrganizationPageRSO() {
                     }
                 }
 
-                Alert.alert('Success', `All ${memberUsers.length} member(s) have been removed and notified.`);
+                // Clear renewal approvals for all members (they will need to renew again for next removal cycle)
+                for (const memberEmail of membersToKeep) {
+                    try {
+                        const userRef = doc(firestore, 'Users', memberEmail);
+                        const userSnap = await getDoc(userRef);
+                        
+                        if (userSnap.exists()) {
+                            const userData = userSnap.data();
+                            const renewalApprovals = userData.renewalApprovals || {};
+                            
+                            // Clear this organization's renewal approval
+                            renewalApprovals[orgName] = false;
+                            
+                            await updateDoc(userRef, {
+                                renewalApprovals: renewalApprovals
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Error clearing renewal approval for ${memberEmail}:`, error);
+                    }
+                }
+
+                const removedCount = membersToRemove.length;
+                const keptCount = membersToKeep.length;
+                let message = `${removedCount} member(s) have been removed and notified.`;
+                if (keptCount > 0) {
+                    message += ` ${keptCount} member(s) with renewal approval were kept. Their renewal approvals have been cleared.`;
+                }
+                
+                Alert.alert('Success', message);
                 setShowRemoveAllConfirmation(false);
                 setRemoveAllMessage('Your membership has expired. You have been removed from the organization.');
                 fetchUsers();
@@ -357,6 +434,98 @@ export default function OrganizationPageRSO() {
         } catch (error) {
             console.error('Error removing all members:', error);
             Alert.alert('Error', 'Failed to remove members. Please try again.');
+        }
+    };
+
+    const handleApproveRenewal = async (userEmail) => {
+        try {
+            const userRef = doc(firestore, 'Users', userEmail);
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists()) {
+                const userData = userSnap.data();
+                const renewalRequests = userData.renewalRequests || {};
+                const renewalApprovals = userData.renewalApprovals || {};
+
+                // Mark as approved
+                renewalApprovals[orgName] = true;
+                renewalRequests[orgName].status = 'approved';
+
+                await updateDoc(userRef, {
+                    renewalApprovals: renewalApprovals,
+                    renewalRequests: renewalRequests
+                });
+
+                // Add user back to organization members if not already there
+                const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+                const orgSnapshot = await getDocs(orgQuery);
+
+                if (!orgSnapshot.empty) {
+                    const orgRef = orgSnapshot.docs[0].ref;
+                    const orgData = orgSnapshot.docs[0].data();
+                    const members = orgData.members || [];
+
+                    // Only add if not already a member
+                    if (!members.includes(userEmail)) {
+                        await updateDoc(orgRef, {
+                            members: arrayUnion(userEmail)
+                        });
+                    }
+
+                    // Also add to user's orgs array if not already there
+                    const userOrgs = userData.orgs || [];
+                    if (!userOrgs.includes(orgName)) {
+                        await updateDoc(userRef, {
+                            orgs: arrayUnion(orgName)
+                        });
+                    }
+                }
+
+                // Send notification
+                await sendNotification(
+                    userEmail,
+                    `Your membership renewal for ${orgName} has been approved!`,
+                    'event'
+                );
+
+                Alert.alert('Success', 'Renewal request approved and member added!');
+                fetchUsers();
+            }
+        } catch (error) {
+            console.error('Error approving renewal:', error);
+            Alert.alert('Error', 'Failed to approve renewal request.');
+        }
+    };
+
+    const handleDenyRenewal = async (userEmail) => {
+        try {
+            const userRef = doc(firestore, 'Users', userEmail);
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists()) {
+                const userData = userSnap.data();
+                const renewalRequests = userData.renewalRequests || {};
+
+                // Mark as denied
+                renewalRequests[orgName].status = 'denied';
+
+                await updateDoc(userRef, {
+                    renewalRequests: renewalRequests
+                });
+
+                // Send notification
+                await sendNotification(
+                    userEmail,
+                    `Your membership renewal for ${orgName} has been denied.`,
+                    'event'
+                );
+
+                Alert.alert('Success', 'Renewal request denied!');
+                fetchUsers();
+            }
+        } catch (error) {
+            console.error('Error denying renewal:', error);
+            Alert.alert('Error', 'Failed to deny renewal request.');
         }
     };
 
@@ -583,6 +752,48 @@ export default function OrganizationPageRSO() {
                                 </View>
                             </View>
                         </View>
+
+                        {/* Renewal Requests Section */}
+                        {renewalRequests.length > 0 && (
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Text style={styles.sectionTitle}>Renewal Requests</Text>
+                                    <View style={styles.countBadge}>
+                                        <Text style={styles.countText}>{renewalRequests.length}</Text>
+                                    </View>
+                                </View>
+                                {renewalRequests.map((user, index) => (
+                                    <View key={index} style={styles.renewalCard}>
+                                        <View style={styles.renewalCardHeader}>
+                                            <View style={styles.renewalUserInfo}>
+                                                <Text style={styles.renewalUserName}>{user.firstName} {user.lastName}</Text>
+                                                <Text style={styles.renewalUserEmail}>{user.email}</Text>
+                                            </View>
+                                        </View>
+                                        {user.message && (
+                                            <View style={styles.renewalMessageBox}>
+                                                <Text style={styles.renewalMessageLabel}>Message:</Text>
+                                                <Text style={styles.renewalMessage}>{user.message}</Text>
+                                            </View>
+                                        )}
+                                        <View style={styles.renewalActionButtons}>
+                                            <TouchableOpacity 
+                                                style={[styles.renewalActionBtn, styles.approveRenewalBtn]}
+                                                onPress={() => handleApproveRenewal(user.email)}
+                                            >
+                                                <Text style={styles.renewalActionBtnText}>✓ Approve</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                style={[styles.renewalActionBtn, styles.denyRenewalBtn]}
+                                                onPress={() => handleDenyRenewal(user.email)}
+                                            >
+                                                <Text style={styles.renewalActionBtnText}>✕ Deny</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
 
                         {/* Applicants Section */}
                         {appliedUsers.length > 0 && (
@@ -1263,5 +1474,78 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#333',
         lineHeight: 18,
+    },
+    renewalCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    renewalCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    renewalUserInfo: {
+        flex: 1,
+    },
+    renewalUserName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#1a1a1a',
+        marginBottom: 4,
+    },
+    renewalUserEmail: {
+        fontSize: 13,
+        color: '#666',
+    },
+    renewalMessageBox: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: '#1E88E5',
+    },
+    renewalMessageLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 4,
+    },
+    renewalMessage: {
+        fontSize: 13,
+        color: '#333',
+        lineHeight: 18,
+    },
+    renewalActionButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    renewalActionBtn: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    approveRenewalBtn: {
+        backgroundColor: '#34A853',
+    },
+    denyRenewalBtn: {
+        backgroundColor: '#E53935',
+    },
+    renewalActionBtnText: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: 'bold',
     },
 });
