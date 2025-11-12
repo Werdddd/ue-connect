@@ -213,6 +213,18 @@ export default function EventCard({ event }) {
                         Participants: {approvedCount}
                     </Text>
                     
+                    {event.eligibleCourses && Array.isArray(event.eligibleCourses) && event.eligibleCourses.length > 0 && (
+                        <View style={styles.courseList}>
+                            <Text style={styles.courseLabel}>Eligible Courses:</Text>
+                            <View style={styles.courseChips}>
+                                {event.eligibleCourses.map((course) => (
+                                    <View key={course} style={styles.courseChip}>
+                                        <Text style={styles.courseChipText}>{course}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    )}
 
                     <View style={styles.buttonRow}>
                     <TouchableOpacity
@@ -306,6 +318,19 @@ export default function EventCard({ event }) {
                             <Text style={styles.modalParticipants}>
                                 Participants: {approvedCount}
                             </Text>
+
+                            {event.eligibleCourses && Array.isArray(event.eligibleCourses) && event.eligibleCourses.length > 0 && (
+                                <View style={styles.courseList}>
+                                    <Text style={styles.courseLabel}>Eligible Courses:</Text>
+                                    <View style={styles.courseChips}>
+                                        {event.eligibleCourses.map((course) => (
+                                            <View key={course} style={styles.courseChip}>
+                                                <Text style={styles.courseChipText}>{course}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
 
                             <Text style={styles.modalLocation}>Location: {event.location}</Text>
                             <View style={styles.joinHeartContainer}>
@@ -535,5 +560,34 @@ const styles = StyleSheet.create({
         backgroundColor: 'gray', // Light gray
         
       },
+    courseList: {
+        marginTop: 10,
+        marginBottom: 10,
+    },
+    courseLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#666',
+        marginBottom: 6,
+    },
+    courseChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    courseChip: {
+        backgroundColor: '#FFF5F5',
+        borderWidth: 1,
+        borderColor: '#FFE0E0',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        marginRight: 6,
+        marginBottom: 6,
+    },
+    courseChipText: {
+        fontSize: 11,
+        color: '#E50914',
+        fontWeight: '500',
+    },
       
 });
