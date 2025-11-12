@@ -1,8 +1,19 @@
 import { firestore } from '../Firebase';
-import { collection, getDocs, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-// Added more functions from date-fns for calculations
-import { format, addDays, parse, setHours, setMinutes, getMinutes, getHours, differenceInMinutes, addHours } from "date-fns";
+import { collection, getDocs, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  format,
+  addDays,
+  parse,
+  setHours,
+  setMinutes,
+  differenceInMinutes,
+  addHours,
+  isSameDay,
+  isAfter,
+} from "date-fns";
 import { getAuth } from "firebase/auth";
+
+// --- FETCH FUNCTIONS ---
 export async function fetchEvents() {
   try {
     const querySnapshot = await getDocs(collection(firestore, 'events'));
@@ -10,7 +21,6 @@ export async function fetchEvents() {
       id: doc.id,
       ...doc.data(),
     }));
-    //console.log('Loaded events:', events);
     return events;
   } catch (error) {
     console.error('Failed to load events:', error);
@@ -18,7 +28,6 @@ export async function fetchEvents() {
   }
 }
 
-// Fetch organizations for collab
 export async function fetchOrganizations() {
   try {
     const querySnapshot = await getDocs(collection(firestore, 'organizations'));
@@ -33,7 +42,7 @@ export async function fetchOrganizations() {
   }
 }
 
-// Add event with creator info
+// --- ADD EVENT ---
 export async function addEvent(newEvent) {
   try {
     const auth = getAuth();
@@ -52,10 +61,8 @@ export async function addEvent(newEvent) {
       const orgData = docSnap.data();
       if (orgData.email && orgData.email.toLowerCase() === currentUser.email.toLowerCase()) {
         matchedOrg = {
-          orgName: orgData.orgName ||
-            "Unknown Organization",
-          department: orgData.department ||
-            "N/A",
+          orgName: orgData.orgName || "Unknown Organization",
+          department: orgData.department || "N/A",
           orgId: docSnap.id,
         };
         break;
@@ -64,24 +71,17 @@ export async function addEvent(newEvent) {
 
     const eventWithStatus = {
       ...newEvent,
-      status: newEvent.status ||
-        "Applied",
+      status: newEvent.status || "Applied",
       isCollab: newEvent.isCollab || false,
-      collabOrgs: newEvent.collabOrgs ||
-        [],
+      collabOrgs: newEvent.collabOrgs || [],
       createdBy: currentUser.uid,
       createdByName: creatorName,
       createdAt: serverTimestamp(),
-
-      // ✅ Include organization details
-      organization: matchedOrg?.orgName ||
-        "Unknown Organization",
+      organization: matchedOrg?.orgName || "Unknown Organization",
       department: matchedOrg?.department || "N/A",
-      orgId: matchedOrg?.orgId ||
-        null,
+      orgId: matchedOrg?.orgId || null,
     };
 
-    // Custom ID like OrgEvent1, OrgEvent2...
     const eventsSnapshot = await getDocs(collection(firestore, "events"));
     const newEventID = `OrgEvent${eventsSnapshot.size + 1}`;
 
@@ -95,30 +95,22 @@ export async function addEvent(newEvent) {
   }
 }
 
-/**
- * Parses a time range string (e.g., "9:00 AM - 11:00 AM") into actual Date objects for a given day.
- * @param {string} dateStr - The date string (e.g., "October 17, 2025").
- * @param {string} timeStr - The time range string.
- * @returns {{start: Date, end: Date} | null} - An object with start and end Date objects, or null if parsing fails.
- */
+// --- TIME UTILITIES ---
 function parseTimeRangeToDates(dateStr, timeStr) {
   try {
     const baseDate = parse(dateStr, "MMMM d, yyyy", new Date());
     const [startStr, endStr] = timeStr.split('-').map(s => s.trim());
 
     const parseTime = (str) => {
-      const timePart = str.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)/i);
-      if (!timePart) return null;
+      const match = str.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)/i);
+      if (!match) return null;
 
-      let hours = parseInt(timePart[1], 10);
-      const minutes = timePart[2] ? parseInt(timePart[2], 10) : 0;
-      const meridiem = timePart[3].toUpperCase();
+      let hours = parseInt(match[1], 10);
+      const minutes = match[2] ? parseInt(match[2], 10) : 0;
+      const meridiem = match[3].toUpperCase();
 
-      if (meridiem === 'PM' && hours !== 12) {
-        hours += 12;
-      } else if (meridiem === 'AM' && hours === 12) {
-        hours = 0; // Midnight case
-      }
+      if (meridiem === 'PM' && hours !== 12) hours += 12;
+      if (meridiem === 'AM' && hours === 12) hours = 0;
 
       let date = setHours(baseDate, hours);
       date = setMinutes(date, minutes);
@@ -127,9 +119,7 @@ function parseTimeRangeToDates(dateStr, timeStr) {
 
     const start = parseTime(startStr);
     const end = parseTime(endStr);
-
     if (!start || !end) return null;
-
     return { start, end };
   } catch (error) {
     console.error("Error parsing time range:", error);
@@ -137,94 +127,73 @@ function parseTimeRangeToDates(dateStr, timeStr) {
   }
 }
 
-
-/**
- * Finds all available slots of 1-3 hours within a given day's schedule.
- * @param {Date} day - The specific day to check.
- * @param {Array} eventsForDay - A pre-filtered list of events for that day and location.
- * @returns {Array<string>} - A list of available time slots as strings.
- */
 function findAvailableSlotsForDay(day, eventsForDay) {
   const availableSlots = [];
-  // MODIFIED: Changed the start and end times for the day's schedule.
-  const dayStart = setMinutes(setHours(day, 8), 0); // 7:00 AM
+  const now = new Date();
+  const dayStart = setMinutes(setHours(day, 8), 0); // 8:00 AM
   const dayEnd = setMinutes(setHours(day, 19), 0); // 7:00 PM
 
-  // 1. Parse and sort all existing events for the day
+  // 1. DETERMINE THE STARTING POINT FOR SUGGESTIONS
+  // If it's today, the starting time is the later of 8:00 AM or the current time ('now').
+  // For future days, the starting time remains 8:00 AM.
+  let currentTime = dayStart;
+  if (isSameDay(day, now) && isAfter(now, dayStart)) {
+    currentTime = now;
+  }
+  
+  // 2. FILTER BOOKED SLOTS
   const bookedSlots = eventsForDay
     .map(event => parseTimeRangeToDates(format(day, "MMMM d, yyyy"), event.time))
-    .filter(Boolean) // Remove any events that couldn't be parsed
+    .filter(Boolean)
     .sort((a, b) => a.start - b.start);
 
-  let currentTime = dayStart;
+  // Filter out booked events that have already ended.
+  const futureBookedSlots = bookedSlots.filter(slot => isAfter(slot.end, currentTime));
 
-  // 2. If no events booked, the entire day is available
-  if (bookedSlots.length === 0) {
-    const fullDayGap = differenceInMinutes(dayEnd, dayStart);
-    generateSuggestionsForGap(dayStart, fullDayGap, availableSlots);
+  // 3. GENERATE SLOTS BASED ON GAPS
+  if (futureBookedSlots.length === 0) {
+    // If no future bookings, calculate gap from the current potential start time to day end.
+    const fullDayGap = differenceInMinutes(dayEnd, currentTime); 
+    generateSuggestionsForGap(currentTime, fullDayGap, availableSlots);
   } else {
-    // 3. Find gaps between the start of the day and the first event
-    const firstEvent = bookedSlots[0];
-    const gapInMinutes = differenceInMinutes(firstEvent.start, currentTime);
-    generateSuggestionsForGap(currentTime, gapInMinutes, availableSlots);
-    currentTime = firstEvent.end;
-
-    // 4. Find gaps between consecutive events
-    for (let i = 1; i < bookedSlots.length; i++) {
-      const prevEvent = bookedSlots[i - 1];
-      const currentEvent = bookedSlots[i];
-      const gapInMinutes = differenceInMinutes(currentEvent.start, prevEvent.end);
-
-      generateSuggestionsForGap(prevEvent.end, gapInMinutes, availableSlots);
-      currentTime = currentEvent.end;
+    // A. Gap before the first future event
+    const firstEvent = futureBookedSlots[0];
+    const gapBeforeFirst = differenceInMinutes(firstEvent.start, currentTime);
+    generateSuggestionsForGap(currentTime, gapBeforeFirst, availableSlots);
+    
+    // B. Gaps between future events
+    for (let i = 1; i < futureBookedSlots.length; i++) {
+      const prevEvent = futureBookedSlots[i - 1];
+      const currentEvent = futureBookedSlots[i];
+      const gap = differenceInMinutes(currentEvent.start, prevEvent.end);
+      generateSuggestionsForGap(prevEvent.end, gap, availableSlots);
     }
 
-    // 5. Find gap between the last event and the end of the day
-    const finalGapInMinutes = differenceInMinutes(dayEnd, currentTime);
-    generateSuggestionsForGap(currentTime, finalGapInMinutes, availableSlots);
+    // C. Gap after the last future event
+    const lastEventEnd = futureBookedSlots[futureBookedSlots.length - 1].end;
+    const finalGap = differenceInMinutes(dayEnd, lastEventEnd);
+    generateSuggestionsForGap(lastEventEnd, finalGap, availableSlots);
   }
 
   return availableSlots;
 }
 
-/**
- * Helper to generate 1, 2, and 3-hour slots within a given gap.
- * @param {Date} startTime - The start time of the gap.
- * @param {number} gapInMinutes - The duration of the gap in minutes.
- * @param {Array<string>} suggestions - The array to push suggestions into.
- */
 function generateSuggestionsForGap(startTime, gapInMinutes, suggestions) {
-  const formatTime = (date) => format(date, "h:mm a");
-
-  // Suggest the longest possible slot first (up to 3 hours)
-  if (gapInMinutes >= 60) { // 1 hour
-    const endTime = addHours(startTime, 1);
-    suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
-  }
-  if (gapInMinutes >= 120) { // 2 hours
-    const endTime = addHours(startTime, 2);
-    suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
-  }
-  if (gapInMinutes >= 180) { // 3 hours
-    const endTime = addHours(startTime, 3);
-    suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
-  }
-  if (gapInMinutes >= 240) { // 3 hours
-    const endTime = addHours(startTime, 4);
-    suggestions.push(`${formatTime(startTime)} - ${formatTime(endTime)}`);
-  }
+  const fmt = (d) => format(d, "h:mm a");
+  if (gapInMinutes >= 60) suggestions.push(`${fmt(startTime)} - ${fmt(addHours(startTime, 1))}`);
+  if (gapInMinutes >= 120) suggestions.push(`${fmt(startTime)} - ${fmt(addHours(startTime, 2))}`);
+  if (gapInMinutes >= 180) suggestions.push(`${fmt(startTime)} - ${fmt(addHours(startTime, 3))}`);
+  if (gapInMinutes >= 240) suggestions.push(`${fmt(startTime)} - ${fmt(addHours(startTime, 4))}`);
 }
 
-
-// --- REWRITTEN MAIN SUGGESTION FUNCTION ---
-
+// --- MAIN SUGGESTION LOGIC ---
 export async function getSuggestedDateTime(location, targetDate) {
   if (!location || location.trim() === '') {
     return { suggestedTimes: [] };
   }
 
-  const normalizeLocation = (loc) => loc?.trim().toLowerCase() || '';
-  const targetLocation = normalizeLocation(location);
+  const normalize = (loc) => loc?.trim().toLowerCase() || '';
+  const targetLocation = normalize(location);
 
   try {
     const eventsSnapshot = await getDocs(collection(firestore, 'events'));
@@ -232,44 +201,57 @@ export async function getSuggestedDateTime(location, targetDate) {
     const allEvents = eventsSnapshot.docs.map(doc => doc.data());
     const blackoutDates = blackoutSnapshot.docs.map(doc => doc.data().date);
 
+    const now = new Date();
     let suggestions = [];
 
-    // SCENARIO 1: User provides a specific date.
+    const filterPastTimes = (date, slots) => {
+      if (!isSameDay(date, now)) return slots;
+      return slots.filter(slot => {
+        const [startTime] = slot.split('-').map(s => s.trim());
+        const parsed = parse(startTime, "h:mm a", date);
+        return isAfter(parsed, now);
+      });
+    };
+
+    // --- CASE 1: Specific date ---
     if (targetDate) {
       const date = parse(targetDate, "MMMM d, yyyy", new Date());
       const formattedDate = format(date, "MMMM d, yyyy");
 
-      if (!blackoutDates.includes(formattedDate)) {
-        const eventsForDay = allEvents.filter(event =>
-          normalizeLocation(event.location) === targetLocation && 
-          event.date === formattedDate &&
-          (event.status === 'Applied' || event.status === 'Approved')
+      if (!blackoutDates.includes(formattedDate) && isAfter(date, addDays(now, -1))) {
+        const eventsForDay = allEvents.filter(e =>
+          normalize(e.location) === targetLocation &&
+          e.date === formattedDate &&
+          (e.status === 'Applied' || e.status === 'Approved')
         );
-        const availableSlots = findAvailableSlotsForDay(date, eventsForDay);
-        if (availableSlots.length > 0) {
+
+        let availableSlots = findAvailableSlotsForDay(date, eventsForDay);
+        availableSlots = filterPastTimes(date, availableSlots);
+
+        if (availableSlots.length > 0)
           suggestions = availableSlots.map(time => `${formattedDate} • ${time}`);
-        }
       }
-      // SCENARIO 2: User has NOT provided a date, so find the soonest available.
-    } else {
+    }
+    // --- CASE 2: No specific date ---
+    else {
       const startDate = new Date();
       const MAX_DAYS_AHEAD = 30;
+
       for (let i = 0; i < MAX_DAYS_AHEAD; i++) {
         const currentDate = addDays(startDate, i);
         const formattedDate = format(currentDate, "MMMM d, yyyy");
-
         if (blackoutDates.includes(formattedDate)) continue;
 
-        const eventsForDay = allEvents.filter(event =>
-          normalizeLocation(event.location) === targetLocation && 
-          event.date === formattedDate &&
-          (event.status === 'Applied' || event.status === 'Approved')
+        const eventsForDay = allEvents.filter(e =>
+          normalize(e.location) === targetLocation &&
+          e.date === formattedDate &&
+          (e.status === 'Applied' || e.status === 'Approved')
         );
 
-        const availableSlots = findAvailableSlotsForDay(currentDate, eventsForDay);
+        let availableSlots = findAvailableSlotsForDay(currentDate, eventsForDay);
+        availableSlots = filterPastTimes(currentDate, availableSlots);
 
         if (availableSlots.length > 0) {
-          // Add the first few suggestions found and stop searching
           suggestions = availableSlots.slice(0, 4).map(time => `${formattedDate} • ${time}`);
           break;
         }
@@ -278,7 +260,6 @@ export async function getSuggestedDateTime(location, targetDate) {
 
     console.log("📅 Suggestions generated:", suggestions);
     return { suggestedTimes: suggestions };
-
   } catch (error) {
     console.error("Error fetching suggested date/time:", error);
     return { suggestedTimes: [] };
