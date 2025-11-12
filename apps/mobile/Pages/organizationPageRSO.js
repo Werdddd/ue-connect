@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, TouchableOpacity, Image, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableWithoutFeedback, Keyboard, KeyboardAvoidingView, Platform, TouchableOpacity, Image, Modal, TextInput, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { collection, query, where, getDocs, doc, updateDoc, arrayRemove, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, arrayRemove, arrayUnion, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '../Firebase';
 import Header from '../components/header';
 import BottomNavBar from '../components/bottomNavBar';
@@ -16,8 +16,11 @@ export default function OrganizationPageRSO() {
     const [memberUsers, setMemberUsers] = useState([]);
     const [officerUsers, setOfficerUsers] = useState([]);
     const [showPositionModal, setShowPositionModal] = useState(false);
+    const [showRemarkModal, setShowRemarkModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [positionInput, setPositionInput] = useState('');
+    const [remarkInput, setRemarkInput] = useState('');
+    const [remarkAction, setRemarkAction] = useState(''); // 'deny', 'remove_member', 'remove_officer'
 
     useEffect(() => {
         fetchUsers();
@@ -34,15 +37,26 @@ export default function OrganizationPageRSO() {
                 const memberEmails = orgData.members || [];
                 const officers = orgData.officers || [];
 
+                // Get officer emails for filtering
+                const officerEmails = officers.map(officer => officer.email);
+
                 const usersSnapshot = await getDocs(collection(firestore, 'Users'));
                 const allUsers = usersSnapshot.docs.map(doc => doc.data());
 
-                const appliedList = allUsers.filter(user => applicantEmails.includes(user.email));
+                // Applicants: only those who are NOT in members AND NOT officers
+                const appliedList = allUsers.filter(user => 
+                    applicantEmails.includes(user.email) &&
+                    !memberEmails.includes(user.email) &&
+                    !officerEmails.includes(user.email)
+                );
+
+                // Members: only those in members array who are NOT officers
                 const memberList = allUsers.filter(user => 
                     memberEmails.includes(user.email) && 
-                    !officers.some(officer => officer.email === user.email)
+                    !officerEmails.includes(user.email)
                 );
                 
+                // Officers: only those in officers array
                 const officerList = officers.map(officer => {
                     const userData = allUsers.find(user => user.email === officer.email);
                     return userData ? { ...userData, position: officer.position } : null;
@@ -57,6 +71,45 @@ export default function OrganizationPageRSO() {
         }
     };
 
+    const sendNotification = async (userEmail, content, type = 'event') => {
+        try {
+            await addDoc(collection(firestore, 'notifications'), {
+                userId: userEmail,
+                content: content,
+                type: type,
+                read: false,
+                timestamp: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error sending notification:', error);
+        }
+    };
+
+    const cleanupDuplicates = async (email, orgRef, orgData) => {
+        // Helper function to clean up any duplicates across all arrays
+        const applicants = orgData.applicants || [];
+        const members = orgData.members || [];
+        const officers = orgData.officers || [];
+        const officerEmails = officers.map(o => o.email);
+
+        const updates = {};
+        
+        // Remove from applicants if in members or officers
+        if (applicants.includes(email) && (members.includes(email) || officerEmails.includes(email))) {
+            updates.applicants = applicants.filter(e => e !== email);
+        }
+
+        // Remove from members if in officers
+        if (members.includes(email) && officerEmails.includes(email)) {
+            updates.members = members.filter(e => e !== email);
+        }
+
+        // Apply updates if any
+        if (Object.keys(updates).length > 0) {
+            await updateDoc(orgRef, updates);
+        }
+    };
+
     const handleApprove = async (email) => {
         try {
             const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
@@ -64,7 +117,26 @@ export default function OrganizationPageRSO() {
 
             if (!orgSnapshot.empty) {
                 const orgRef = orgSnapshot.docs[0].ref;
+                const orgData = orgSnapshot.docs[0].data();
 
+                // Check if user is already a member or officer
+                const officers = orgData.officers || [];
+                const officerEmails = officers.map(o => o.email);
+                const members = orgData.members || [];
+
+                if (officerEmails.includes(email)) {
+                    Alert.alert('Error', 'This user is already an officer in the organization.');
+                    fetchUsers();
+                    return;
+                }
+
+                if (members.includes(email)) {
+                    Alert.alert('Error', 'This user is already a member in the organization.');
+                    fetchUsers();
+                    return;
+                }
+
+                // Remove from applicants and add to members
                 await updateDoc(orgRef, {
                     applicants: arrayRemove(email),
                     members: arrayUnion(email),
@@ -80,6 +152,13 @@ export default function OrganizationPageRSO() {
                     console.error("Error adding orgName to user:", error);
                 }
 
+                // Send notification
+                await sendNotification(
+                    email,
+                    `Your application to ${orgName} has been approved! Welcome to the organization.`,
+                    'event'
+                );
+
                 fetchUsers();
             }
         } catch (error) {
@@ -87,51 +166,93 @@ export default function OrganizationPageRSO() {
         }
     };
 
-    const handleDeny = async (email) => {
-        try {
-            const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
-            const orgSnapshot = await getDocs(orgQuery);
-
-            if (!orgSnapshot.empty) {
-                const orgRef = orgSnapshot.docs[0].ref;
-
-                await updateDoc(orgRef, {
-                    applicants: arrayRemove(email),
-                });
-
-                fetchUsers();
-            }
-        } catch (error) {
-            console.error('Error denying user:', error);
-        }
+    const handleDeny = (user) => {
+        setSelectedUser(user);
+        setRemarkInput('');
+        setRemarkAction('deny');
+        setShowRemarkModal(true);
     };
 
-    const handleRemove = async (email) => {
+    const handleRemove = (user) => {
+        setSelectedUser(user);
+        setRemarkInput('');
+        setRemarkAction('remove_member');
+        setShowRemarkModal(true);
+    };
+
+    const handleRemoveOfficer = (user) => {
+        setSelectedUser(user);
+        setRemarkInput('');
+        setRemarkAction('remove_officer');
+        setShowRemarkModal(true);
+    };
+
+    const handleConfirmRemark = async () => {
+        if (!selectedUser || !remarkInput.trim()) return;
+
         try {
             const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
             const orgSnapshot = await getDocs(orgQuery);
 
             if (!orgSnapshot.empty) {
                 const orgRef = orgSnapshot.docs[0].ref;
+                const orgData = orgSnapshot.docs[0].data();
 
-                await updateDoc(orgRef, {
-                    members: arrayRemove(email),
-                });
-
-                const userRef = doc(firestore, 'Users', email);
-               
-                try {
-                    await updateDoc(userRef, {
-                        orgs: arrayRemove(orgName),
+                if (remarkAction === 'deny') {
+                    await updateDoc(orgRef, {
+                        applicants: arrayRemove(selectedUser.email),
                     });
-                } catch (error) {
-                    console.error("Error removing orgName from user:", error);
+
+                    await sendNotification(
+                        selectedUser.email,
+                        `Your application to ${orgName} has been denied. Reason: ${remarkInput.trim()}`,
+                        'event'
+                    );
+                } 
+                else if (remarkAction === 'remove_member') {
+                    await updateDoc(orgRef, {
+                        members: arrayRemove(selectedUser.email),
+                    });
+
+                    const userRef = doc(firestore, 'Users', selectedUser.email);
+                    try {
+                        await updateDoc(userRef, {
+                            orgs: arrayRemove(orgName),
+                        });
+                    } catch (error) {
+                        console.error("Error removing orgName from user:", error);
+                    }
+
+                    await sendNotification(
+                        selectedUser.email,
+                        `You have been removed from ${orgName}. Reason: ${remarkInput.trim()}`,
+                        'event'
+                    );
+                }
+                else if (remarkAction === 'remove_officer') {
+                    const officers = orgData.officers || [];
+                    const updatedOfficers = officers.filter(officer => officer.email !== selectedUser.email);
+
+                    await updateDoc(orgRef, {
+                        officers: updatedOfficers,
+                        members: arrayUnion(selectedUser.email)
+                    });
+
+                    await sendNotification(
+                        selectedUser.email,
+                        `You have been removed from your officer position in ${orgName}. Reason: ${remarkInput.trim()}`,
+                        'event'
+                    );
                 }
 
+                setShowRemarkModal(false);
+                setSelectedUser(null);
+                setRemarkInput('');
+                setRemarkAction('');
                 fetchUsers();
             }
         } catch (error) {
-            console.error('Error removing user:', error);
+            console.error('Error executing action:', error);
         }
     };
 
@@ -153,16 +274,29 @@ export default function OrganizationPageRSO() {
                 const orgData = orgSnapshot.docs[0].data();
                 const officers = orgData.officers || [];
 
-                // Add to officers array
+                // Check if user is already an officer
+                if (officers.some(officer => officer.email === selectedUser.email)) {
+                    Alert.alert('Error', 'This user is already an officer.');
+                    setShowPositionModal(false);
+                    return;
+                }
+
                 const newOfficer = {
                     email: selectedUser.email,
                     position: positionInput.trim()
                 };
 
+                // Add to officers and remove from members
                 await updateDoc(orgRef, {
                     officers: [...officers, newOfficer],
                     members: arrayRemove(selectedUser.email)
                 });
+
+                await sendNotification(
+                    selectedUser.email,
+                    `Congratulations! You have been assigned as ${positionInput.trim()} in ${orgName}.`,
+                    'event'
+                );
 
                 setShowPositionModal(false);
                 setSelectedUser(null);
@@ -174,28 +308,29 @@ export default function OrganizationPageRSO() {
         }
     };
 
-    const handleRemoveOfficer = async (email) => {
-        try {
-            const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
-            const orgSnapshot = await getDocs(orgQuery);
+    const getRemarkModalTitle = () => {
+        switch (remarkAction) {
+            case 'deny':
+                return 'Deny Application';
+            case 'remove_member':
+                return 'Remove Member';
+            case 'remove_officer':
+                return 'Remove Officer';
+            default:
+                return 'Provide Reason';
+        }
+    };
 
-            if (!orgSnapshot.empty) {
-                const orgRef = orgSnapshot.docs[0].ref;
-                const orgData = orgSnapshot.docs[0].data();
-                const officers = orgData.officers || [];
-
-                // Remove from officers and add back to members
-                const updatedOfficers = officers.filter(officer => officer.email !== email);
-
-                await updateDoc(orgRef, {
-                    officers: updatedOfficers,
-                    members: arrayUnion(email)
-                });
-
-                fetchUsers();
-            }
-        } catch (error) {
-            console.error('Error removing officer:', error);
+    const getRemarkModalPlaceholder = () => {
+        switch (remarkAction) {
+            case 'deny':
+                return 'Enter reason for denial...';
+            case 'remove_member':
+                return 'Enter reason for removal...';
+            case 'remove_officer':
+                return 'Enter reason for removal from officer position...';
+            default:
+                return 'Enter reason...';
         }
     };
 
@@ -252,7 +387,7 @@ export default function OrganizationPageRSO() {
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={[styles.actionBtn, styles.removeBtn]} 
-                            onPress={() => handleRemove(user.email)}
+                            onPress={() => handleRemove(user)}
                         >
                             <Text style={styles.actionBtnText}>Remove</Text>
                         </TouchableOpacity>
@@ -260,7 +395,7 @@ export default function OrganizationPageRSO() {
                 ) : type === 'officer' ? (
                     <TouchableOpacity 
                         style={[styles.actionBtn, styles.removeBtn]} 
-                        onPress={() => handleRemoveOfficer(user.email)}
+                        onPress={() => handleRemoveOfficer(user)}
                     >
                         <Text style={styles.actionBtnText}>Remove from Officers</Text>
                     </TouchableOpacity>
@@ -274,7 +409,7 @@ export default function OrganizationPageRSO() {
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={[styles.actionBtn, styles.denyBtn]} 
-                            onPress={() => handleDeny(user.email)}
+                            onPress={() => handleDeny(user)}
                         >
                             <Text style={styles.actionBtnText}>✕ Deny</Text>
                         </TouchableOpacity>
@@ -406,6 +541,56 @@ export default function OrganizationPageRSO() {
                                         <TouchableOpacity
                                             style={[styles.modalBtn, styles.confirmBtn]}
                                             onPress={handleConfirmAssignOfficer}
+                                        >
+                                            <Text style={styles.modalBtnText}>Confirm</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </Modal>
+
+                {/* Remark Modal */}
+                <Modal
+                    visible={showRemarkModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowRemarkModal(false)}
+                >
+                    <TouchableWithoutFeedback onPress={() => setShowRemarkModal(false)}>
+                        <View style={styles.modalOverlay}>
+                            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                                <View style={styles.modalContent}>
+                                    <Text style={styles.modalTitle}>{getRemarkModalTitle()}</Text>
+                                    {selectedUser && (
+                                        <Text style={styles.modalSubtitle}>
+                                            {selectedUser.firstName} {selectedUser.lastName}
+                                        </Text>
+                                    )}
+                                    
+                                    <TextInput
+                                        style={[styles.positionInput, styles.remarkInput]}
+                                        placeholder={getRemarkModalPlaceholder()}
+                                        value={remarkInput}
+                                        onChangeText={setRemarkInput}
+                                        multiline
+                                        numberOfLines={4}
+                                        textAlignVertical="top"
+                                        autoFocus
+                                    />
+
+                                    <View style={styles.modalButtons}>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.cancelBtn]}
+                                            onPress={() => setShowRemarkModal(false)}
+                                        >
+                                            <Text style={styles.modalBtnText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.confirmBtn, !remarkInput.trim() && styles.disabledBtn]}
+                                            onPress={handleConfirmRemark}
+                                            disabled={!remarkInput.trim()}
                                         >
                                             <Text style={styles.modalBtnText}>Confirm</Text>
                                         </TouchableOpacity>
@@ -682,6 +867,10 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         backgroundColor: '#f8f9fa',
     },
+    remarkInput: {
+        minHeight: 100,
+        paddingTop: 12,
+    },
     modalButtons: {
         flexDirection: 'row',
         gap: 12,
@@ -693,10 +882,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cancelBtn: {
-        backgroundColor: '#e0e0e0',
+        backgroundColor: '#ff0000',
     },
     confirmBtn: {
         backgroundColor: '#34A853',
+    },
+    disabledBtn: {
+        backgroundColor: '#cccccc',
+        opacity: 0.6,
     },
     modalBtnText: {
         fontSize: 16,
