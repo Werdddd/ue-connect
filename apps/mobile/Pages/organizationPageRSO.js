@@ -18,11 +18,15 @@ export default function OrganizationPageRSO() {
     const [showPositionModal, setShowPositionModal] = useState(false);
     const [showRemarkModal, setShowRemarkModal] = useState(false);
     const [showMembershipRenewalModal, setShowMembershipRenewalModal] = useState(false);
+    const [showRemoveAllModal, setShowRemoveAllModal] = useState(false);
+    const [showRemoveAllConfirmation, setShowRemoveAllConfirmation] = useState(false);
+    const [removeAllMessage, setRemoveAllMessage] = useState('Your membership has expired. You have been removed from the organization.');
+    const [showHeaderMenu, setShowHeaderMenu] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [positionInput, setPositionInput] = useState('');
     const [remarkInput, setRemarkInput] = useState('');
     const [remarkAction, setRemarkAction] = useState(''); // 'deny', 'remove_member', 'remove_officer'
-    const [membershipRenewalMessage, setMembershipRenewalMessage] = useState('It\'s time to renew your membership! Please complete your renewal to continue enjoying the benefits of our organization.');
+    const [membershipRenewalMessage, setMembershipRenewalMessage] = useState('');
 
     useEffect(() => {
         fetchUsers();
@@ -283,12 +287,76 @@ export default function OrganizationPageRSO() {
                 successCount++;
             }
 
-            Alert.alert('Success', `Membership renewal notification sent to ${successCount} member(s)!`);
+            Alert.alert('Announcement Sent', `Announcement sent to ${successCount} member(s)!`);
             setShowMembershipRenewalModal(false);
-            setMembershipRenewalMessage('It\'s time to renew your membership! Please complete your renewal to continue enjoying the benefits of our organization.');
+            setMembershipRenewalMessage('');
         } catch (error) {
             console.error('Error sending membership renewal notification:', error);
             Alert.alert('Error', 'Failed to send notification. Please try again.');
+        }
+    };
+
+    const handleOpenRemoveAllModal = () => {
+        if (memberUsers.length === 0) {
+            Alert.alert('No Members', 'There are no members to remove.');
+            return;
+        }
+        setShowRemoveAllModal(true);
+    };
+
+    const handleProceedRemoveAll = () => {
+        if (!removeAllMessage.trim()) {
+            Alert.alert('Error', 'Please enter a message for the notification.');
+            return;
+        }
+        setShowRemoveAllModal(false);
+        setShowRemoveAllConfirmation(true);
+    };
+
+    const handleConfirmRemoveAll = async () => {
+        try {
+            const orgQuery = query(collection(firestore, 'organizations'), where('orgName', '==', orgName));
+            const orgSnapshot = await getDocs(orgQuery);
+
+            if (!orgSnapshot.empty) {
+                const orgRef = orgSnapshot.docs[0].ref;
+
+                // Send notification to all members before removal
+                let notificationCount = 0;
+                for (const member of memberUsers) {
+                    await sendNotification(
+                        member.email,
+                        removeAllMessage.trim(),
+                        'event'
+                    );
+                    notificationCount++;
+                }
+
+                // Remove all members from organization
+                await updateDoc(orgRef, {
+                    members: []
+                });
+
+                // Remove organization from each member's orgs array
+                for (const member of memberUsers) {
+                    try {
+                        const userRef = doc(firestore, 'Users', member.email);
+                        await updateDoc(userRef, {
+                            orgs: arrayRemove(orgName)
+                        });
+                    } catch (error) {
+                        console.error(`Error removing org from user ${member.email}:`, error);
+                    }
+                }
+
+                Alert.alert('Success', `All ${memberUsers.length} member(s) have been removed and notified.`);
+                setShowRemoveAllConfirmation(false);
+                setRemoveAllMessage('Your membership has expired. You have been removed from the organization.');
+                fetchUsers();
+            }
+        } catch (error) {
+            console.error('Error removing all members:', error);
+            Alert.alert('Error', 'Failed to remove members. Please try again.');
         }
     };
 
@@ -471,12 +539,35 @@ export default function OrganizationPageRSO() {
                             <View style={styles.orgHeaderTop}>
                                 <Text style={styles.orgName}>{orgName}</Text>
                                 <TouchableOpacity 
-                                    style={styles.renewalButton}
-                                    onPress={() => setShowMembershipRenewalModal(true)}
+                                    style={styles.hamburgerButton}
+                                    onPress={() => setShowHeaderMenu(!showHeaderMenu)}
                                 >
-                                    <Text style={styles.renewalButtonText}>📢</Text>
+                                    <Text style={styles.hamburgerIcon}>☰</Text>
                                 </TouchableOpacity>
                             </View>
+                            {showHeaderMenu && (
+                                <View style={styles.headerMenu}>
+                                    <TouchableOpacity 
+                                        style={styles.menuItem}
+                                        onPress={() => {
+                                            setShowMembershipRenewalModal(true);
+                                            setShowHeaderMenu(false);
+                                        }}
+                                    >
+                                        <Text style={styles.menuItemText}>Send Announcement</Text>
+                                    </TouchableOpacity>
+                                    <View style={styles.menuDivider} />
+                                    <TouchableOpacity 
+                                        style={styles.menuItem}
+                                        onPress={() => {
+                                            handleOpenRemoveAllModal();
+                                            setShowHeaderMenu(false);
+                                        }}
+                                    >
+                                        <Text style={[styles.menuItemText, styles.dangerText]}>Remove All Members</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                             <View style={styles.statsContainer}>
                                 <View style={styles.statBox}>
                                     <Text style={styles.statNumber}>{officerUsers.length}</Text>
@@ -692,6 +783,96 @@ export default function OrganizationPageRSO() {
                         </View>
                     </TouchableWithoutFeedback>
                 </Modal>
+
+                {/* Remove All Members Modal */}
+                <Modal
+                    visible={showRemoveAllModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowRemoveAllModal(false)}
+                >
+                    <TouchableWithoutFeedback onPress={() => setShowRemoveAllModal(false)}>
+                        <View style={styles.modalOverlay}>
+                            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                                <View style={styles.modalContent}>
+                                    <Text style={styles.modalTitle}>Remove All Members</Text>
+                                    <Text style={styles.modalSubtitle}>
+                                        You are about to remove {memberUsers.length} member(s). They will be notified with a custom message.
+                                    </Text>
+                                    
+                                    <TextInput
+                                        style={[styles.positionInput, styles.remarkInput]}
+                                        placeholder="Enter removal notification message..."
+                                        value={removeAllMessage}
+                                        onChangeText={setRemoveAllMessage}
+                                        multiline
+                                        numberOfLines={5}
+                                        textAlignVertical="top"
+                                        autoFocus
+                                    />
+
+                                    <View style={styles.modalButtons}>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.cancelBtn]}
+                                            onPress={() => setShowRemoveAllModal(false)}
+                                        >
+                                            <Text style={styles.modalBtnText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.confirmBtn, !removeAllMessage.trim() && styles.disabledBtn]}
+                                            onPress={handleProceedRemoveAll}
+                                            disabled={!removeAllMessage.trim()}
+                                        >
+                                            <Text style={styles.modalBtnText}>Next</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </Modal>
+
+                {/* Remove All Members Confirmation Modal */}
+                <Modal
+                    visible={showRemoveAllConfirmation}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowRemoveAllConfirmation(false)}
+                >
+                    <TouchableWithoutFeedback onPress={() => setShowRemoveAllConfirmation(false)}>
+                        <View style={styles.modalOverlay}>
+                            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                                <View style={[styles.modalContent, styles.confirmationModal]}>
+                                    <Text style={styles.modalTitle}>Confirm Removal</Text>
+                                    <Text style={styles.warningText}>
+                                        ⚠️ This action cannot be undone. You are about to permanently remove all {memberUsers.length} member(s) from {orgName}.
+                                    </Text>
+                                    <Text style={styles.confirmationMessage}>
+                                        They will receive the following notification:
+                                    </Text>
+                                    <View style={styles.messagePreview}>
+                                        <Text style={styles.messagePreviewText}>{removeAllMessage}</Text>
+                                    </View>
+
+                                    <View style={styles.modalButtons}>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.cancelBtn]}
+                                            onPress={() => setShowRemoveAllConfirmation(false)}
+                                        >
+                                            <Text style={styles.modalBtnText}>Cancel</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.modalBtn, styles.dangerBtn]}
+                                            onPress={handleConfirmRemoveAll}
+                                        >
+                                            <Text style={styles.modalBtnText}>Remove All Members</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </TouchableWithoutFeedback>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -726,6 +907,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 3,
+        position: 'relative',
     },
     orgHeaderTop: {
         flexDirection: 'row',
@@ -739,7 +921,7 @@ const styles = StyleSheet.create({
         color: '#1a1a1a',
         flex: 1,
     },
-    renewalButton: {
+    hamburgerButton: {
         backgroundColor: 'transparent',
         paddingHorizontal: 8,
         paddingVertical: 8,
@@ -747,10 +929,49 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    renewalButtonText: {
+    hamburgerIcon: {
         color: '#666',
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: 'normal',
+    },
+    headerMenu: {
+        position: 'absolute',
+        top: 60,
+        right: 0,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 10,
+        zIndex: 1000,
+        minWidth: 200,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 12,
+    },
+    menuItemIcon: {
+        fontSize: 18,
+    },
+    menuItemText: {
+        fontSize: 14,
+        color: '#333',
+        fontWeight: '500',
+    },
+    dangerText: {
+        color: '#E53935',
+    },
+    menuDivider: {
+        height: 1,
+        backgroundColor: '#e0e0e0',
     },
     statsContainer: {
         flexDirection: 'row',
@@ -985,18 +1206,24 @@ const styles = StyleSheet.create({
     modalButtons: {
         flexDirection: 'row',
         gap: 12,
+        marginTop: 16,
     },
     modalBtn: {
         flex: 1,
-        paddingVertical: 14,
+        paddingVertical: 16,
         borderRadius: 12,
         alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 50,
     },
     cancelBtn: {
         backgroundColor: '#ff0000',
     },
     confirmBtn: {
         backgroundColor: '#34A853',
+    },
+    dangerBtn: {
+        backgroundColor: '#E53935',
     },
     disabledBtn: {
         backgroundColor: '#cccccc',
@@ -1006,5 +1233,35 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#fff',
+        textAlign: 'center',
+    },
+    confirmationModal: {
+        maxHeight: '80%',
+    },
+    warningText: {
+        fontSize: 16,
+        color: '#E53935',
+        fontWeight: '600',
+        marginBottom: 12,
+        lineHeight: 22,
+    },
+    confirmationMessage: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 8,
+        fontWeight: '500',
+    },
+    messagePreview: {
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: '#E53935',
+    },
+    messagePreviewText: {
+        fontSize: 13,
+        color: '#333',
+        lineHeight: 18,
     },
 });
