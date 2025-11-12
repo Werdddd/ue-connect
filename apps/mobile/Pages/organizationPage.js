@@ -338,6 +338,7 @@ export default function OrganizationPage() {
                 memberCount={Array.isArray(org.members) ? org.members.length : 0}
                 shortdesc={org.shortdesc}
                 logo={org.logoBase64 || null}
+                eligibleCourses={Array.isArray(org.canJoin) ? org.canJoin : []}
               />
             ))}
           </View>
@@ -355,9 +356,10 @@ export default function OrganizationPage() {
                 <OrganizationCard
                   key={org.id}
                   orgName={org.orgName}
-                  memberCount={org.members.length}
+                  memberCount={Array.isArray(org.members) ? org.members.length : 0}
                   shortdesc={org.shortdesc}
                   logo={org.logoBase64 || null}
+                  eligibleCourses={Array.isArray(org.canJoin) ? org.canJoin : []}
                 />
               );
             })}
