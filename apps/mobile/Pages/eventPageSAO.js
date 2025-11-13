@@ -11,6 +11,8 @@ import OrganizationBar from '../components/organizationBar';
 import EventCardSAO from '../components/eventCardSAO';
 import { fetchEvents, addEvent, updateEventStatus } from '../Backend/eventPageSAO';
 import { getSuggestedDateTime } from '../Backend/eventPageRSO';
+import { auth, firestore } from '../Firebase';
+import { getDoc, doc } from 'firebase/firestore';
 // import DocumentPicker from 'react-native-document-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -43,6 +45,8 @@ export default function EventPageSAO() {
 const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
     const [proposalLink, setProposalLink] = useState('');
     const [selectedCourses, setSelectedCourses] = useState([]);
+    const [currentUserProfile, setCurrentUserProfile] = useState(null);
+    const [recommendedEvents, setRecommendedEvents] = useState([]);
 
     const courses = [
         { label: 'College of Engineering', value: 'label-engineering', isLabel: true },
@@ -74,9 +78,98 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
             }
         });
     };
+
+    const normalizeValue = (value) =>
+        typeof value === 'string' ? value.trim().toLowerCase() : '';
+
     useEffect(() => {
         loadEvents();
     }, []);
+
+    useEffect(() => {
+        const loadCurrentUserProfile = async () => {
+            try {
+                const user = auth.currentUser;
+                if (!user?.email) return;
+                const userRef = doc(firestore, 'Users', user.email);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    setCurrentUserProfile(userSnap.data());
+                }
+            } catch (error) {
+                console.error('Failed to load user profile for events page:', error);
+            }
+        };
+
+        loadCurrentUserProfile();
+    }, []);
+
+    useEffect(() => {
+        if (!currentUserProfile || events.length === 0) {
+            setRecommendedEvents([]);
+            return;
+        }
+
+        const userCourse = normalizeValue(currentUserProfile.Course || currentUserProfile.course);
+        const userDepartment = normalizeValue(currentUserProfile.department || currentUserProfile.Department);
+        const userGroup = normalizeValue(currentUserProfile.group);
+        const userInterests = Array.isArray(currentUserProfile.interests)
+            ? currentUserProfile.interests.map((interest) => normalizeValue(interest)).filter(Boolean)
+            : [];
+
+        const scoredEvents = events
+            .map((event) => {
+                let score = 0;
+
+                const status = normalizeValue(event.status);
+                if (status === 'approved') {
+                    score += 1;
+                } else if (status === 'applied') {
+                    score += 0.5;
+                }
+
+                const eligibleCourses = Array.isArray(event.eligibleCourses) ? event.eligibleCourses : [];
+                if (eligibleCourses.length > 0) {
+                    const matchesCourse =
+                        userCourse &&
+                        eligibleCourses.some((course) => normalizeValue(course) === userCourse);
+                    if (matchesCourse) {
+                        score += 4;
+                    } else if (userCourse) {
+                        return null;
+                    }
+                } else {
+                    score += 1;
+                }
+
+                const eventDepartment = normalizeValue(event.org);
+                if (eventDepartment && userDepartment && eventDepartment === userDepartment) {
+                    score += 2;
+                }
+
+                const tags = Array.isArray(event.tags)
+                    ? event.tags.map((tag) => normalizeValue(tag)).filter(Boolean)
+                    : [];
+                if (tags.length && userInterests.length) {
+                    const overlap = tags.filter((tag) => userInterests.includes(tag));
+                    score += overlap.length;
+                }
+
+                const category = normalizeValue(event.category || event.type || event.eventType);
+                if (category && userInterests.includes(category)) {
+                    score += 1;
+                }
+
+                return { event, score };
+            })
+            .filter(Boolean)
+            .filter((item) => item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3)
+            .map((item) => item.event);
+
+        setRecommendedEvents(scoredEvents);
+    }, [events, currentUserProfile]);
 
     const loadEvents = async () => {
         try {
@@ -258,6 +351,9 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
         const filteredEvents = selectedOrg === 'All'
             ? events
             : events.filter(event => event.org === selectedOrg);
+
+        const recommendedEventIds = new Set(recommendedEvents.map((event) => event.id));
+        const remainingEvents = filteredEvents.filter(event => !recommendedEventIds.has(event.id));
     
         const [suggestedDateTime, setSuggestedDateTime] = useState(null);
     
@@ -298,7 +394,33 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
                         <View style={styles.underline} />
                     </View>
 
-                    {filteredEvents.map((event) => (
+                    {recommendedEvents.length > 0 && (
+                        <View style={styles.recommendedSection}>
+                            <Text style={styles.recommendedTitle}>Recommended Events For You</Text>
+                            {recommendedEvents.map((event) => (
+                                <EventCardSAO
+                                    key={`recommended-${event.id}`}
+                                    event={{
+                                        id: event.id,
+                                        banner: event.banner,
+                                        seal: event.seal,
+                                        title: event.title,
+                                        date: event.date,
+                                        time: event.time,
+                                        description: event.description,
+                                        participants: event.participants,
+                                        location: event.location,
+                                        status: event.status,
+                                        eligibleCourses: event.eligibleCourses || []
+                                    }}
+                                    onApprove={() => openActionModal(event.id, 'Approved')}
+                                    onReject={() => openActionModal(event.id, 'Rejected')}
+                                />
+                            ))}
+                        </View>
+                    )}
+
+                    {remainingEvents.map((event) => (
                         <EventCardSAO
                             key={event.id}
                             event={{
@@ -311,7 +433,8 @@ const [isProposalModalVisible, setIsProposalModalVisible] = useState(false);
                                 description: event.description,
                                 participants: event.participants,
                                 location: event.location,
-                                status: event.status
+                                status: event.status,
+                                eligibleCourses: event.eligibleCourses || []
                             }}
                             onApprove={() => openActionModal(event.id, 'Approved')}
                             onReject={() => openActionModal(event.id, 'Rejected')}
@@ -667,6 +790,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#E50914',
         width: '100%',
         marginTop: 2,
+    },
+    recommendedSection: {
+        marginBottom: 20,
+        marginHorizontal: 4,
+    },
+    recommendedTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#E50914',
+        marginBottom: 10,
+        marginLeft: 16,
     },
     floatingButton: {
         alignSelf: 'center',

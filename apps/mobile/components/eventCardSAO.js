@@ -93,6 +93,20 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
                         </View>
                     </View>
                     <Text style={styles.description}>{event.description}</Text>
+                    
+                    {Array.isArray(event.eligibleCourses) && event.eligibleCourses.length > 0 && (
+                        <View style={styles.courseList}>
+                            <Text style={styles.courseLabel}>Eligible Courses:</Text>
+                            <View style={styles.courseChips}>
+                                {event.eligibleCourses.map((course) => (
+                                    <View key={course} style={styles.courseChip}>
+                                        <Text style={styles.courseChipText}>{course}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    )}
+                    
                     <Text style={[styles.status, getStatusStyle(event.status)]}>{event.status}</Text>
                 </View>
             </TouchableOpacity>
@@ -118,6 +132,19 @@ export default function EventCardSAO({ event, onApprove, onReject }) {
                             <Text style={styles.modalDescription}>{event.description}</Text>
                             <Text style={styles.modalParticipants}>Participants: {event.participants}</Text>
                             <Text style={styles.modalLocation}>Location: {event.location}</Text>
+                            
+                            {Array.isArray(event.eligibleCourses) && event.eligibleCourses.length > 0 && (
+                                <View style={styles.modalCourseList}>
+                                    <Text style={styles.modalCourseLabel}>Eligible Courses:</Text>
+                                    <View style={styles.modalCourseChips}>
+                                        {event.eligibleCourses.map((course) => (
+                                            <View key={course} style={styles.modalCourseChip}>
+                                                <Text style={styles.modalCourseChipText}>{course}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
 
                             <View style={styles.previewContainer}>
                                 <Text style={styles.previewTitle}>Proposal Link:</Text>
@@ -329,4 +356,58 @@ const styles = StyleSheet.create({
         textDecorationLine: 'underline',
         marginTop: 5,
       },
+    courseList: {
+        marginTop: 12,
+    },
+    courseLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#555',
+        marginBottom: 6,
+    },
+    courseChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    courseChip: {
+        backgroundColor: '#FFF5F5',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: '#FFE0E0',
+    },
+    courseChipText: {
+        fontSize: 12,
+        color: '#E50914',
+        fontWeight: '600',
+    },
+    modalCourseList: {
+        marginTop: 12,
+    },
+    modalCourseLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#555',
+        marginBottom: 6,
+    },
+    modalCourseChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    modalCourseChip: {
+        backgroundColor: '#FFF5F5',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: '#FFE0E0',
+    },
+    modalCourseChipText: {
+        fontSize: 12,
+        color: '#E50914',
+        fontWeight: '600',
+    },
 });

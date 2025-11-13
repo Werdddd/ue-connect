@@ -150,7 +150,7 @@ export default function Event() {
     const getOrganizationTitle = () => {
         switch (selectedDepartment) {
             case 'All':
-                return 'All Events';
+                return 'All Events1';
             case 'CSC':
                 return 'Central Student Council';
             case 'COE':
@@ -170,19 +170,41 @@ export default function Event() {
         ? events
         : events.filter(event => event.department === selectedDepartment);
 
-    const buildEventCardProps = (event) => ({
-        id: event.id,
-        banner: event.banner,
-        seal: event.seal,
-        title: event.title,
-        date: event.date,
-        time: event.time,
-        description: event.description,
-        participants: event.participants,
-        location: event.location,
-        status: event.status,
-        eligibleCourses: event.eligibleCourses || []
-    });
+    const buildEventCardProps = (event) => {
+        // Default eligible courses based on department or organization
+        let defaultEligibleCourses = [];
+        
+        const department = event.department?.toLowerCase();
+        const organization = event.organization?.toLowerCase();
+        
+        if (department === 'coe' || organization?.includes('engineering') || organization?.includes('cs') || organization?.includes('computer')) {
+            defaultEligibleCourses = ['BSCS', 'BSIT', 'BSCpE', 'BSEE', 'BSECE'];
+        } else if (department === 'cas') {
+            defaultEligibleCourses = ['BSCS', 'BSIT', 'BSBio', 'BSPsych'];
+        } else if (department === 'cba') {
+            defaultEligibleCourses = ['BSBA', 'BSA'];
+        } else if (department === 'cfad') {
+            defaultEligibleCourses = ['BFA', 'BSID'];
+        } else if (department === 'csc') {
+            defaultEligibleCourses = ['All Courses'];
+        } else {
+            defaultEligibleCourses = ['All Courses'];
+        }
+
+        return {
+            id: event.id,
+            banner: event.banner,
+            seal: event.seal,
+            title: event.title,
+            date: event.date,
+            time: event.time,
+            description: event.description,
+            participants: event.participants,
+            location: event.location,
+            status: event.status,
+            eligibleCourses: event.eligibleCourses || defaultEligibleCourses
+        };
+    };
 
     const recommendedEventIds = new Set(recommendedEvents.map((event) => event.id));
     const remainingEvents = filteredEvents.filter(event => !recommendedEventIds.has(event.id));
