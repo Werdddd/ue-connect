@@ -172,7 +172,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
         <div className="space-y-3">
           {/* Organization Info */}
           <div>
-            <label className="block text-sm font-medium">Organization Name</label>
+            <label className="block text-sm font-medium">Organization Name *</label>
             <input
               name="organizationName"
               onChange={handleInputChange}
@@ -181,7 +181,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Acronym</label>
+            <label className="block text-sm font-medium">Acronym *</label>
             <input
               name="acronym"
               onChange={handleInputChange}
@@ -190,13 +190,13 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Department</label>
+            <label className="block text-sm font-medium">Department *</label>
             <select
               name="department"
               onChange={handleInputChange}
               className="w-full border rounded-lg p-2 mt-1"
             >
-              <option value="">Select Department</option>
+              <option value="">Select Department *</option>
               <option value="University Wide">University Wide</option>
               <option value="CSC">CSC</option>
               <option value="COE">COE</option>
@@ -207,7 +207,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Description</label>
+            <label className="block text-sm font-medium">Description *</label>
             <input
               name="description"
               onChange={handleInputChange}
@@ -216,7 +216,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Email</label>
+            <label className="block text-sm font-medium">Email *</label>
             <input
               name="email"
               type="email"
@@ -226,7 +226,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Password</label>
+            <label className="block text-sm font-medium">Password *</label>
             <input
               name="password"
               type="password"
@@ -236,7 +236,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Contact Number</label>
+            <label className="block text-sm font-medium">Contact Number *</label>
             <input
               name="contactNumber"
               onChange={handleInputChange}
@@ -245,7 +245,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Location</label>
+            <label className="block text-sm font-medium">Location *</label>
             <input
               name="location"
               onChange={handleInputChange}
@@ -256,7 +256,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           {/* President & Adviser */}
           <hr className="my-3" />
           <div>
-            <label className="block text-sm font-medium">President Name</label>
+            <label className="block text-sm font-medium">President Name *</label>
             <input
               name="presidentName"
               onChange={handleInputChange}
@@ -265,7 +265,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">President Student ID</label>
+            <label className="block text-sm font-medium">President Student ID *</label>
             <input
               name="presidentId"
               onChange={handleInputChange}
@@ -274,7 +274,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Adviser Name</label>
+            <label className="block text-sm font-medium">Adviser Name *</label>
             <input
               name="adviserName"
               onChange={handleInputChange}
@@ -285,7 +285,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           {/* Logo */}
           <hr className="my-3" />
           <div>
-            <label className="block text-sm font-medium">Organization Logo</label>
+            <label className="block text-sm font-medium">Organization Logo *</label>
             <input
               type="file"
               onChange={(e) => handleFileChange('logo', e.target.files?.[0] || null)}
@@ -296,7 +296,7 @@ export default function RegisterOrganizationModal({ open, onClose, userEmail }: 
           {/* Required Docs */}
           {Object.keys(processedDocuments).map((key) => (
             <div key={key}>
-              <label className="block text-sm font-medium">{key}</label>
+              <label className="block text-sm font-medium">{key} *</label>
               <input
                 type="file"
                 onChange={(e) => handleFileChange(key, e.target.files?.[0] || null)}
