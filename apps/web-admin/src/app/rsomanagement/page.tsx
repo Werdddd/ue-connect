@@ -1053,7 +1053,7 @@ const RSOManagement = () => {
                       </h3>
 
                       <div className="flex gap-3 mb-4">
-                        <button
+                        {/* <button
                           onClick={() => setFinalAction("hold")}
                           className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${finalAction === "hold"
                             ? "bg-yellow-500 text-white border-yellow-600"
@@ -1061,7 +1061,7 @@ const RSOManagement = () => {
                             }`}
                         >
                           Place On Hold
-                        </button>
+                        </button> */}
 
                         <button
                           onClick={() => setFinalAction("terminated")}
